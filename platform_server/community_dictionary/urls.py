@@ -3,12 +3,22 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 from projects import account_views, email_reset_views
 
+from . import evaluation_views
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('profile/languages/', evaluation_views.competences, name='evaluation-languages'),
+    path('<int:pk>/evaluate/', evaluation_views.home, name='evaluation-home'),
+    path('<int:pk>/evaluate/<uuid:set_id>/', evaluation_views.detail, name='evaluation-set'),
+    path('<int:pk>/evaluate/<uuid:set_id>/session/', evaluation_views.session, name='evaluation-session'),
+    path('<int:pk>/evaluate/<uuid:set_id>/items/<int:item_id>/', evaluation_views.item, name='evaluation-item'),
+    path('<int:pk>/evaluate/<uuid:set_id>/items/<int:item_id>/media/<int:contribution_id>/', evaluation_views.media, name='evaluation-media'),
+    path('<int:pk>/evaluate/<uuid:set_id>/close/', evaluation_views.close, name='evaluation-close'),
+    path('<int:pk>/evaluate/<uuid:set_id>/results/', evaluation_views.results, name='evaluation-results'),
+    path('<int:pk>/evaluate/<uuid:set_id>/ratings.csv', evaluation_views.results, {'download': True}, name='evaluation-export'),
     path('about/', profile_views.about, name='about'),
     path('profile/', profile_views.profile, name='profile'),
     path('profile/password/', account_views.change_password, {'community': True}, name='password-change'),

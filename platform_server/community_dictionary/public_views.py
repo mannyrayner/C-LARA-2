@@ -45,7 +45,7 @@ def context(request, dictionary=None, **extra):
     can_join_view = bool(dictionary and request.user.is_authenticated and
                         dictionaries_for(request.user).filter(pk=dictionary.pk).exists())
     return {'public_browsing': True, 'dictionary': dictionary,
-            'member_view': can_join_view, **extra}
+            'member_view': can_join_view, 'evaluation_available': bool(dictionary and dictionary.evaluation_sets.filter(allow_visitors=True, closed_at__isnull=True).exists()), **extra}
 
 
 @visitor_page

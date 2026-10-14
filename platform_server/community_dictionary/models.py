@@ -55,6 +55,109 @@ class CommunityProfile(models.Model):
     revision = models.PositiveIntegerField(default=0)
 
 
+class LanguageCompetence(models.Model):
+    """Private, self-reported evaluation competence, not a language certificate."""
+    LEVELS = [(0, 'Not able to assess'), (1, 'Some knowledge'),
+              (2, 'Confident enough to assess'), (3, 'Fluent / highly proficient')]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='dictionary_language_competences')
+    language = models.CharField(max_length=80)
+    language_key = models.CharField(max_length=160)
+    reading = models.PositiveSmallIntegerField(choices=LEVELS, default=0)
+    listening = models.PositiveSmallIntegerField(choices=LEVELS, default=0)
+    variety = models.CharField(max_length=160, blank=True)
+    experience = models.CharField(max_length=600, blank=True)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['language', 'pk']
+        constraints = [models.UniqueConstraint(fields=['user', 'language_key'], name='cd_competence_language')]
+
+
+class EvaluationSet(models.Model):
+    """Owner-created sample. Closing releases results and prevents further ratings."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='evaluation_sets')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    name = models.CharField(max_length=160)
+    scope = models.CharField(max_length=10, choices=[('sentences', 'Sentence pages'), ('words', 'Word pages')])
+    sampling = models.CharField(max_length=10, choices=[('random', 'Random sample'), ('all', 'All eligible pages')])
+    seed = models.CharField(max_length=64)
+    population_ids = models.JSONField(default=list)
+    language = models.CharField(max_length=80)
+    explanation_language = models.CharField(max_length=80, blank=True)
+    rubric = models.CharField(max_length=40, default='community-quality-v1')
+    allow_visitors = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', 'pk']
+
+
+class EvaluationItem(models.Model):
+    evaluation_set = models.ForeignKey(EvaluationSet, on_delete=models.CASCADE, related_name='items')
+    entry = models.ForeignKey('Entry', null=True, on_delete=models.SET_NULL, related_name='+')
+    position = models.PositiveIntegerField()
+    snapshot = models.JSONField(default=dict)
+    fingerprint = models.CharField(max_length=64)
+
+    class Meta:
+        ordering = ['position', 'pk']
+        constraints = [models.UniqueConstraint(fields=['evaluation_set', 'position'], name='cd_evaluation_position')]
+
+
+class EvaluationUnit(models.Model):
+    """A rating target; repeated word recordings/translation versions occur once per set."""
+    evaluation_set = models.ForeignKey(EvaluationSet, on_delete=models.CASCADE, related_name='units')
+    item = models.ForeignKey(EvaluationItem, on_delete=models.CASCADE, related_name='units')
+    dimension = models.CharField(max_length=30)
+    key = models.CharField(max_length=64)
+    word_index = models.PositiveIntegerField(null=True)
+    missing = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['pk']
+        constraints = [models.UniqueConstraint(fields=['evaluation_set', 'dimension', 'key'], name='cd_evaluation_unit')]
+
+
+class EvaluationSession(models.Model):
+    evaluation_set = models.ForeignKey(EvaluationSet, on_delete=models.CASCADE, related_name='sessions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    # Reserved for later AI comparisons; the human interface can only write human records.
+    evaluator_kind = models.CharField(max_length=10, default='human')
+    evaluator_metadata = models.JSONField(default=dict)
+    competences = models.JSONField(default=dict)
+    dimensions = models.JSONField(default=list)
+    involvement = models.CharField(max_length=12, choices=[('yes', 'Yes'), ('no', 'No'), ('unsure', 'Not sure')])
+    started_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['evaluation_set', 'user'], name='cd_evaluation_session')]
+
+
+class EvaluationProgress(models.Model):
+    session = models.ForeignKey(EvaluationSession, on_delete=models.CASCADE, related_name='progress')
+    item = models.ForeignKey(EvaluationItem, on_delete=models.CASCADE, related_name='progress')
+    skipped = models.BooleanField(default=False)
+    revision = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['session', 'item'], name='cd_evaluation_progress')]
+
+
+class EvaluationRating(models.Model):
+    SCORES = [('ok', 'Acceptable'), ('minor', 'Minor problem'), ('major', 'Major problem'), ('cannot', 'Cannot judge')]
+    session = models.ForeignKey(EvaluationSession, on_delete=models.CASCADE, related_name='ratings')
+    unit = models.ForeignKey(EvaluationUnit, on_delete=models.CASCADE, related_name='ratings')
+    score = models.CharField(max_length=8, choices=SCORES)
+    comment = models.TextField(max_length=1000, blank=True)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['session', 'unit'], name='cd_evaluation_rating')]
+
+
 class MembershipRequest(models.Model):
     dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='membership_requests')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dictionary_membership_requests')

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 78,
+  "workspace_revision": 80,
   "as_of": "2026-10-14",
-  "assessed_commit_sha": "176df907f157bda87a22f68164d5ff7154f02f70",
+  "assessed_commit_sha": "7f345d36bcd1d4f1e1638f11d90a340556980828",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports the initial Community Dictionaries paper published on AiraXiv on 13 October and ResearchGate on 14 October, with a human-written Goodreads invitation also posted. Both publication links and the original/ResearchGate LaTeX sources are included in the prepared repository update; the public About page now lists the report. Django check and 28 discovery/profile tests pass locally. Deployment of these link changes is pending. The next research dependency is independent collaborators and participants willing to conduct a manageable empirical study; publication and automated review do not establish uptake, learning gains or content accuracy.",
+  "current_focus_summary": "Manny has installed the evaluation feature on the laptop and completed a two-entry rehearsal, reporting that nearly everything works. A follow-up fixes question-local material and the incomplete two-language competence summary, with 37 focused tests passing. Retesting these presentation changes, then first AWS deployment and a larger human evaluation, are next. This is workflow acceptance evidence, not an independent quality study. AI judging remains deferred.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1277,6 +1277,43 @@
         "platform_server/community_dictionary/templates/community_dictionary/about.html",
         "platform_server/community_dictionary/tests/test_discovery_profiles.py"
       ]
+    },
+    {
+      "id": "OBS-0116",
+      "summary": "Manny reports installing the publication/About material. A read-only browser check of the deployed About page without login confirmed the paper title/authors, AiraXiv and ResearchGate links, related Vibe Research link and public contributor listing. No deployment was performed by the agent.",
+      "observed_at": "2026-10-14",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/community_dictionary/templates/community_dictionary/about.html",
+        "docs/publications/community_dictionaries_first_report/README.md",
+        "experiments/community_dictionary/evaluation-2026-10-14.md"
+      ]
+    },
+    {
+      "id": "OBS-0117",
+      "summary": "Manny requests and authorises first evaluation infrastructure after discussion of task-specific self-reported competence, independent human ratings and later AI comparisons. The prepared implementation adds versioned owner-created random/all samples, resumable ratings on seven dimensions, missing/abstention handling, live source withdrawal checks, optional signed-in visitor evaluation, owner-only closed-set results/CSV and ordinal agreement. Django check/migration-drift check passed; the full 685-test regression suite passed and all 34 evaluation tests passed after three additional edge checks. No real evaluator judgements, paid AI requests, production deployment or physical-phone acceptance occurred.",
+      "observed_at": "2026-10-14",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/community_dictionary/evaluation.py",
+        "platform_server/community_dictionary/evaluation_views.py",
+        "platform_server/community_dictionary/tests/test_evaluation.py",
+        "docs/howto/community-evaluation.md",
+        "docs/howto/community-evaluation-install.md",
+        "experiments/community_dictionary/evaluation-2026-10-14.md"
+      ]
+    },
+    {
+      "id": "OBS-0118",
+      "summary": "Manny reports a successful two-entry laptop evaluation apart from question-context placement and an incomplete competence summary. Inspection confirmed omitted commenting-language listening. The follow-up puts relevant material directly above each question and displays both skills with full labels for both languages, including the saved session profile. All 37 evaluation tests pass. The follow-up is not yet accepted or deployed; independent ratings and physical-phone evidence remain pending.",
+      "observed_at": "2026-10-14",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/evaluation-2026-10-14.md",
+        "platform_server/community_dictionary/evaluation_views.py",
+        "platform_server/community_dictionary/tests/test_evaluation.py",
+        "docs/howto/community-evaluation-display-fix.md"
+      ]
     }
   ],
   "assessments": [
@@ -1453,7 +1490,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "The initial report is now published on AiraXiv and ResearchGate according to Manny, and his Goodreads invitation broadens outreach. The paper-writing phase has achieved its immediate goal. Prioritise independent use and finding collaborators for a modest first empirical study, agreeing data use and appropriate credit before collection. The bounded ten-group pilot offer is unchanged. The About-page links and repository records are prepared and locally checked, awaiting laptop/AWS installation. Publication and an automated review are dissemination milestones, not measured evidence of learning, sustained use or community suitability.",
+      "summary": "Publication is complete and evaluation has its first positive laptop rehearsal. Addressing the two reported presentation issues is a small remaining acceptance step before AWS deployment and a larger human evaluation. This validates workflow feasibility, not content correctness or learning benefits. Independent samples with agreed data use and credit remain the priority; AI judge comparisons come later. The ten-group pilot offer remains unchanged.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1554,11 +1591,14 @@
         "OBS-0112",
         "OBS-0113",
         "OBS-0114",
-        "OBS-0115"
+        "OBS-0115",
+        "OBS-0116",
+        "OBS-0117",
+        "OBS-0118"
       ],
-      "urgency": "recruit_independent_trial_collaborators",
+      "urgency": "validate_evaluation_workflow_then_collect_independent_judgements",
       "risk": "medium",
-      "progress": "initial_report_published_outreach_started",
+      "progress": "initial_laptop_evaluation_reported_presentation_follow_up_locally_tested",
       "confidence": "medium"
     },
     {
@@ -1666,7 +1706,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "Automatic-mode AWS acceptance and publication are human-reported. No independent learner study has yet supplied outcome evidence. Informal operator estimates of cost and correctness remain provisional; systematic provider-output quality, costs and human operational workload remain to be measured. The ten-group pilot budget and inspection condition are confirmed, but participants and study procedures still need agreement. Deployment of the About-page publication links is pending. Broader cleanup UX remains deferred until a real reviewer can provide feedback; community suitability, learning gains and sustained low-intervention maintenance remain open.",
+      "summary": "The initial two-entry laptop evaluation is human-reported as mostly successful. Retesting the presentation follow-up, first AWS deployment and a larger evaluation remain pending. No independent quality study, learning gain, community suitability result or sustained-use evidence exists yet. Self-reported competence, prior human corrections, withdrawal, partial sessions and shared source pictures require careful interpretation. AI judging, confidence intervals and adjudication remain deferred. The ten-group pilot offer and inspection condition are unchanged.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1779,7 +1819,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Install the cumulative publication/About patch after laptop checks, then use responses to Manny’s outreach to identify a willing group and agree a manageable empirical study. Record actual use, difficulties, requested changes, turnaround, costs and human effort with participant agreement. The initial paper is already published; no further publication or outreach by the agent is authorised by this update.",
+      "summary": "Retest the question-local context and complete competence display on the laptop without discarding existing ratings. After acceptance, commit both evaluation patches, back up and deploy using the original AWS runbook, then conduct a larger human evaluation with agreed credit/data use. Do not infer learning outcomes or AI-judge reliability from workflow acceptance or content scores.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1880,13 +1920,13 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-14",
-    "authorization_basis": "Manny supplies publication URLs and his public Goodreads outreach; AGENTS.md requires recording material new evidence without altering human-owned intentions.",
-    "comments": "Revision 78 records reported publication and a locally tested About/documentation update. No external posting, deployment, participant enrolment, credit allocation or project-intentions.md edit occurred."
+    "authorization_basis": "Manny reports the initial laptop evaluation and explicitly requests two presentation fixes; AGENTS.md requires reflecting material acceptance evidence.",
+    "comments": "Revision 80 records the human-reported laptop rehearsal and locally tested presentation follow-up. Human-owned intentions and earlier archives are unchanged; no AWS deployment, paid calls or independent empirical study was performed."
   },
   "changes_from_previous_revision": {
-    "summary": "Retired the pending-publication assessment after Manny’s AiraXiv/ResearchGate and Goodreads reports; prepared publication links and preserved paper versions. Recruitment and agreed empirical work are the next dependencies.",
+    "summary": "First human laptop acceptance is reported, with two presentation issues corrected locally before AWS deployment and larger evaluation.",
     "added_item_ids": [
-      "OBS-0115"
+      "OBS-0118"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -2008,6 +2048,7 @@
       "OBS-0112",
       "OBS-0113",
       "OBS-0114",
+      "OBS-0115",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -2045,7 +2086,9 @@
       "PRED-0003",
       "PRED-0004",
       "PRED-0005",
-      "PRED-0006"
+      "PRED-0006",
+      "OBS-0116",
+      "OBS-0117"
     ],
     "retired_item_ids": []
   }

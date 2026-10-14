@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 78
+- **Workspace revision:** 80
 - **As of:** 2026-10-14
-- **Assessed commit:** `176df907f157bda87a22f68164d5ff7154f02f70`
+- **Assessed commit:** `7f345d36bcd1d4f1e1638f11d90a340556980828`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Manny reports the initial Community Dictionaries paper published on AiraXiv on 13 October and ResearchGate on 14 October, with a human-written Goodreads invitation also posted. Both publication links and the original/ResearchGate LaTeX sources are included in the prepared repository update; the public About page now lists the report. Django check and 28 discovery/profile tests pass locally. Deployment of these link changes is pending. The next research dependency is independent collaborators and participants willing to conduct a manageable empirical study; publication and automated review do not establish uptake, learning gains or content accuracy.
+Manny has installed the evaluation feature on the laptop and completed a two-entry rehearsal, reporting that nearly everything works. A follow-up fixes question-local material and the incomplete two-language competence summary, with 37 focused tests passing. Retesting these presentation changes, then first AWS deployment and a larger human evaluation, are next. This is workflow acceptance evidence, not an independent quality study. AI judging remains deferred.
 
 ## Factual observations
 
@@ -935,6 +935,30 @@ Manny supplies the AiraXiv and ResearchGate publication URLs and reports posting
 - **Confidence:** high
 - **Evidence:** [`docs/publications/community_dictionaries_first_report/README.md`](../publications/community_dictionaries_first_report/README.md), [`docs/howto/community-publications-install.md`](../howto/community-publications-install.md), [`platform_server/community_dictionary/templates/community_dictionary/about.html`](../platform_server/community_dictionary/templates/community_dictionary/about.html), [`platform_server/community_dictionary/tests/test_discovery_profiles.py`](../platform_server/community_dictionary/tests/test_discovery_profiles.py)
 
+### OBS-0116
+
+Manny reports installing the publication/About material. A read-only browser check of the deployed About page without login confirmed the paper title/authors, AiraXiv and ResearchGate links, related Vibe Research link and public contributor listing. No deployment was performed by the agent.
+
+- **Observed:** 2026-10-14
+- **Confidence:** high
+- **Evidence:** [`platform_server/community_dictionary/templates/community_dictionary/about.html`](../platform_server/community_dictionary/templates/community_dictionary/about.html), [`docs/publications/community_dictionaries_first_report/README.md`](../publications/community_dictionaries_first_report/README.md), [`experiments/community_dictionary/evaluation-2026-10-14.md`](../experiments/community_dictionary/evaluation-2026-10-14.md)
+
+### OBS-0117
+
+Manny requests and authorises first evaluation infrastructure after discussion of task-specific self-reported competence, independent human ratings and later AI comparisons. The prepared implementation adds versioned owner-created random/all samples, resumable ratings on seven dimensions, missing/abstention handling, live source withdrawal checks, optional signed-in visitor evaluation, owner-only closed-set results/CSV and ordinal agreement. Django check/migration-drift check passed; the full 685-test regression suite passed and all 34 evaluation tests passed after three additional edge checks. No real evaluator judgements, paid AI requests, production deployment or physical-phone acceptance occurred.
+
+- **Observed:** 2026-10-14
+- **Confidence:** high
+- **Evidence:** [`platform_server/community_dictionary/evaluation.py`](../platform_server/community_dictionary/evaluation.py), [`platform_server/community_dictionary/evaluation_views.py`](../platform_server/community_dictionary/evaluation_views.py), [`platform_server/community_dictionary/tests/test_evaluation.py`](../platform_server/community_dictionary/tests/test_evaluation.py), [`docs/howto/community-evaluation.md`](../howto/community-evaluation.md), [`docs/howto/community-evaluation-install.md`](../howto/community-evaluation-install.md), [`experiments/community_dictionary/evaluation-2026-10-14.md`](../experiments/community_dictionary/evaluation-2026-10-14.md)
+
+### OBS-0118
+
+Manny reports a successful two-entry laptop evaluation apart from question-context placement and an incomplete competence summary. Inspection confirmed omitted commenting-language listening. The follow-up puts relevant material directly above each question and displays both skills with full labels for both languages, including the saved session profile. All 37 evaluation tests pass. The follow-up is not yet accepted or deployed; independent ratings and physical-phone evidence remain pending.
+
+- **Observed:** 2026-10-14
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/evaluation-2026-10-14.md`](../experiments/community_dictionary/evaluation-2026-10-14.md), [`platform_server/community_dictionary/evaluation_views.py`](../platform_server/community_dictionary/evaluation_views.py), [`platform_server/community_dictionary/tests/test_evaluation.py`](../platform_server/community_dictionary/tests/test_evaluation.py), [`docs/howto/community-evaluation-display-fix.md`](../howto/community-evaluation-display-fix.md)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1029,11 +1053,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-The initial report is now published on AiraXiv and ResearchGate according to Manny, and his Goodreads invitation broadens outreach. The paper-writing phase has achieved its immediate goal. Prioritise independent use and finding collaborators for a modest first empirical study, agreeing data use and appropriate credit before collection. The bounded ten-group pilot offer is unchanged. The About-page links and repository records are prepared and locally checked, awaiting laptop/AWS installation. Publication and an automated review are dissemination milestones, not measured evidence of learning, sustained use or community suitability.
+Publication is complete and evaluation has its first positive laptop rehearsal. Addressing the two reported presentation issues is a small remaining acceptance step before AWS deployment and a larger human evaluation. This validates workflow feasibility, not content correctness or learning benefits. Independent samples with agreed data use and credit remain the priority; AI judge comparisons come later. The ten-group pilot offer remains unchanged.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`
-- **Urgency / risk / progress:** recruit_independent_trial_collaborators / medium / initial_report_published_outreach_started
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`
+- **Urgency / risk / progress:** validate_evaluation_workflow_then_collect_independent_judgements / medium / initial_laptop_evaluation_reported_presentation_follow_up_locally_tested
 - **Confidence:** medium
 
 ### ASM-0012
@@ -1065,7 +1089,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** Automatic-mode AWS acceptance and publication are human-reported. No independent learner study has yet supplied outcome evidence. Informal operator estimates of cost and correctness remain provisional; systematic provider-output quality, costs and human operational workload remain to be measured. The ten-group pilot budget and inspection condition are confirmed, but participants and study procedures still need agreement. Deployment of the About-page publication links is pending. Broader cleanup UX remains deferred until a real reviewer can provide feedback; community suitability, learning gains and sustained low-intervention maintenance remain open.
+- **UNC-0008:** The initial two-entry laptop evaluation is human-reported as mostly successful. Retesting the presentation follow-up, first AWS deployment and a larger evaluation remain pending. No independent quality study, learning gain, community suitability result or sustained-use evidence exists yet. Self-reported competence, prior human corrections, withdrawal, partial sessions and shared source pictures require careful interpretation. AI judging, confidence intervals and adjudication remain deferred. The ten-group pilot offer and inspection condition are unchanged.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -1102,7 +1126,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Install the cumulative publication/About patch after laptop checks, then use responses to Manny’s outreach to identify a willing group and agree a manageable empirical study. Record actual use, difficulties, requested changes, turnaround, costs and human effort with participant agreement. The initial paper is already published; no further publication or outreach by the agent is authorised by this update.
+- **ACT-0010:** Retest the question-local context and complete competence display on the laptop without discarding existing ratings. After acceptance, commit both evaluation patches, back up and deploy using the original AWS runbook, then conduct a larger human evaluation with agreed credit/data use. Do not infer learning outcomes or AI-judge reliability from workflow acceptance or content scores.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -1138,7 +1162,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-14
-- **Basis:** Manny supplies publication URLs and his public Goodreads outreach; AGENTS.md requires recording material new evidence without altering human-owned intentions.
-- **Comments:** Revision 78 records reported publication and a locally tested About/documentation update. No external posting, deployment, participant enrolment, credit allocation or project-intentions.md edit occurred.
-- **Change summary:** Retired the pending-publication assessment after Manny’s AiraXiv/ResearchGate and Goodreads reports; prepared publication links and preserved paper versions. Recruitment and agreed empirical work are the next dependencies.
+- **Basis:** Manny reports the initial laptop evaluation and explicitly requests two presentation fixes; AGENTS.md requires reflecting material acceptance evidence.
+- **Comments:** Revision 80 records the human-reported laptop rehearsal and locally tested presentation follow-up. Human-owned intentions and earlier archives are unchanged; no AWS deployment, paid calls or independent empirical study was performed.
+- **Change summary:** First human laptop acceptance is reported, with two presentation issues corrected locally before AWS deployment and larger evaluation.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`
