@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 80,
+  "workspace_revision": 81,
   "as_of": "2026-10-14",
   "assessed_commit_sha": "7f345d36bcd1d4f1e1638f11d90a340556980828",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny has installed the evaluation feature on the laptop and completed a two-entry rehearsal, reporting that nearly everything works. A follow-up fixes question-local material and the incomplete two-language competence summary, with 37 focused tests passing. Retesting these presentation changes, then first AWS deployment and a larger human evaluation, are next. This is workflow acceptance evidence, not an independent quality study. AI judging remains deferred.",
+  "current_focus_summary": "Evaluation is deployed on AWS and has produced the first developer-led Swedish quality pilot: 30 random sentence pages and 84 word units, with word audio the main observed weakness. Manny plans French next, potentially with a second evaluator, and has requested readable CSV labels first. The export follow-up is locally tested (39 evaluation tests); acceptance is pending. Broader independent evidence, learning effects and AI-judge comparisons remain open.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1314,6 +1314,18 @@
         "platform_server/community_dictionary/tests/test_evaluation.py",
         "docs/howto/community-evaluation-display-fix.md"
       ]
+    },
+    {
+      "id": "OBS-0119",
+      "summary": "Manny reports AWS deployment and a 30-entry Swedish pilot; the supplied CSV independently confirms 318 judgements from one human, 30/150 randomly sampled pages, and 84 word-translation/audio units. Image, sentence-language and sentence-translation ratings are all acceptable; sentence audio and vocabulary are 29/30, word translations 82/84 and word audio 76/84 acceptable. Manny describes mostly tone errors, one consonant error and missing vocabulary. These are initial developer-led ratings, not independent multi-rater evidence. The requested readable-content export uses saved snapshots and existing access checks; 39 focused tests pass. French evaluation and the prediction of better isolated-word TTS in other languages are still prospective.",
+      "observed_at": "2026-10-14",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/evaluation-swedish-pilot-2026-10-14.md",
+        "platform_server/community_dictionary/evaluation_views.py",
+        "platform_server/community_dictionary/tests/test_evaluation.py",
+        "docs/howto/community-evaluation-export-fix.md"
+      ]
     }
   ],
   "assessments": [
@@ -1490,7 +1502,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Publication is complete and evaluation has its first positive laptop rehearsal. Addressing the two reported presentation issues is a small remaining acceptance step before AWS deployment and a larger human evaluation. This validates workflow feasibility, not content correctness or learning benefits. Independent samples with agreed data use and credit remain the priority; AI judge comparisons come later. The ten-group pilot offer remains unchanged.",
+      "summary": "Evaluation has moved beyond infrastructure readiness: the first AWS Swedish pilot provides quantified initial ratings. Prioritise readable exports, a French evaluation with an independent francophone if available, and diagnosis of isolated-word audio errors. Preserve original sampled versions and separate language, pipeline, rater and listening-context effects. Single developer ratings do not establish general accuracy, pedagogical benefits or community suitability. AI judging remains a later comparison; the ten-group pilot offer is unchanged.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1594,11 +1606,12 @@
         "OBS-0115",
         "OBS-0116",
         "OBS-0117",
-        "OBS-0118"
+        "OBS-0118",
+        "OBS-0119"
       ],
-      "urgency": "validate_evaluation_workflow_then_collect_independent_judgements",
+      "urgency": "complete_export_follow_up_then_french_and_independent_evaluation",
       "risk": "medium",
-      "progress": "initial_laptop_evaluation_reported_presentation_follow_up_locally_tested",
+      "progress": "aws_evaluation_deployed_first_swedish_pilot_export_follow_up_tested",
       "confidence": "medium"
     },
     {
@@ -1706,7 +1719,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "The initial two-entry laptop evaluation is human-reported as mostly successful. Retesting the presentation follow-up, first AWS deployment and a larger evaluation remain pending. No independent quality study, learning gain, community suitability result or sustained-use evidence exists yet. Self-reported competence, prior human corrections, withdrawal, partial sessions and shared source pictures require careful interpretation. AI judging, confidence intervals and adjudication remain deferred. The ten-group pilot offer and inspection condition are unchanged.",
+      "summary": "AWS evaluation and the first Swedish pilot are reported and the CSV totals are verified. Only one involved project collaborator rated this sample; the export involvement field says no and must not be mistaken for independent assessment. No inter-rater agreement, learning effect, community suitability or sustained-use result is established. Tone-error descriptions have not been independently checked against audio. French-versus-Swedish comparisons must account for language conversion, forms, prompts and rater differences. The export fix needs acceptance; French results and the higher-other-language-audio prediction are pending.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1819,7 +1832,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Retest the question-local context and complete competence display on the laptop without discarding existing ratings. After acceptance, commit both evaluation patches, back up and deploy using the original AWS runbook, then conduct a larger human evaluation with agreed credit/data use. Do not infer learning outcomes or AI-judge reliability from workflow acceptance or content scores.",
+      "summary": "Install the readable CSV follow-up and re-export the closed Swedish set without repeating ratings. Conduct the proposed French pilot, keeping its set open until a second evaluator finishes if one participates. Preserve original evidence and diagnose the flagged word audio/vocabulary; distinguish controlled matched tests from exploratory cross-language ratings. Agree credit and data use before publishing independent contributions. AI judging remains deferred.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1920,13 +1933,13 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-14",
-    "authorization_basis": "Manny reports the initial laptop evaluation and explicitly requests two presentation fixes; AGENTS.md requires reflecting material acceptance evidence.",
-    "comments": "Revision 80 records the human-reported laptop rehearsal and locally tested presentation follow-up. Human-owned intentions and earlier archives are unchanged; no AWS deployment, paid calls or independent empirical study was performed."
+    "authorization_basis": "Manny reports AWS evaluation and its results, supplies the CSV for analysis, proposes French next and explicitly requests the export improvement; AGENTS.md requires reflecting material empirical progress.",
+    "comments": "Revision 81 records aggregate pilot evidence and a locally tested readable export. Human-owned intentions and historical archives are unchanged. No raw evaluation CSV or private media is committed, no deployment/push is performed, and no paid AI calls or external messages are sent."
   },
   "changes_from_previous_revision": {
-    "summary": "First human laptop acceptance is reported, with two presentation issues corrected locally before AWS deployment and larger evaluation.",
+    "summary": "Recorded AWS deployment and the first quantified Swedish quality pilot; prioritised readable exports and the proposed French/second-rater study.",
     "added_item_ids": [
-      "OBS-0118"
+      "OBS-0119"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -2088,7 +2101,8 @@
       "PRED-0005",
       "PRED-0006",
       "OBS-0116",
-      "OBS-0117"
+      "OBS-0117",
+      "OBS-0118"
     ],
     "retired_item_ids": []
   }

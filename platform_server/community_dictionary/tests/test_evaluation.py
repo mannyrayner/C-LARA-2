@@ -322,6 +322,10 @@ class EvaluationTests(TestCase):
         self.assertEqual(record.snapshot['entry']['text'], 'Katten ligger på soffan.')
         self.close(batch)
         self.assertContains(self.owner_client.get(url('evaluation-results', self.dictionary.pk, batch.pk)), 'original sampled version')
+        response = self.owner_client.get(url('evaluation-export', self.dictionary.pk, batch.pk))
+        rows = list(csv.DictReader(io.StringIO(response.content.decode())))
+        self.assertEqual({row['entry_text'] for row in rows}, {'Katten ligger på soffan.'})
+        self.assertNotContains(response, 'Katten sitter på stolen.')
 
     def test_word_link_or_audio_change_invalidates_page(self):
         batch = self.batch(); self.start(batch)
@@ -448,6 +452,44 @@ class EvaluationTests(TestCase):
         rows = list(csv.DictReader(io.StringIO(response.content.decode())))
         self.assertTrue(any(r['dimension'] == 'sentence_audio' and r['missing_material'] == 'True' for r in rows))
         self.assertTrue(all(r['score'] == '' for r in rows))
+        self.assertTrue(all(r['entry_text'] == 'Katten ligger på soffan.' for r in rows))
+
+    def test_csv_includes_readable_sentence_word_and_vocabulary_snapshots(self):
+        sofa = self.make_entry('soffa', 'sofa, couch', kind='word', image=False)
+        self.link(self.sentence, sofa, 'soffan')
+        batch = self.batch(); self.start(batch)
+        self.client.post(self.item_url(batch), self.save_data(batch.items.first()))
+        self.close(batch)
+        response = self.owner_client.get(url('evaluation-export', self.dictionary.pk, batch.pk))
+        rows = list(csv.DictReader(io.StringIO(response.content.decode())))
+        self.assertEqual(len(rows), 9)
+        self.assertTrue(all(r['entry_type'] == 'sentence' and r['entry_text'] == 'Katten ligger på soffan.'
+                            and r['entry_translation'] == 'The cat is on the sofa.' for r in rows))
+        self.assertTrue(all(r['score'] == 'ok' and r['explanation_listening'] == '3' for r in rows))
+        vocabulary = next(r for r in rows if r['dimension'] == 'vocabulary')
+        self.assertEqual(vocabulary['extracted_vocabulary'], 'katt (Katten) — cat\nsoffa (soffan) — sofa, couch')
+        self.assertEqual(vocabulary['word_text'], '')
+        words = [r for r in rows if r['dimension'].startswith('word_')]
+        self.assertEqual({(r['word_entry_id'], r['word_text'], r['word_translation'], r['word_form_in_sentence']) for r in words},
+                         {(str(self.word.pk), 'katt', 'cat', 'Katten'), (str(sofa.pk), 'soffa', 'sofa, couch', 'soffan')})
+        self.assertTrue(all(r['extracted_vocabulary'] == '' for r in words))
+
+    def test_word_only_csv_labels_and_formula_prefixes_are_safe(self):
+        word = self.make_entry('=EXAMPLE()', '+example, "quoted"\nsecond line', kind='word', image=False)
+        batch = self.batch(scope='words'); self.close(batch)
+        response = self.owner_client.get(url('evaluation-export', self.dictionary.pk, batch.pk))
+        rows = list(csv.DictReader(io.StringIO(response.content.decode())))
+        rows = [r for r in rows if r['entry_id'] == str(word.pk)]
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(row['entry_type'], 'word')
+            self.assertEqual(row['entry_text'], "'=EXAMPLE()")
+            self.assertEqual(row['word_text'], "'=EXAMPLE()")
+            self.assertEqual(row['entry_translation'], '\'+example, "quoted"\nsecond line')
+            self.assertEqual(row['word_translation'], row['entry_translation'])
+            self.assertEqual(row['word_form_in_sentence'], '')
+            self.assertEqual(row['extracted_vocabulary'], '')
+            self.assertEqual(row['score'], '')
 
     def test_no_ai_calls_and_bounded_graph_queries(self):
         for i in range(10):

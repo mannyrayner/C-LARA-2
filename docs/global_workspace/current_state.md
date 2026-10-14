@@ -2,7 +2,7 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 80
+- **Workspace revision:** 81
 - **As of:** 2026-10-14
 - **Assessed commit:** `7f345d36bcd1d4f1e1638f11d90a340556980828`
 - **Approved proposal:** `None`
@@ -11,7 +11,7 @@
 
 ## Current focus
 
-Manny has installed the evaluation feature on the laptop and completed a two-entry rehearsal, reporting that nearly everything works. A follow-up fixes question-local material and the incomplete two-language competence summary, with 37 focused tests passing. Retesting these presentation changes, then first AWS deployment and a larger human evaluation, are next. This is workflow acceptance evidence, not an independent quality study. AI judging remains deferred.
+Evaluation is deployed on AWS and has produced the first developer-led Swedish quality pilot: 30 random sentence pages and 84 word units, with word audio the main observed weakness. Manny plans French next, potentially with a second evaluator, and has requested readable CSV labels first. The export follow-up is locally tested (39 evaluation tests); acceptance is pending. Broader independent evidence, learning effects and AI-judge comparisons remain open.
 
 ## Factual observations
 
@@ -959,6 +959,14 @@ Manny reports a successful two-entry laptop evaluation apart from question-conte
 - **Confidence:** high
 - **Evidence:** [`experiments/community_dictionary/evaluation-2026-10-14.md`](../experiments/community_dictionary/evaluation-2026-10-14.md), [`platform_server/community_dictionary/evaluation_views.py`](../platform_server/community_dictionary/evaluation_views.py), [`platform_server/community_dictionary/tests/test_evaluation.py`](../platform_server/community_dictionary/tests/test_evaluation.py), [`docs/howto/community-evaluation-display-fix.md`](../howto/community-evaluation-display-fix.md)
 
+### OBS-0119
+
+Manny reports AWS deployment and a 30-entry Swedish pilot; the supplied CSV independently confirms 318 judgements from one human, 30/150 randomly sampled pages, and 84 word-translation/audio units. Image, sentence-language and sentence-translation ratings are all acceptable; sentence audio and vocabulary are 29/30, word translations 82/84 and word audio 76/84 acceptable. Manny describes mostly tone errors, one consonant error and missing vocabulary. These are initial developer-led ratings, not independent multi-rater evidence. The requested readable-content export uses saved snapshots and existing access checks; 39 focused tests pass. French evaluation and the prediction of better isolated-word TTS in other languages are still prospective.
+
+- **Observed:** 2026-10-14
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/evaluation-swedish-pilot-2026-10-14.md`](../experiments/community_dictionary/evaluation-swedish-pilot-2026-10-14.md), [`platform_server/community_dictionary/evaluation_views.py`](../platform_server/community_dictionary/evaluation_views.py), [`platform_server/community_dictionary/tests/test_evaluation.py`](../platform_server/community_dictionary/tests/test_evaluation.py), [`docs/howto/community-evaluation-export-fix.md`](../howto/community-evaluation-export-fix.md)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1053,11 +1061,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-Publication is complete and evaluation has its first positive laptop rehearsal. Addressing the two reported presentation issues is a small remaining acceptance step before AWS deployment and a larger human evaluation. This validates workflow feasibility, not content correctness or learning benefits. Independent samples with agreed data use and credit remain the priority; AI judge comparisons come later. The ten-group pilot offer remains unchanged.
+Evaluation has moved beyond infrastructure readiness: the first AWS Swedish pilot provides quantified initial ratings. Prioritise readable exports, a French evaluation with an independent francophone if available, and diagnosis of isolated-word audio errors. Preserve original sampled versions and separate language, pipeline, rater and listening-context effects. Single developer ratings do not establish general accuracy, pedagogical benefits or community suitability. AI judging remains a later comparison; the ten-group pilot offer is unchanged.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`
-- **Urgency / risk / progress:** validate_evaluation_workflow_then_collect_independent_judgements / medium / initial_laptop_evaluation_reported_presentation_follow_up_locally_tested
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`, `OBS-0119`
+- **Urgency / risk / progress:** complete_export_follow_up_then_french_and_independent_evaluation / medium / aws_evaluation_deployed_first_swedish_pilot_export_follow_up_tested
 - **Confidence:** medium
 
 ### ASM-0012
@@ -1089,7 +1097,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** The initial two-entry laptop evaluation is human-reported as mostly successful. Retesting the presentation follow-up, first AWS deployment and a larger evaluation remain pending. No independent quality study, learning gain, community suitability result or sustained-use evidence exists yet. Self-reported competence, prior human corrections, withdrawal, partial sessions and shared source pictures require careful interpretation. AI judging, confidence intervals and adjudication remain deferred. The ten-group pilot offer and inspection condition are unchanged.
+- **UNC-0008:** AWS evaluation and the first Swedish pilot are reported and the CSV totals are verified. Only one involved project collaborator rated this sample; the export involvement field says no and must not be mistaken for independent assessment. No inter-rater agreement, learning effect, community suitability or sustained-use result is established. Tone-error descriptions have not been independently checked against audio. French-versus-Swedish comparisons must account for language conversion, forms, prompts and rater differences. The export fix needs acceptance; French results and the higher-other-language-audio prediction are pending.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -1126,7 +1134,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Retest the question-local context and complete competence display on the laptop without discarding existing ratings. After acceptance, commit both evaluation patches, back up and deploy using the original AWS runbook, then conduct a larger human evaluation with agreed credit/data use. Do not infer learning outcomes or AI-judge reliability from workflow acceptance or content scores.
+- **ACT-0010:** Install the readable CSV follow-up and re-export the closed Swedish set without repeating ratings. Conduct the proposed French pilot, keeping its set open until a second evaluator finishes if one participates. Preserve original evidence and diagnose the flagged word audio/vocabulary; distinguish controlled matched tests from exploratory cross-language ratings. Agree credit and data use before publishing independent contributions. AI judging remains deferred.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -1162,7 +1170,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-14
-- **Basis:** Manny reports the initial laptop evaluation and explicitly requests two presentation fixes; AGENTS.md requires reflecting material acceptance evidence.
-- **Comments:** Revision 80 records the human-reported laptop rehearsal and locally tested presentation follow-up. Human-owned intentions and earlier archives are unchanged; no AWS deployment, paid calls or independent empirical study was performed.
-- **Change summary:** First human laptop acceptance is reported, with two presentation issues corrected locally before AWS deployment and larger evaluation.
+- **Basis:** Manny reports AWS evaluation and its results, supplies the CSV for analysis, proposes French next and explicitly requests the export improvement; AGENTS.md requires reflecting material empirical progress.
+- **Comments:** Revision 81 records aggregate pilot evidence and a locally tested readable export. Human-owned intentions and historical archives are unchanged. No raw evaluation CSV or private media is committed, no deployment/push is performed, and no paid AI calls or external messages are sent.
+- **Change summary:** Recorded AWS deployment and the first quantified Swedish quality pilot; prioritised readable exports and the proposed French/second-rater study.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

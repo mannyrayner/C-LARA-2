@@ -328,7 +328,9 @@ def results(request, pk, set_id, download=False):
             'item_position', 'entry_id', 'snapshot', 'language', 'explanation_language', 'text_origin',
             'language_checked_at_sampling', 'dimension', 'unit_key', 'missing_material', 'evaluator',
             'evaluator_kind', 'involvement', 'target_reading', 'target_listening', 'explanation_reading',
-            'target_variety', 'experience', 'score', 'comment'])
+            'target_variety', 'experience', 'score', 'comment',
+            'entry_type', 'entry_text', 'entry_translation', 'word_entry_id', 'word_text',
+            'word_translation', 'word_form_in_sentence', 'extracted_vocabulary', 'explanation_listening'])
         by_unit = {}
         for rating in data['ratings']:
             by_unit.setdefault(rating.unit_id, []).append(rating)
@@ -336,6 +338,15 @@ def results(request, pk, set_id, download=False):
         for unit in data['units']:
             record = data['items'][unit.item_id]
             snap = record.snapshot
+            # Export the material that was judged, not its possibly edited live text.
+            # result_data has already applied the source-access/withdrawal checks.
+            entry = snap['entry']
+            word = unit_word(unit, snap) if unit.dimension.startswith('word_') else None
+            vocabulary = ''
+            if unit.dimension == 'vocabulary':
+                vocabulary = '\n'.join(
+                    w['text'] + (f" ({w['surface']})" if w.get('surface') and w['surface'] != w['text'] else '')
+                    + (f" — {w['meaning']}" if w.get('meaning') else '') for w in snap['words'])
             for rating in by_unit.get(unit.pk, [None]):
                 attempt = rating.session if rating else None
                 skills = attempt.competences if attempt else {}
@@ -346,7 +357,11 @@ def results(request, pk, set_id, download=False):
                     attempt.involvement if attempt else '', skills.get('target', {}).get('reading', ''),
                     skills.get('target', {}).get('listening', ''), skills.get('explanation', {}).get('reading', ''),
                     skills.get('target', {}).get('variety', ''), skills.get('target', {}).get('experience', ''),
-                    rating.score if rating else '', rating.comment if rating else '']
+                    rating.score if rating else '', rating.comment if rating else '',
+                    entry['kind'], entry['text'], entry['meaning'], word['id'] if word else '',
+                    word['text'] if word else '', word['meaning'] if word else '',
+                    word.get('surface', '') if word else '', vocabulary,
+                    skills.get('explanation', {}).get('listening', '')]
                 writer.writerow([csv_cell(value) for value in values])
         response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="dictionary-evaluation-{batch.pk}.csv"'

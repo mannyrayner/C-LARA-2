@@ -117,7 +117,21 @@ both unit and pair counts and do not substitute 1.0 for an undefined result.
 The CSV includes every accessible unit, including missing and unrated units, plus
 per-judgement competence and involvement. It preserves rubric, sample seed,
 content fingerprint and provenance/check indicators. It neutralises spreadsheet
-formula prefixes in free text. The first version supplies no confidence intervals,
+formula prefixes in free text. Readable content columns are appended after the
+original columns: `entry_type`, `entry_text`, `entry_translation`, `word_entry_id`,
+`word_text`, `word_translation`, `word_form_in_sentence`, `extracted_vocabulary`
+and `explanation_listening`. Sentence rows contain their sentence context; word
+judgements additionally identify the precise word and its form in that sentence.
+Standalone word evaluations use the same columns with `entry_type=word` and no
+sentence form. Vocabulary judgements include the complete sampled list, one
+lemma/expression per line with its surface form and translation when available.
+Irrelevant word/list fields are blank. All text comes from the saved snapshot,
+including when the live dictionary has subsequently changed. Re-exporting an
+existing closed set adds these columns without reopening it or changing ratings.
+Source withdrawal still withholds the affected rows. No media paths or evaluator
+account names are added.
+
+The first version supplies no confidence intervals,
 automatic adjudication or proficiency weighting. Withdrawn-source exclusions and
 incomplete sessions can make a once-random sample incomplete; the report states this.
 
