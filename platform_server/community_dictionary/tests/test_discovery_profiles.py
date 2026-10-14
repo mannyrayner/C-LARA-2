@@ -331,9 +331,12 @@ class CommunityProfileTests(TestCase):
         self.owner.refresh_from_db(); self.assertTrue(self.owner.check_password('New-private-phrase-998'))
         self.assertEqual(self.client.get(url('profile')).status_code, 200)
 
-    def test_about_publication_placeholder_and_public_get_only(self):
+    def test_about_publication_links_and_public_get_only(self):
         response = self.guest.get(url('about'))
-        self.assertContains(response, 'in preparation')
+        self.assertContains(response, 'Community Dictionaries: Everyday Pictures, Rapid Human–AI Development')
+        self.assertContains(response, 'https://airaxiv.com/papers/view/2610.0032/')
+        self.assertContains(response, 'https://www.researchgate.net/publication/415734280_Community_Dictionaries_Everyday_Pictures_Rapid_Human-AI_Development')
+        self.assertNotContains(response, 'in preparation')
         self.assertContains(response, 'List me as a contributor')
         self.assertNotContains(response, 'USD 10')
         self.assertEqual(self.guest.post(url('about')).status_code, 405)

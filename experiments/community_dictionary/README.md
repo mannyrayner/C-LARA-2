@@ -1,6 +1,6 @@
 # Community dictionary development experiment
 
-Current increment: [automatic processing](automatic-processing-2026-10-12.md). The preceding Japanese/AWS reliability trial is human-reported successful. The new opt-in combined workflow passes 654 regression tests; real laptop/AWS acceptance is pending.
+Current increment: [automatic processing](automatic-processing-2026-10-12.md). The preceding Japanese/AWS reliability trial is human-reported successful. The new opt-in combined workflow passes 654 regression tests; Manny reports it working and installed on AWS on 13 October. The [first public report](../../docs/publications/community_dictionaries_first_report/README.md) is now published on AiraXiv and ResearchGate, as reported by Manny on 13–14 October; he has also posted a Goodreads invitation. Independent empirical trials remain the next research step.
 
 Earlier increment: [AWS guidance latency and duplicate-card repair](guidance-repair-2026-10-12.md). Manny reports mixed AWS acceptance: French results appear, but redundant image cards and slow navigation need repair. Scaled local reproduction identifies per-entry database queries and an incomplete copy-lineage display rule; the prepared code-only fix awaits real AWS confirmation.
 

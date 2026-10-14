@@ -1,5 +1,10 @@
 # Automatic processing increment — 12 October 2026
 
+**Acceptance update, 13 October:** Manny reports “Everything is working and
+installed on AWS, it's very good!” He now requests the initial public paper.
+This supersedes the pending deployment status below; no new measured cost,
+accuracy, device matrix or independent-user outcome was supplied.
+
 ## Human evidence and scope
 
 Manny reports successful AWS deployment of the reliability repair and conversion

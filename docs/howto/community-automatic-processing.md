@@ -1,6 +1,8 @@
 # Automatic sentence, vocabulary and audio processing
 
-Prepared 12 October 2026; laptop and AWS acceptance pending.
+Prepared 12 October 2026. On 13 October Manny reports that the update is working
+and installed on AWS. This supersedes the earlier pending installation status;
+a detailed automatic-mode production cost/quality study is still to be collected.
 
 Dictionary owners can choose **Create everything automatically** in:
 
