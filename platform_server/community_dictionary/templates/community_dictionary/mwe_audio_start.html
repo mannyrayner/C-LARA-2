@@ -1,0 +1,9 @@
+{% extends 'community_dictionary/base.html' %}{% block title %}Expression audio pilot{% endblock %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p><h1>Regenerate AI expression audio</h1>
+<p>This optional pilot uses short spoken carrier phrases, then extracts the expression between two pauses. It is available for Swedish and French. Boundary checks cannot guarantee correct pronunciation; please listen afterwards.</p>
+<p>Only accepted multi-word entries with existing AI audio are included. Human recordings, single words, sentences and successful replacements from this recipe are kept. Each shared word page is processed once. New audio replaces the old only after extraction succeeds; earlier recordings are retained and can be restored.</p>
+<p>New recordings use the voice of the latest existing AI recording (Marin if its voice is unavailable). Up to five completed recordings may be tried per expression. Network errors and timeouts are not automatically retried.</p>
+<p><strong>For a comparison:</strong> first finish a word-audio evaluation under Evaluate. After regeneration, use “Repeat these word-audio items” on that closed evaluation set.</p>
+{% if supported and dictionary.tts_enabled %}<form method="post">{% csrf_token %}{{ form.as_p }}<button>Show estimate — no AI calls yet</button></form>{% else %}<p>Enable saved TTS for a Swedish or French dictionary to use this pilot.</p>{% endif %}
+<h2>Recent jobs</h2>{% for run in runs %}<p><a href="{% url 'community_dictionary:mwe-audio-run' dictionary.pk run.pk %}">{{ run.created_at|date:'j M Y H:i' }} · {{ run.status }}</a></p>{% empty %}<p>No jobs yet.</p>{% endfor %}
+{% endblock %}

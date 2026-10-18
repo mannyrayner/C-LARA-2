@@ -80,10 +80,12 @@ class EvaluationSet(models.Model):
     dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='evaluation_sets')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     name = models.CharField(max_length=160)
-    scope = models.CharField(max_length=10, choices=[('sentences', 'Sentence pages'), ('words', 'Word pages')])
+    scope = models.CharField(max_length=10, choices=[('sentences', 'Sentence pages'), ('words', 'Word pages'), ('word_audio', 'Word audio only')])
     sampling = models.CharField(max_length=10, choices=[('random', 'Random sample'), ('all', 'All eligible pages')])
     seed = models.CharField(max_length=64)
     population_ids = models.JSONField(default=list)
+    mwe_only = models.BooleanField(default=False)
+    based_on = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='repetitions')
     language = models.CharField(max_length=80)
     explanation_language = models.CharField(max_length=80, blank=True)
     rubric = models.CharField(max_length=40, default='community-quality-v1')
@@ -504,14 +506,15 @@ class ContributionDependency(models.Model):
 class LanguagePort(models.Model):
     # A same-dictionary description job shares the port job/review machinery.
     is_description_batch = models.BooleanField(default=False)
+    is_audio_batch = models.BooleanField(default=False)
 
     @property
     def target(self):
-        return self.source if self.is_description_batch else self.destination
+        return self.source if (self.is_description_batch or self.is_audio_batch) else self.destination
 
     @property
     def target_id(self):
-        return self.source_id if self.is_description_batch else self.destination_id
+        return self.source_id if (self.is_description_batch or self.is_audio_batch) else self.destination_id
 
     source = models.ForeignKey(Dictionary, on_delete=models.PROTECT, related_name='language_ports')
     destination = models.OneToOneField(Dictionary, null=True, blank=True, on_delete=models.PROTECT, related_name='language_port')

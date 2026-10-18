@@ -22,6 +22,8 @@ from .views import context, fail, private_media_response
 
 
 def run_url(run):
+    if run.port.is_audio_batch:
+        return reverse('community_dictionary:mwe-audio-run',args=[run.port.source_id,run.pk])
     return reverse('community_dictionary:port-run',args=[run.port.source_id,run.pk])
 
 
@@ -95,7 +97,7 @@ def no_store(response):
 def start(request,pk,port_id=None):
     source = get_dictionary(request.user,pk)
     require_owner(request.user,source)
-    port = get_object_or_404(LanguagePort,pk=port_id,source=source,user=request.user,is_description_batch=False) if port_id else None
+    port = get_object_or_404(LanguagePort,pk=port_id,source=source,user=request.user,is_description_batch=False,is_audio_batch=False) if port_id else None
     if port:
         try:
             porting.authority(port)
@@ -119,7 +121,7 @@ def start(request,pk,port_id=None):
         except Conflict as exc:
             form.add_error(None,str(exc))
     return no_store(render(request,'community_dictionary/port_start.html',context(request,source,form=form,
-        port=port,ports=source.language_ports.filter(user=request.user,is_description_batch=False).select_related('destination'))))
+        port=port,ports=source.language_ports.filter(user=request.user,is_description_batch=False,is_audio_batch=False).select_related('destination'))))
 
 
 @login_required
@@ -129,6 +131,8 @@ def detail(request,pk,run_id):
         run = owned_run(request,pk,run_id)
     except Conflict as exc:
         return fail(request,exc,409)
+    if run.port.is_audio_batch:
+        return redirect(run_url(run))
     if run.options.get('automatic') and run.status != 'estimate':
         return automatic_detail(request, run)
     balance = get_user_balance_usd(request.user) if run.payer == 'credits' else None
@@ -214,6 +218,8 @@ def action(request,pk,run_id):
     # Cancellation remains available to the payer even if membership was revoked.
     run = get_object_or_404(PortRun,pk=run_id,port__source_id=pk,port__user=request.user)
     action = request.POST.get('action')
+    if run.port.is_audio_batch and action not in {'approve','resume','cancel','approve-more'}:
+        return fail(request,'This action is not available for expression audio.',400)
     try:
         if action == 'cancel':
             porting.cancel(request.user,run.pk)
@@ -381,7 +387,7 @@ def media(request,pk,run_id,item_id,kind):
 @require_http_methods(['GET','POST'])
 def vocabulary_start(request,pk,port_id):
     port=get_object_or_404(LanguagePort.objects.select_related('source','destination','user'),
-        pk=port_id,source_id=pk,user=request.user)
+        pk=port_id,source_id=pk,user=request.user,is_audio_batch=False)
     try:
         port_vocabulary.authority(port)
         if request.method=='POST':

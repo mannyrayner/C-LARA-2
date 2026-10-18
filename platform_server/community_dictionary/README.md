@@ -286,3 +286,8 @@ Japanese/Chinese exact-span validation, independent sentence-language checks and
 explicit missing-audio recovery are included. Existing approved jobs retain their
 original accounting. See [behavior and limitations](../../docs/howto/community-port-reliability.md)
 and [migration/install instructions](../../docs/howto/community-port-reliability-install.md).
+
+## Optional MWE audio pilot (18 October 2026)
+
+Owner-approved Swedish/French expression-audio regeneration and word-audio-only,
+same-entry follow-up evaluation are prepared. See [`docs/howto/community-mwe-audio.md`](../../docs/howto/community-mwe-audio.md). Laptop/AWS acceptance is pending.

@@ -17,7 +17,7 @@ def send_speech(pk):
     try:
         from django_q.tasks import async_task
         async_task('community_dictionary.port_vocabulary_tasks.speak',pk,
-                   q_options={'task_name':f'community-vocabulary-audio-{pk}','timeout':180,'ack_failure':True})
+                   q_options={'task_name':f'community-vocabulary-audio-{pk}','timeout':240,'ack_failure':True})
     except Exception:
         PortRun.objects.filter(speech__pk=pk).update(queue_error=True)
         log.warning('Could not enqueue vocabulary audio %s',pk)
@@ -118,7 +118,7 @@ def speak(pk):
             clip.status='discarded';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         from .lexicon import recordings
-        if recordings(clip.entry,clip.run.port.target):
+        if not clip.run.port.is_audio_batch and recordings(clip.entry,clip.run.port.target):
             clip.status='ready';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         clip.item.run=clip.run
@@ -132,11 +132,16 @@ def speak(pk):
         if current.status!='running' or speech_credentials(current)!=key:
             raise Conflict('This audio request is no longer authorised.')
     try:
-        prepared,duration=tts.synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
-            model=tts.MODEL,voice=clip.run.port.voice,api_key=key,
-            meaning=clip.meaning.meaning if clip.meaning else '',meaning_language=clip.run.port.explanation_language,
-            speech_kind='sentence' if clip.entry.entry_type=='sentence' else 'entry',
-            report=report,guidance_model=clip.run.model,guidance_prices=clip.run.prices,before_request=still_allowed)
+        if clip.run.port.is_audio_batch:
+            from .carrier import synthesize
+            prepared,duration=synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
+                model=tts.MODEL,voice=clip.item.snapshot['voice'],api_key=key,report=report,before_request=still_allowed)
+        else:
+            prepared,duration=tts.synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
+                model=tts.MODEL,voice=clip.run.port.voice,api_key=key,
+                meaning=clip.meaning.meaning if clip.meaning else '',meaning_language=clip.run.port.explanation_language,
+                speech_kind='sentence' if clip.entry.entry_type=='sentence' else 'entry',
+                report=report,guidance_model=clip.run.model,guidance_prices=clip.run.prices,before_request=still_allowed)
     except Exception as exc:
         log.warning('Vocabulary audio %s failed (%s)',pk,type(exc).__name__)
     paths=[]
@@ -161,7 +166,11 @@ def speak(pk):
                     item.needs_attention=True
                     item.attention_note='Check pronunciation: one or more words can be read as English.'
                     item.save(update_fields=['needs_attention','attention_note'])
-                if prepared:
+                if prepared and clip.run.port.is_audio_batch:
+                    from .mwe_audio import publish
+                    clip.item = item
+                    publish(clip, prepared, paths, report)
+                elif prepared:
                     from .lexicon import recordings
                     if not recordings(clip.entry,clip.run.port.target):
                         media=write_upload(prepared,clip.entry.dictionary_id,paths)

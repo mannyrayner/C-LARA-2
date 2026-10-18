@@ -83,7 +83,8 @@ def competences(request):
 class SetForm(forms.Form):
     token = forms.UUIDField(widget=forms.HiddenInput)
     name = forms.CharField(max_length=160, initial='Initial quality evaluation', label='Evaluation name')
-    scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages')])
+    scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages'), ('word_audio', 'Word audio only')])
+    mwe_only = forms.BooleanField(required=False, label='Only Swedish/French multi-word entries (word pages or word audio only)')
     sampling = forms.ChoiceField(choices=[('random', 'Random sample'), ('all', 'All eligible pages')])
     size = forms.IntegerField(min_value=1, max_value=ev.MAX_SAMPLE, initial=30,
                               label='Number of pages (random sample only)')
@@ -98,6 +99,8 @@ def home(request, pk):
     if request.method == 'POST':
         require_owner(request.user, dictionary)
         if form.is_valid():
+            if form.cleaned_data['mwe_only'] and form.cleaned_data['scope'] == 'sentences':
+                raise Conflict('Select word pages or word audio for an expressions-only sample.')
             batch = ev.create_set(request.user, dictionary, form.cleaned_data)
             return redirect('community_dictionary:evaluation-set', pk=pk, set_id=batch.pk)
     batches = dictionary.evaluation_sets.annotate(item_count=Count('items', distinct=True))
@@ -155,7 +158,7 @@ def detail(request, pk, set_id):
                               'evaluator_metadata': {'consent': 'evaluation-v1', 'rubric': batch.rubric}})
                 return redirect('community_dictionary:evaluation-session', pk=pk, set_id=batch.pk)
     return render(request, 'community_dictionary/evaluation_set.html', context(request, dictionary, member,
-        batch=batch, session=existing, eligible=eligible, form=form,
+        batch=batch, session=existing, eligible=eligible, form=form, repeat_token=uuid.uuid4(),
         competence_rows=competence_display(existing.competences if existing else competence),
         item_count=batch.items.count(), participant_count=batch.sessions.count()))
 
@@ -330,7 +333,8 @@ def results(request, pk, set_id, download=False):
             'evaluator_kind', 'involvement', 'target_reading', 'target_listening', 'explanation_reading',
             'target_variety', 'experience', 'score', 'comment',
             'entry_type', 'entry_text', 'entry_translation', 'word_entry_id', 'word_text',
-            'word_translation', 'word_form_in_sentence', 'extracted_vocabulary', 'explanation_listening'])
+            'word_translation', 'word_form_in_sentence', 'extracted_vocabulary', 'explanation_listening',
+            'audio_contribution_id', 'based_on_set_id', 'scope', 'mwe_only'])
         by_unit = {}
         for rating in data['ratings']:
             by_unit.setdefault(rating.unit_id, []).append(rating)
@@ -361,7 +365,9 @@ def results(request, pk, set_id, download=False):
                     entry['kind'], entry['text'], entry['meaning'], word['id'] if word else '',
                     word['text'] if word else '', word['meaning'] if word else '',
                     word.get('surface', '') if word else '', vocabulary,
-                    skills.get('explanation', {}).get('listening', '')]
+                    skills.get('explanation', {}).get('listening', ''),
+                    ((word if word else entry).get('audio') or {}).get('id', '') if unit.dimension in {'word_audio','sentence_audio'} else '',
+                    batch.based_on_id or '', batch.scope, batch.mwe_only]
                 writer.writerow([csv_cell(value) for value in values])
         response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="dictionary-evaluation-{batch.pk}.csv"'
@@ -377,3 +383,19 @@ def results(request, pk, set_id, download=False):
                 'rater': aliases[rating.session_id], 'score': rating.get_score_display(), 'comment': rating.comment})
     return render(request, 'community_dictionary/evaluation_results.html', context(request, dictionary, member,
         batch=batch, **data, observations=observations))
+
+
+@page(['POST'])
+def repeat_audio(request, pk, set_id):
+    batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
+    dictionary, member = ev.access(request.user, pk, batch)
+    require_owner(request.user, dictionary)
+    try:
+        token = uuid.UUID(request.POST.get('token', ''))
+    except ValueError:
+        raise Conflict('Reload the evaluation page before repeating it.')
+    repeated = ev.create_set(request.user, dictionary, {'token':token,
+        'name':(batch.name[:130]+' · audio follow-up'), 'scope':'word_audio',
+        'sampling':'all', 'size':ev.MAX_SAMPLE, 'allow_visitors':False, 'based_on':batch,
+        'mwe_only':batch.mwe_only})
+    return redirect('community_dictionary:evaluation-set', pk=pk, set_id=repeated.pk)

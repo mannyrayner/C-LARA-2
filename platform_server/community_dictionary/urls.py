@@ -3,13 +3,16 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 from projects import account_views, email_reset_views
 
-from . import evaluation_views
+from . import evaluation_views, mwe_audio
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/evaluate/<uuid:set_id>/repeat-audio/', evaluation_views.repeat_audio, name='evaluation-repeat-audio'),
+    path('<int:pk>/settings/expression-audio/', mwe_audio.start, name='mwe-audio'),
+    path('<int:pk>/settings/expression-audio/<uuid:run_id>/', mwe_audio.detail, name='mwe-audio-run'),
     path('profile/languages/', evaluation_views.competences, name='evaluation-languages'),
     path('<int:pk>/evaluate/', evaluation_views.home, name='evaluation-home'),
     path('<int:pk>/evaluate/<uuid:set_id>/', evaluation_views.detail, name='evaluation-set'),

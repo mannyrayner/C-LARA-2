@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 81,
-  "as_of": "2026-10-14",
-  "assessed_commit_sha": "7f345d36bcd1d4f1e1638f11d90a340556980828",
+  "workspace_revision": 82,
+  "as_of": "2026-10-18",
+  "assessed_commit_sha": "246dfd949f99958d5dea580fcc4847551eca0141",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Evaluation is deployed on AWS and has produced the first developer-led Swedish quality pilot: 30 random sentence pages and 84 word units, with word audio the main observed weakness. Manny plans French next, potentially with a second evaluator, and has requested readable CSV labels first. The export follow-up is locally tested (39 evaluation tests); acceptance is pending. Broader independent evidence, learning effects and AI-judge comparisons remain open.",
+  "current_focus_summary": "An optional Swedish/French MWE carrier-audio regeneration pilot is prepared, with retained old recordings, bounded paid jobs and same-word audio-only evaluation follow-ups. A standalone 40-MWE listening run was encouraging (36 acceptable, four minor), but had no concurrent direct baseline. Manny proposes dictionary-level Swedish/French audio evaluations. Laptop/AWS acceptance and before/after quality outcomes remain pending; no default-wide generation change is made.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1326,6 +1326,18 @@
         "platform_server/community_dictionary/tests/test_evaluation.py",
         "docs/howto/community-evaluation-export-fix.md"
       ]
+    },
+    {
+      "id": "OBS-0120",
+      "summary": "Manny approves trying MWE carrier regeneration and proposes word-audio-only Swedish/French dictionary evaluations. The supplied standalone manifest/ratings report 36/40 acceptable, four minor, no major or boundary failures, across 53 requests; all successes occurred by attempt three. The optional app pilot retains human and old recordings, requires cost approval, reuses bounded jobs/settlement, and adds exact-word follow-up snapshots/CSV audio IDs. The existing app suite plus initial new tests passes 643 tests. Further focused HTTP, withdrawal and evaluation checks are recorded in the pilot documentation. No paid call, deployment or live integrated acceptance is claimed.",
+      "observed_at": "2026-10-18",
+      "confidence": "high",
+      "evidence": [
+        "docs/howto/community-mwe-audio.md",
+        "experiments/community_dictionary/mwe-audio-pilot-2026-10-18.md",
+        "platform_server/community_dictionary/tests/test_mwe_audio.py",
+        "platform_server/community_dictionary/mwe_audio.py"
+      ]
     }
   ],
   "assessments": [
@@ -1502,7 +1514,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Evaluation has moved beyond infrastructure readiness: the first AWS Swedish pilot provides quantified initial ratings. Prioritise readable exports, a French evaluation with an independent francophone if available, and diagnosis of isolated-word audio errors. Preserve original sampled versions and separate language, pipeline, rater and listening-context effects. Single developer ratings do not establish general accuracy, pedagogical benefits or community suitability. AI judging remains a later comparison; the ten-group pilot offer is unchanged.",
+      "summary": "Isolated lexical audio remains the main quality obstacle reported in the Swedish/French exploratory work. The MWE carrier experiment is encouraging enough for an optional application pilot, not proof of general superiority. Prioritise the approved regeneration control and paired word-audio evaluation on fixed entries, retaining original media and human ratings. Avoid changing single-word defaults or extending carrier languages before listening evidence. Single involved-evaluator ratings do not establish learning gains, independent accuracy or community suitability.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1607,11 +1619,12 @@
         "OBS-0116",
         "OBS-0117",
         "OBS-0118",
-        "OBS-0119"
+        "OBS-0119",
+        "OBS-0120"
       ],
-      "urgency": "complete_export_follow_up_then_french_and_independent_evaluation",
+      "urgency": "next_laptop_trial",
       "risk": "medium",
-      "progress": "aws_evaluation_deployed_first_swedish_pilot_export_follow_up_tested",
+      "progress": "optional_mwe_regeneration_prepared_acceptance_pending",
       "confidence": "medium"
     },
     {
@@ -1719,7 +1732,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "AWS evaluation and the first Swedish pilot are reported and the CSV totals are verified. Only one involved project collaborator rated this sample; the export involvement field says no and must not be mistaken for independent assessment. No inter-rater agreement, learning effect, community suitability or sustained-use result is established. Tone-error descriptions have not been independently checked against audio. French-versus-Swedish comparisons must account for language conversion, forms, prompts and rater differences. The export fix needs acceptance; French results and the higher-other-language-audio prediction are pending.",
+      "summary": "The supplied MWE listening evidence is small and unblinded, with no concurrent direct-generation baseline. It supports trying Swedish/French only; it does not resolve isolated single-word errors or establish language-general improvement. Structural pause checks do not establish target pronunciation or guarantee semantic boundaries. Integrated laptop/AWS behavior, live costs and paired before/after outcomes remain unverified. Preserve original evaluation snapshots; report regressions and failed requests alongside gains.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1832,7 +1845,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Install the readable CSV follow-up and re-export the closed Swedish set without repeating ratings. Conduct the proposed French pilot, keeping its set open until a second evaluator finishes if one participates. Preserve original evidence and diagnose the flagged word audio/vocabulary; distinguish controlled matched tests from exploratory cross-language ratings. Agree credit and data use before publishing independent contributions. AI judging remains deferred.",
+      "summary": "Test the optional MWE batch on the laptop, including failure preservation and restoration, before AWS. Finish a word-audio baseline before regenerating; then use the identical word-entry follow-up in Swedish and French, exporting audio IDs for comparison. Separate changed MWE recordings from unchanged singles/human recordings and retain both improvements and regressions. Use these findings to decide whether the carrier route should become a dictionary default.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1932,19 +1945,19 @@
   "approval": {
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
-    "authorized_at": "2026-10-14",
-    "authorization_basis": "Manny reports AWS evaluation and its results, supplies the CSV for analysis, proposes French next and explicitly requests the export improvement; AGENTS.md requires reflecting material empirical progress.",
-    "comments": "Revision 81 records aggregate pilot evidence and a locally tested readable export. Human-owned intentions and historical archives are unchanged. No raw evaluation CSV or private media is committed, no deployment/push is performed, and no paid AI calls or external messages are sent."
+    "authorized_at": "2026-10-18",
+    "authorization_basis": "Manny approves the suggested MWE regeneration trial and proposes word-audio dictionary evaluations; AGENTS.md requires reflection of material implementation/evaluation evidence.",
+    "comments": "Prepared optional code and evaluation support only. Human intentions, prior archives, original ratings and recordings are preserved. No deployment, push, paid AI call or external message."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded AWS deployment and the first quantified Swedish quality pilot; prioritised readable exports and the proposed French/second-rater study.",
+    "summary": "Recorded MWE pilot evidence and prepared optional regeneration with paired audio evaluation; live acceptance remains pending.",
     "added_item_ids": [
-      "OBS-0119"
+      "OBS-0120"
     ],
     "revised_item_ids": [
       "ASM-0011",
-      "ACT-0010",
-      "UNC-0008"
+      "UNC-0008",
+      "ACT-0010"
     ],
     "retained_item_ids": [
       "OBS-0001",
@@ -2062,6 +2075,10 @@
       "OBS-0113",
       "OBS-0114",
       "OBS-0115",
+      "OBS-0116",
+      "OBS-0117",
+      "OBS-0118",
+      "OBS-0119",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -2099,10 +2116,7 @@
       "PRED-0003",
       "PRED-0004",
       "PRED-0005",
-      "PRED-0006",
-      "OBS-0116",
-      "OBS-0117",
-      "OBS-0118"
+      "PRED-0006"
     ],
     "retired_item_ids": []
   }

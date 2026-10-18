@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 81
-- **As of:** 2026-10-14
-- **Assessed commit:** `7f345d36bcd1d4f1e1638f11d90a340556980828`
+- **Workspace revision:** 82
+- **As of:** 2026-10-18
+- **Assessed commit:** `246dfd949f99958d5dea580fcc4847551eca0141`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Evaluation is deployed on AWS and has produced the first developer-led Swedish quality pilot: 30 random sentence pages and 84 word units, with word audio the main observed weakness. Manny plans French next, potentially with a second evaluator, and has requested readable CSV labels first. The export follow-up is locally tested (39 evaluation tests); acceptance is pending. Broader independent evidence, learning effects and AI-judge comparisons remain open.
+An optional Swedish/French MWE carrier-audio regeneration pilot is prepared, with retained old recordings, bounded paid jobs and same-word audio-only evaluation follow-ups. A standalone 40-MWE listening run was encouraging (36 acceptable, four minor), but had no concurrent direct baseline. Manny proposes dictionary-level Swedish/French audio evaluations. Laptop/AWS acceptance and before/after quality outcomes remain pending; no default-wide generation change is made.
 
 ## Factual observations
 
@@ -967,6 +967,14 @@ Manny reports AWS deployment and a 30-entry Swedish pilot; the supplied CSV inde
 - **Confidence:** high
 - **Evidence:** [`experiments/community_dictionary/evaluation-swedish-pilot-2026-10-14.md`](../experiments/community_dictionary/evaluation-swedish-pilot-2026-10-14.md), [`platform_server/community_dictionary/evaluation_views.py`](../platform_server/community_dictionary/evaluation_views.py), [`platform_server/community_dictionary/tests/test_evaluation.py`](../platform_server/community_dictionary/tests/test_evaluation.py), [`docs/howto/community-evaluation-export-fix.md`](../howto/community-evaluation-export-fix.md)
 
+### OBS-0120
+
+Manny approves trying MWE carrier regeneration and proposes word-audio-only Swedish/French dictionary evaluations. The supplied standalone manifest/ratings report 36/40 acceptable, four minor, no major or boundary failures, across 53 requests; all successes occurred by attempt three. The optional app pilot retains human and old recordings, requires cost approval, reuses bounded jobs/settlement, and adds exact-word follow-up snapshots/CSV audio IDs. The existing app suite plus initial new tests passes 643 tests. Further focused HTTP, withdrawal and evaluation checks are recorded in the pilot documentation. No paid call, deployment or live integrated acceptance is claimed.
+
+- **Observed:** 2026-10-18
+- **Confidence:** high
+- **Evidence:** [`docs/howto/community-mwe-audio.md`](../howto/community-mwe-audio.md), [`experiments/community_dictionary/mwe-audio-pilot-2026-10-18.md`](../experiments/community_dictionary/mwe-audio-pilot-2026-10-18.md), [`platform_server/community_dictionary/tests/test_mwe_audio.py`](../platform_server/community_dictionary/tests/test_mwe_audio.py), [`platform_server/community_dictionary/mwe_audio.py`](../platform_server/community_dictionary/mwe_audio.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1061,11 +1069,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-Evaluation has moved beyond infrastructure readiness: the first AWS Swedish pilot provides quantified initial ratings. Prioritise readable exports, a French evaluation with an independent francophone if available, and diagnosis of isolated-word audio errors. Preserve original sampled versions and separate language, pipeline, rater and listening-context effects. Single developer ratings do not establish general accuracy, pedagogical benefits or community suitability. AI judging remains a later comparison; the ten-group pilot offer is unchanged.
+Isolated lexical audio remains the main quality obstacle reported in the Swedish/French exploratory work. The MWE carrier experiment is encouraging enough for an optional application pilot, not proof of general superiority. Prioritise the approved regeneration control and paired word-audio evaluation on fixed entries, retaining original media and human ratings. Avoid changing single-word defaults or extending carrier languages before listening evidence. Single involved-evaluator ratings do not establish learning gains, independent accuracy or community suitability.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`, `OBS-0119`
-- **Urgency / risk / progress:** complete_export_follow_up_then_french_and_independent_evaluation / medium / aws_evaluation_deployed_first_swedish_pilot_export_follow_up_tested
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`, `OBS-0119`, `OBS-0120`
+- **Urgency / risk / progress:** next_laptop_trial / medium / optional_mwe_regeneration_prepared_acceptance_pending
 - **Confidence:** medium
 
 ### ASM-0012
@@ -1097,7 +1105,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** AWS evaluation and the first Swedish pilot are reported and the CSV totals are verified. Only one involved project collaborator rated this sample; the export involvement field says no and must not be mistaken for independent assessment. No inter-rater agreement, learning effect, community suitability or sustained-use result is established. Tone-error descriptions have not been independently checked against audio. French-versus-Swedish comparisons must account for language conversion, forms, prompts and rater differences. The export fix needs acceptance; French results and the higher-other-language-audio prediction are pending.
+- **UNC-0008:** The supplied MWE listening evidence is small and unblinded, with no concurrent direct-generation baseline. It supports trying Swedish/French only; it does not resolve isolated single-word errors or establish language-general improvement. Structural pause checks do not establish target pronunciation or guarantee semantic boundaries. Integrated laptop/AWS behavior, live costs and paired before/after outcomes remain unverified. Preserve original evaluation snapshots; report regressions and failed requests alongside gains.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -1134,7 +1142,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Install the readable CSV follow-up and re-export the closed Swedish set without repeating ratings. Conduct the proposed French pilot, keeping its set open until a second evaluator finishes if one participates. Preserve original evidence and diagnose the flagged word audio/vocabulary; distinguish controlled matched tests from exploratory cross-language ratings. Agree credit and data use before publishing independent contributions. AI judging remains deferred.
+- **ACT-0010:** Test the optional MWE batch on the laptop, including failure preservation and restoration, before AWS. Finish a word-audio baseline before regenerating; then use the identical word-entry follow-up in Swedish and French, exporting audio IDs for comparison. Separate changed MWE recordings from unchanged singles/human recordings and retain both improvements and regressions. Use these findings to decide whether the carrier route should become a dictionary default.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -1169,8 +1177,8 @@ None. This revision uses neutral factual and assessment language.
 ## Approval and revision
 
 - **Status:** autonomous_project_manager_update
-- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-14
-- **Basis:** Manny reports AWS evaluation and its results, supplies the CSV for analysis, proposes French next and explicitly requests the export improvement; AGENTS.md requires reflecting material empirical progress.
-- **Comments:** Revision 81 records aggregate pilot evidence and a locally tested readable export. Human-owned intentions and historical archives are unchanged. No raw evaluation CSV or private media is committed, no deployment/push is performed, and no paid AI calls or external messages are sent.
-- **Change summary:** Recorded AWS deployment and the first quantified Swedish quality pilot; prioritised readable exports and the proposed French/second-rater study.
+- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-18
+- **Basis:** Manny approves the suggested MWE regeneration trial and proposes word-audio dictionary evaluations; AGENTS.md requires reflection of material implementation/evaluation evidence.
+- **Comments:** Prepared optional code and evaluation support only. Human intentions, prior archives, original ratings and recordings are preserved. No deployment, push, paid AI call or external message.
+- **Change summary:** Recorded MWE pilot evidence and prepared optional regeneration with paired audio evaluation; live acceptance remains pending.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

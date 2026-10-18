@@ -63,6 +63,9 @@ def _authority(port):
         require_owner(port.user, port.destination)
         if (port.destination.language, port.destination.explanation_language) != (port.language, port.explanation_language):
             raise Conflict('The destination languages changed. Use a new language version.')
+    if port.is_audio_batch:
+        from .mwe_audio import authority
+        return authority(port)
     if port.is_description_batch:
         from .batch_descriptions import authority
         authority(port)
@@ -127,6 +130,9 @@ def current_item(item):
     """Recheck both sides before a call, before previewing, and before saving."""
     run, port = item.run, item.run.port
     if run.stage == 'audio':
+        if run.port.is_audio_batch:
+            from .mwe_audio import current_item
+            return current_item(item), None
         from .port_audio import current_item as audio_current
         return audio_current(item), None
     if run.stage == 'vocabulary':
@@ -305,6 +311,9 @@ def approve(user, run_id):
         raise Conflict('This estimate expired or the payment account changed. Prepare a new estimate.')
     model, _, _, prices = photo_ai.configuration(user)
     current_prices = {**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION}
+    if run.port.is_audio_batch:
+        from .carrier import VERSION
+        current_prices['carrier_recipe'] = VERSION
     if run.stage == 'vocabulary':
         from . import port_vocabulary
         current_prices['vocabulary_recipe'] = port_vocabulary.VERSION
@@ -340,7 +349,10 @@ def approve(user, run_id):
         port.save(update_fields=['destination'])
         event(port.destination,user,'create_language_port',detail=f'Source dictionary {port.source_id}')
     if run.stage=='audio':
-        from .port_audio import prepare
+        if run.port.is_audio_batch:
+            from .mwe_audio import prepare
+        else:
+            from .port_audio import prepare
         prepare(run)
     automatic.prepare_approved(run)
     run.status, run.approved_at = 'running', timezone.now()

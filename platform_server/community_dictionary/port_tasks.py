@@ -61,6 +61,10 @@ def fetch(item_id, lock=False):
 
 
 def credentials(item):
+    if item.run.port.is_audio_batch:
+        from .carrier import VERSION
+        if item.run.prices.get('carrier_recipe') != VERSION:
+            raise Conflict('Expression audio processing changed. Prepare a fresh estimate.')
     if item.run.status != 'running':
         raise Conflict('The job was cancelled.')
     if item.run.prices.get('speech_recipe') != tts.INSTRUCTIONS_VERSION:

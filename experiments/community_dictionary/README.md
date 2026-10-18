@@ -287,3 +287,8 @@ See [review workflow and installation notes](../../docs/howto/community-port-rev
 - [Email password recovery, 10 October 2026](email-password-reset-2026-10-10.md): batch update accepted on laptop/AWS; locally verified email recovery prepared, real SMTP delivery pending.
 
 - [Port reliability (12 October)](port-reliability-2026-10-12.md): local CJK, sentence-language, audio recovery and credit-budget regressions; AWS verification pending.
+
+## Optional MWE audio pilot (18 October 2026)
+
+Owner-approved Swedish/French expression-audio regeneration and word-audio-only,
+same-entry follow-up evaluation are prepared. See [the pilot record](mwe-audio-pilot-2026-10-18.md). Laptop/AWS acceptance is pending.

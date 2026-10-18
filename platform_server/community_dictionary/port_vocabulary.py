@@ -18,6 +18,8 @@ VERSION = 'accepted-sentence-vocabulary-1'
 
 
 def authority(port):
+    if port.is_audio_batch:
+        raise Conflict('This job only regenerates expression audio.')
     porting.authority(port)
     if not port.target_id or not port.target.photo_ai_enabled:
         raise Conflict('Enable Learn from a photo in the destination dictionary settings first.')

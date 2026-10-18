@@ -192,7 +192,7 @@ def run_fingerprint(run):
 
 def related_ports(user, dictionary):
     """Existing language relationships the current owner can operate at both ends."""
-    return (LanguagePort.objects.filter(user=user, is_description_batch=False,
+    return (LanguagePort.objects.filter(user=user, is_description_batch=False,is_audio_batch=False,
         source__hidden=False, destination__hidden=False, destination__show_workflow_suggestions=True,
         destination__photo_ai_enabled=True).filter(Q(source=dictionary) | Q(destination=dictionary))
         .select_related('source', 'destination', 'user').order_by('pk'))

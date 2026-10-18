@@ -84,6 +84,8 @@ def eligible_dimensions(competences, scope):
         selected.update(['translation', 'word_translation'])
     if scope == 'words':
         selected &= {'word_audio', 'word_translation'}
+    if scope == 'word_audio':
+        selected &= {'word_audio'}
     return [key for key in DIMENSIONS if key in selected]
 
 
@@ -189,14 +191,38 @@ def create_set(user, dictionary, data):
     ids = sorted(pk for pk, snap in live.items() if snap['entry']['kind'] == kind)
     if not ids:
         raise Conflict('There are no accepted pages of this kind to evaluate yet.')
-    if data['sampling'] == 'all' and len(ids) > MAX_SAMPLE:
+    if data.get('mwe_only'):
+        from .carrier import eligible
+        ids = [pk for pk in ids if eligible(live[pk]['entry']['text'], dictionary.language)]
+        if not ids:
+            raise Conflict('There are no eligible Swedish or French multi-word pages.')
+    if data['sampling'] == 'all' and not data.get('based_on') and len(ids) > MAX_SAMPLE:
         raise Conflict(f'Use a random sample for a collection larger than {MAX_SAMPLE} pages.')
     seed = uuid.uuid4().hex
     selected = ids if data['sampling'] == 'all' else random.Random(seed).sample(ids, min(data['size'], len(ids)))
+    based_on = data.get('based_on')
+    if based_on:
+        require_owner(user, based_on.dictionary)
+        if based_on.dictionary_id != dictionary.pk or not based_on.closed_at:
+            raise Conflict('Finish the original evaluation before repeating its audio items.')
+        if (based_on.language, based_on.explanation_language) != (dictionary.language, dictionary.explanation_language):
+            raise Conflict('The languages changed; create a new evaluation instead.')
+        selected = []
+        for unit in based_on.units.filter(dimension='word_audio').select_related('item'):
+            snap = unit.item.snapshot
+            word = snap['words'][unit.word_index] if unit.word_index is not None else snap['entry']
+            if word['id'] not in selected:
+                selected.append(word['id'])
+        if not selected or any(pk not in ids for pk in selected):
+            raise Conflict('Some original word pages are no longer eligible. No substitute pages were selected.')
+        if len(selected) > MAX_SAMPLE:
+            raise Conflict('This earlier set contains too many words for one follow-up (maximum 500).')
+        seed = based_on.seed
+        ids = selected.copy()
     batch = EvaluationSet.objects.create(id=data['token'], dictionary=dictionary, created_by=user,
         name=data['name'], scope=data['scope'], sampling=data['sampling'], seed=seed, population_ids=ids,
         language=dictionary.language, explanation_language=dictionary.explanation_language,
-        allow_visitors=data['allow_visitors'], rubric=RUBRIC)
+        allow_visitors=data['allow_visitors'], rubric=RUBRIC, based_on=based_on, mwe_only=data.get('mwe_only', False))
     seen = set()
     for position, pk in enumerate(selected, 1):
         snapshot = live[pk]
@@ -211,7 +237,7 @@ def create_set(user, dictionary, data):
                 candidates.append((dim, digest([pk, dim, item.fingerprint]), None, missing))
         words = list(enumerate(snapshot['words'])) if kind == 'sentence' else [(None, row)]
         for index, word in words:
-            for dim in ['word_translation', 'word_audio']:
+            for dim in (['word_audio'] if data['scope'] == 'word_audio' else ['word_translation', 'word_audio']):
                 # Sense is the word entry, not spelling. Each exact translation/audio is rated once.
                 value = word['meaning_part'] if dim == 'word_translation' else word['audio']
                 key = digest([word['id'], word['text_part'], value, dictionary.language,

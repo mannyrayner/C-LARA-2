@@ -21,6 +21,9 @@ def enabled(run):
 
 
 def speech_forecast(clip):
+    if clip.run.port.is_audio_batch:
+        from .carrier import estimate
+        return estimate(clip.text.word, clip.run.port.language, allowance=True)
     return port_costs.speech(clip.text.word, clip.run.port.language, clip.run.prices,
         sentence=clip.entry.entry_type == 'sentence') * Decimal('1.5')
 
