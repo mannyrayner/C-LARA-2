@@ -1,0 +1,9 @@
+language,word_entry_id,word_text,word_translation,before_score,after_score,before_audio_id,after_audio_id,audio_changed,before_comment,after_comment
+Swedish,808,ha på sig,to wear,minor,minor,2456,14010,True,Poor prosody,Poor prosody
+Swedish,915,gå på,to get on (a bus),minor,minor,2815,14008,True,Poor prosody,Poor prosody
+Swedish,944,hålla i,to hold,minor,ok,2917,14009,True,Poor prosody,
+Swedish,962,i siluett,in silhouette,minor,ok,2979,14007,True,Poor prosody,
+Swedish,998,titta på,to watch,minor,ok,3098,14005,True,Poor prosody,
+Swedish,1015,andra sidan,the other side,ok,ok,3154,14006,True,,
+Swedish,1078,gå ner,to set (of the sun),minor,minor,3370,14003,True,Poor prosody,Poor prosody
+Swedish,1101,i mitten,in the center,minor,ok,3446,14004,True,Poor prosody,

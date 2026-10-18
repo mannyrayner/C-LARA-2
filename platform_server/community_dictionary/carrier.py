@@ -1,4 +1,4 @@
-"""Opt-in Swedish/French MWE carrier pilot; no pronunciation-quality claim."""
+"""Opt-in lexical carrier pilot; Japanese selection is explicitly manual."""
 from decimal import Decimal
 from pathlib import Path
 import tempfile
@@ -8,15 +8,23 @@ from . import tts, carrier_audio
 
 VERSION = 'carrier-mwe-v1'
 MAX_ATTEMPTS = 5
+AUTOMATIC_LANGUAGES = frozenset({'fr', 'sv', 'de', 'it', 'is'})
+SUPPORTED_LANGUAGES = AUTOMATIC_LANGUAGES | {'ja'}
+LANGUAGE_LABEL = 'French, Swedish, German, Italian, Icelandic or Japanese'
 
 
-def eligible(text, language):
+def eligible(text, language, *, explicit_selection=False):
     # A conservative UI heuristic for existing multi-word lexical entries. No
     # segmentation model is invoked; contractions alone are not multi-word.
     tokens = unicodedata.normalize('NFC', text).split()
-    return (tts.language_code(language) in {'fr', 'sv'} and 1 < len(tokens) <= 12
+    code = tts.language_code(language)
+    # Neither kanji count nor spaces reliably identify Japanese MWEs. Only an
+    # owner-selected lexical entry may use this experimental route in Japanese.
+    selected_japanese = code == 'ja' and explicit_selection
+    return ((code in AUTOMATIC_LANGUAGES or selected_japanese)
+            and (1 if selected_japanese else 2) <= len(tokens) <= 12
             and len(text) <= 120 and all(any(c.isalpha() for c in t) for t in tokens)
-            and not any(c in text for c in '.!?;\n\r'))
+            and not any(c in text for c in '.!?;\n\r。！？；'))
 
 
 class ExtractionFailed(ValueError):
@@ -25,7 +33,10 @@ class ExtractionFailed(ValueError):
 
 def request(text, language):
     pause = 600
-    item = {"language": language}
+    code = tts.language_code(language)
+    if code not in SUPPORTED_LANGUAGES:
+        raise ValueError('unsupported_carrier_language')
+    item = {"language": code}
     if item['language'] == 'fr':
         prefix, suffix = 'On commence.', 'C’est fini.'
         instructions = (
@@ -36,7 +47,7 @@ def request(text, language):
             'sans pause à l’intérieur de la première ni de la dernière. '
             'Prononce le mot ou l’expression du milieu naturellement, avec une voix neutre '
             'et sans séparer les mots de l’expression. Ne prononce pas la ponctuation.')
-    else:
+    elif code == 'sv':
         prefix, suffix = 'Vi börjar.', 'Vi avslutar.'
         instructions = (
             'Läs upp textens alla tre delar i ordning, en enda gång, på naturlig standardsvenska. '
@@ -45,7 +56,43 @@ def request(text, language):
             'utan paus inuti den första eller den sista delen. '
             'Uttala ordet eller uttrycket i mitten naturligt med neutral röst, '
             'utan att dela upp uttrycket i separata ord. Läs inte upp skiljetecknen.')
-    text = f'{prefix} {text}. {suffix}'
+    elif code == 'de':
+        prefix, suffix = 'Wir beginnen.', 'Wir sind fertig.'
+        instructions = (
+            'Lies alle drei Teile des Textes der Reihe nach genau einmal auf natürlichem Standarddeutsch vor. '
+            'Sprich auch „Wir beginnen“ und „Wir sind fertig“ aus: Diese Sätze gehören zum Text. '
+            f'Lass zwischen den drei Teilen jeweils ungefähr {pause} Millisekunden Stille, '
+            'ohne Pause innerhalb des ersten oder letzten Teils. '
+            'Sprich das Wort oder den Ausdruck in der Mitte natürlich und mit neutraler Stimme aus. '
+            'Trenne die Wörter des Ausdrucks nicht durch künstliche Pausen. Lies die Satzzeichen nicht vor.')
+    elif code == 'it':
+        prefix, suffix = 'Cominciamo.', 'Abbiamo finito.'
+        instructions = (
+            'Leggi ad alta voce tutte e tre le parti del testo, in ordine e una sola volta, in italiano standard naturale. '
+            'Pronuncia anche «Cominciamo» e «Abbiamo finito»: queste frasi fanno parte del testo da leggere. '
+            f'Lascia circa {pause} millisecondi di silenzio tra le tre parti, '
+            'senza pause all’interno della prima o dell’ultima parte. '
+            'Pronuncia la parola o l’espressione centrale in modo naturale, con voce neutra, '
+            'senza separare artificialmente le parole dell’espressione. Non leggere la punteggiatura.')
+    elif code == 'is':
+        prefix, suffix = 'Við byrjum.', 'Við erum búin.'
+        instructions = (
+            'Lestu alla þrjá hluta textans upp í réttri röð, aðeins einu sinni, á eðlilegri íslensku. '
+            'Segðu líka „Við byrjum“ og „Við erum búin“: þessar setningar eru hluti af textanum. '
+            f'Hafðu um {pause} millisekúndna þögn á milli hlutanna þriggja, '
+            'en ekkert hlé inni í fyrsta eða síðasta hlutanum. '
+            'Berðu orðið eða orðasambandið í miðjunni fram á eðlilegan hátt með hlutlausum raddblæ. '
+            'Ekki aðskilja orð orðasambandsins með óeðlilegum hléum. Ekki lesa greinarmerkin upp.')
+    else:  # Japanese; eligibility is checked separately before synthesis.
+        prefix, suffix = '始めます。', '終わりました。'
+        instructions = (
+            'テキストの三つの部分を、自然な標準日本語で、順番に一度ずつ読み上げてください。'
+            '「始めます」と「終わりました」も必ず読んでください。これらも読むテキストの一部です。'
+            f'三つの部分の間には、それぞれ約{pause}ミリ秒の無音を入れてください。'
+            '最初と最後の部分の途中には間を入れないでください。'
+            '中央の語句は、落ち着いた声で自然なアクセントとイントネーションで読んでください。'
+            '語句の内部を不自然な間で区切らず、句読点の名前は読まないでください。')
+    text = f'{prefix} {text}{"。" if code == "ja" else "."} {suffix}'
     return text, instructions
 
 
@@ -57,12 +104,15 @@ def estimate(text, language, *, allowance=False):
     return tts.estimate_cost(spoken+instructions, duration) * (5 if allowance else Decimal('1.4'))
 
 
-def synthesize(text, *, language, model, voice, api_key, report, before_request=None):
-    if not eligible(text, language) or model != tts.MODEL or voice not in tts.VOICE_NAMES:
+def synthesize(text, *, language, model, voice, api_key, report, before_request=None,
+               explicit_selection=False):
+    if not eligible(text, language, explicit_selection=explicit_selection) or model != tts.MODEL or voice not in tts.VOICE_NAMES:
         raise ValueError('unsupported_carrier_synthesis')
     from pipeline.audio import OpenAITTSEngine
     spoken, instructions = request(text, tts.language_code(language))
-    report.update(instructions_version=VERSION, speech_kind='entry', strategy='mwe_carrier',
+    report.update(instructions_version=VERSION, speech_kind='entry',
+        strategy='lexical_carrier' if tts.language_code(language) == 'ja' else 'mwe_carrier',
+        carrier_language=tts.language_code(language), explicit_selection=explicit_selection,
         stage='setup', english_homographs=[], attempts=[], guidance_cost_usd='0',
         speech_cost_usd='0', uncertain_cost=False, instructions=instructions,
         extraction_algorithm=carrier_audio.ALGORITHM, extraction_config=carrier_audio.DEFAULT.copy())

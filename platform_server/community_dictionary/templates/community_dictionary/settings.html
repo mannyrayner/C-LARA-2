@@ -27,7 +27,7 @@
 </section>
 <section class="panel" id="dictionary-name"><h2>Rename dictionary</h2>
 <form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">Save name</button></form></section>
-<section class="panel"><h2>Expression audio pilot</h2><p>Regenerate AI recordings for Swedish or French multi-word entries using short carrier phrases. Earlier audio is retained; human recordings are protected.</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">Regenerate AI expression audio</a></section>
+<section class="panel"><h2>Expression audio pilot</h2><p>Try carrier-based AI audio for French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected.</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">Regenerate AI expression audio</a></section>
 <section class="panel"><h2>Add missing sentences</h2>
 <p>Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions.</p>
 <a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">Add missing sentences</a>

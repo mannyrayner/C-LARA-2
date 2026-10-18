@@ -1,21 +1,31 @@
 # Optional expression-audio regeneration pilot
 
-Prepared 18 October 2026 against `246dfd949f99958d5dea580fcc4847551eca0141`.
-Human laptop/AWS acceptance of this increment is pending.
+Extended 18 October 2026 against `15b87f3` after laptop and AWS French/Swedish
+acceptance and paired listening evaluations. The new German, Italian, Icelandic
+and Japanese prompts still need live listening tests.
 
 ## Use
 
 As dictionary owner, open **Settings → Regenerate AI expression audio**. Initially
-this pilot supports Swedish and French only, with saved TTS enabled. Choose
+this pilot supports French, Swedish, German, Italian and Icelandic multi-word
+entries, plus explicitly selected Japanese word entries, with saved TTS enabled. Choose
 **Show estimate**, then approve the allowance and automatic publication explicitly.
 Nothing is sent to OpenAI while preparing the estimate.
 
-The batch selects accepted word pages with an eligible multi-word expression and
+For the five European languages, the batch selects accepted word pages with an eligible multi-word expression and
 current AI-generated audio. It skips sentences, single words, entries with human
 recordings, and accepted replacements from this recipe. A shared word page is
 processed once. This first version identifies expressions conservatively from
 multiple whitespace-separated words (maximum 12 words/120 characters, no sentence
 punctuation). It does not perform another MWE analysis.
+
+Japanese has no automatic selection: on the same page the owner chooses the
+specific existing AI recordings to replace, up to 500 entries. A Japanese compound
+such as 対局 or 対岸 is not classified as an MWE from its character count. It can be
+included explicitly as an experiment, but satisfactory audio need not be replaced.
+No word segmentation model, added spaces, reading guesses or extra AI analysis are
+introduced. Single-word European compounds and unspaced separable-verb lemmas
+(for example German `anziehen`) remain outside the automatic batch.
 
 The new route is deliberately an optional batch pilot: ordinary generation still
 uses the existing enriched guidance for English homographs and ordinary generation
@@ -28,6 +38,17 @@ to Marin only if that name is unavailable. The tested carriers are:
 
 - French: `On commence. EXPRESSION. C’est fini.`
 - Swedish: `Vi börjar. EXPRESSION. Vi avslutar.`
+
+New, as-yet unevaluated carriers:
+
+- German: `Wir beginnen. AUSDRUCK. Wir sind fertig.`
+- Italian: `Cominciamo. ESPRESSIONE. Abbiamo finito.`
+- Icelandic: `Við byrjum. ORÐASAMBAND. Við erum búin.`
+- Japanese: `始めます。 語句。 終わりました。`
+
+Each request uses instructions in its target language. French and Swedish prompts,
+the extraction algorithm, retry ceiling and recipe ID are unchanged. Previously
+successful replacements are therefore skipped after this extension is installed.
 
 The prompt requests approximately 600 ms silence between the three parts. The
 extractor requires exactly two internal quiet gaps of at least 250 ms, with
@@ -68,7 +89,7 @@ For each language independently:
 
 1. Before regeneration, open **Evaluate**, create a set with **Word audio only**.
    Use all eligible pages or a fixed random sample. For an MWE-focused comparison,
-   check **Only Swedish/French multi-word entries**. This evaluates lexical pages,
+   check **Only multi-word entries in French, Swedish, German, Italian or Icelandic**. This evaluates lexical pages,
    including any protected human recordings present in the sample.
 2. Finish your ratings and close the set. Export the CSV. Do this before changing
    the audio: the evaluator deliberately stops new ratings of stale snapshots.
@@ -80,6 +101,17 @@ For each language independently:
 5. Rate, close and export the follow-up. CSV columns `word_entry_id`,
    `audio_contribution_id`, `based_on_set_id`, `scope` and `mwe_only` identify the
    paired material. Original ratings and recordings remain attached to the baseline.
+
+For Japanese, choose the entries and prepare the free estimate first. On that
+estimate, **Create word-audio baseline for these entries** freezes precisely its
+selected word pages and their current recordings. This also works for European
+language batches. Finish and close the baseline before approving regeneration;
+repeat its word-audio items afterwards as above. Baselines are limited to 500
+entries and remain private to members by default. This selection is not represented
+as an automatic MWE classification in the export (`mwe_only` is false).
+An expired estimate may still supply a baseline if its source material is current;
+prepare a fresh estimate after evaluation and reselect the same Japanese entries.
+Changed or withdrawn source material prevents creation of a misleading baseline.
 
 If source pages disappear or languages change, the follow-up stops rather than
 substituting other entries. At most 500 word pages can be included in a set.
@@ -98,6 +130,12 @@ changes no recordings or existing evaluations. No new Python dependencies or
 service configuration are needed. Apply on the laptop, run `check`, the app tests,
 `migrate` and `showmigrations`, then test estimate/approval/playback/restoration on a
 small dictionary before AWS deployment. Take the usual SQLite backup first.
+
+The subsequent four-language extension requires **no additional migration,
+dependency installation, static collection or environment/queue changes**. It
+requires the original `0025_mwe_audio_pilot` to be installed already. See
+`experiments/community_dictionary/mwe-audio-languages-2026-10-18.md` for evidence
+and the boundary between evaluated languages and new experimental prompts.
 
 Provider calls in the automated tests are mocked. Linux verification does not
 replace a Windows laptop or physical-phone acceptance test.

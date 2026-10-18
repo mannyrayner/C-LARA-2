@@ -1,0 +1,32 @@
+{
+  "French": {
+    "source_filenames": [
+      "dictionary-evaluation-baseline(1).csv",
+      "dictionary-evaluation-carrier-extraction.csv"
+    ],
+    "sha256": [
+      "66f7ded9b1a9171472da11fb283c44458deab98b0c2de74c1412a840b9d89cf1",
+      "8d0d8c222edc1e3cbfff18a0580bb7f5b3fd66c84553d9fa98df2cc413fb2aa9"
+    ],
+    "before_set_id": "234646fb-ad6f-4933-888d-be5fe094c275",
+    "after_set_id": "a00a66b0-e472-46cc-8ba2-ba8ee9983554",
+    "entries": 58,
+    "all_eligible_entries": true,
+    "design": "Manny Rayner, unblinded paired before/after word-audio ratings; not independent raters or a randomized regeneration control"
+  },
+  "Swedish": {
+    "source_filenames": [
+      "dictionary-evaluation-baseline(2).csv",
+      "dictionary-evaluation-carrier-extraction(1).csv"
+    ],
+    "sha256": [
+      "6cf7968ab823d00bde2285f60a3b88571177a1550ca90366e06d91dbcbeb3b3c",
+      "f81d8b368068e5a82e7e9a0a4d5c750cb8fd250dfa749bfdd5793353f8f291d3"
+    ],
+    "before_set_id": "1aa8a2bf-4647-42fc-8d23-48f660a04597",
+    "after_set_id": "d4a39aa0-8ac7-4195-a1f9-5ebad872613b",
+    "entries": 8,
+    "all_eligible_entries": true,
+    "design": "Manny Rayner, unblinded paired before/after word-audio ratings; not independent raters or a randomized regeneration control"
+  }
+}

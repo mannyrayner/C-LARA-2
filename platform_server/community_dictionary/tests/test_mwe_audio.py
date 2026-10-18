@@ -9,6 +9,7 @@ import wave
 from unittest.mock import Mock, patch
 
 from django.test import SimpleTestCase, TestCase, Client, override_settings
+from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
 
@@ -46,10 +47,49 @@ class CarrierTests(SimpleTestCase):
     def test_selection_and_frozen_carriers(self):
         for text, lang in [('sträcka ut sig','Swedish'), ('avoir envie de','French'), ('se dresser','fr')]:
             self.assertTrue(carrier.eligible(text,lang))
-        for text, lang in [('chat','fr'), ('sträcka ut sig','de'), ('s’habiller','fr'), ('a ; b','fr'), ('A cat.','sv')]:
+        for text, lang in [('chat','fr'), ('sträcka ut sig','es'), ('s’habiller','fr'), ('a ; b','fr'), ('A cat.','sv')]:
             self.assertFalse(carrier.eligible(text,lang))
         self.assertEqual(carrier.request('se dresser','fr')[0], 'On commence. se dresser. C’est fini.')
         self.assertEqual(carrier.request('ha på sig','sv')[0], 'Vi börjar. ha på sig. Vi avslutar.')
+
+    def test_new_language_requests_and_explicit_japanese_selection(self):
+        cases = [
+            ('German', 'sich befinden', 'Wir beginnen. sich befinden. Wir sind fertig.'),
+            ('Italian', 'accanto a', 'Cominciamo. accanto a. Abbiamo finito.'),
+            ('Icelandic', 'við hliðina á', 'Við byrjum. við hliðina á. Við erum búin.'),
+        ]
+        for language, word, spoken in cases:
+            with self.subTest(language=language):
+                self.assertTrue(carrier.eligible(word, language))
+                self.assertEqual(carrier.request(word, language)[0], spoken)
+                self.assertIn('600', carrier.request(word, language)[1])
+                self.assertGreater(carrier.estimate(word, language, allowance=True), carrier.estimate(word, language))
+                with provider([carrier_wave()]) as (coach, calls, _):
+                    report = {}
+                    carrier.synthesize(word, language=language, model='gpt-4o-mini-tts',
+                        voice='marin', api_key='fixture-only', report=report)
+                coach.assert_not_called()
+                self.assertEqual(calls.call_args.kwargs['input'], spoken)
+                self.assertEqual(report['instructions_version'], carrier.VERSION)
+        for text, lang in [('Pfeffermühle', 'de'), ('anziehen', 'de'), ('girasole', 'it'), ('sólsetur', 'is')]:
+            self.assertFalse(carrier.eligible(text, lang))
+        for word in ['対局', '対岸', '気をつける', '気を つける']:
+            self.assertFalse(carrier.eligible(word, 'Japanese'))
+            self.assertTrue(carrier.eligible(word, 'Japanese', explicit_selection=True))
+        for text in ['', '猫。犬', '気をつける！', 'a\nb', '1 2']:
+            self.assertFalse(carrier.eligible(text, 'ja', explicit_selection=True))
+        with self.assertRaises(ValueError): carrier.request('dos palabras', 'Spanish')
+        with self.assertRaises(ValueError):
+            carrier.synthesize('対局', language='ja', model='gpt-4o-mini-tts',
+                voice='marin', api_key='fixture-only', report={})
+        with provider([carrier_wave()]) as (_, calls, _):
+            report = {}
+            carrier.synthesize('気をつける', language='ja', model='gpt-4o-mini-tts',
+                voice='marin', api_key='fixture-only', report=report, explicit_selection=True)
+        self.assertEqual(calls.call_args.kwargs['input'], '始めます。 気をつける。 終わりました。')
+        self.assertTrue(report['explicit_selection'])
+        self.assertEqual(report['carrier_language'], 'ja')
+        self.assertEqual(report['strategy'], 'lexical_carrier')
 
     def test_exact_pcm_cut_with_padding_and_no_guidance_call(self):
         full = carrier_wave()
@@ -104,7 +144,7 @@ class BatchTests(TestCase):
         text=Contribution.objects.create(entry=entry, author=author, kind='text', text_field='word', word=word)
         accept(text,self.owner);entry.refresh_from_db()
         audio=Contribution.objects.create(entry=entry,author=author,kind='audio',shared_from=text,
-            provenance={} if human else {'origin':'synthetic','source_text':word,'language':'Swedish','voice':'marin'},
+            provenance={} if human else {'origin':'synthetic','source_text':word,'language':self.dictionary.language,'voice':'marin'},
             **write_upload(speech()[0],self.dictionary.pk,[]))
         accept(audio,self.owner)
         return entry,audio
@@ -304,3 +344,131 @@ class BatchTests(TestCase):
         Entry.objects.filter(pk=word.pk).update(archived=True)
         with self.assertRaises(Conflict):
             ev.create_set(self.owner,self.dictionary,{**data,'token':uuid.uuid4(),'scope':'word_audio','based_on':before})
+
+    def test_new_european_language_batch_and_evaluation_scope(self):
+        for language, expression, single in [
+                ('German', 'sich befinden', 'Pfeffermühle'),
+                ('Italian', 'accanto a', 'girasole'),
+                ('Icelandic', 'við hliðina á', 'sólsetur')]:
+            with self.subTest(language=language):
+                self.dictionary.language = language
+                self.dictionary.save(update_fields=['language'])
+                entry, old = self.seed(expression)
+                self.seed(single)
+                human, _ = self.seed(expression + ' human', human=True)
+                sentence, _ = self.seed(expression + ' sentence', kind='sentence')
+                run = self.quote()
+                self.assertEqual(list(run.items.values_list('source_entry_id', flat=True)), [entry.pk])
+                before = ev.create_set(self.owner, self.dictionary, {
+                    'token':uuid.uuid4(), 'name':language, 'scope':'word_audio', 'sampling':'all',
+                    'size':30, 'allow_visitors':False, 'mwe_only':True})
+                # Evaluations may also include human audio, but never sentences or single words.
+                self.assertIn(entry.pk, before.population_ids)
+                self.assertIn(human.pk, before.population_ids)
+                self.assertNotIn(sentence.pk, before.population_ids)
+                self.approve(run)
+                call = self.finish(run)
+                self.assertFalse(call.call_args.kwargs['explicit_selection'])
+                self.assertEqual(call.call_args.kwargs['language'], carrier.tts.language_code(language))
+                self.assertTrue(run.settled)
+                self.assertEqual(recordings(entry, self.dictionary)[0].previous_revision_id, old.pk)
+                self.assertFalse(self.quote().items.exists())
+                self.assertEqual(mwe_audio.restore(self.owner, run), (1, 0))
+                Entry.objects.filter(dictionary=self.dictionary).update(archived=True)
+
+    def test_japanese_quote_requires_explicit_valid_ids_and_protects_other_audio(self):
+        from community_dictionary.models import Dictionary
+        self.dictionary.language = 'Japanese'; self.dictionary.save(update_fields=['language'])
+        chosen, old = self.seed('気をつける')
+        untouched, untouched_audio = self.seed('対局')
+        human, _ = self.seed('対岸', human=True)
+        sentence, _ = self.seed('猫がいます', kind='sentence')
+        foreign, _ = self.seed('別の辞書')
+        elsewhere = Dictionary.objects.create(name='Elsewhere', language='Japanese', owner=self.owner)
+        Entry.objects.filter(pk=foreign.pk).update(dictionary=elsewhere)
+        self.assertEqual(mwe_audio.candidates(self.dictionary), [])
+        for ids in [None, [], [human.pk], [sentence.pk], [foreign.pk], [999999], [chosen.pk] * 501]:
+            with self.subTest(ids=str(ids)[:40]), self.assertRaises(Conflict):
+                mwe_audio.quote(self.owner, self.dictionary, uuid.uuid4(), entry_ids=ids)
+        self.assertFalse(PortRun.objects.exists())
+        self.assertFalse(CreditLedgerEntry.objects.exists())
+        run = mwe_audio.quote(self.owner, self.dictionary, uuid.uuid4(), entry_ids=[chosen.pk])
+        self.assertTrue(run.options['carrier_explicit_selection'])
+        self.assertEqual(list(run.items.values_list('source_entry_id', flat=True)), [chosen.pk])
+        self.approve(run)
+        with provider([carrier_wave()]) as (_, calls, _), patch.object(jobs, 'send_speech'):
+            jobs.speak(run.speech.get().pk)
+        run.refresh_from_db()
+        self.assertTrue(run.settled)
+        self.assertEqual(calls.call_args.kwargs['input'], '始めます。 気をつける。 終わりました。')
+        self.assertNotEqual(recordings(chosen, self.dictionary)[0].pk, old.pk)
+        self.assertEqual(recordings(untouched, self.dictionary)[0].pk, untouched_audio.pk)
+        self.assertEqual(mwe_audio.restore(self.owner, run), (1, 0))
+        self.assertEqual(recordings(chosen, self.dictionary)[0].pk, old.pk)
+
+    def test_japanese_selection_ui_baseline_and_same_entry_followup(self):
+        self.dictionary.language = 'Japanese'; self.dictionary.save(update_fields=['language'])
+        entry, old = self.seed('気をつける'); other, _ = self.seed('対局')
+        self.client.force_login(self.owner)
+        start = reverse('community_dictionary:mwe-audio', args=[self.dictionary.pk])
+        self.assertContains(self.client.get(start), 'Nothing is selected by default')
+        self.assertNotContains(self.client.get(start), ' checked')
+        response = self.client.post(start, {'token':uuid.uuid4()})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(PortRun.objects.exists())
+        response = self.client.post(start, {'token':uuid.uuid4(), 'entry_ids':[entry.pk]})
+        self.assertEqual(response.status_code, 302)
+        run = PortRun.objects.latest('created_at')
+        address = response.url
+        self.assertContains(self.client.get(address), '気をつける')
+        self.assertNotContains(self.client.get(address), '対局')
+        for _ in range(2):
+            self.assertEqual(self.client.post(address, {'action':'baseline'}).status_code, 302)
+        self.assertEqual(EvaluationSet.objects.count(), 1)
+        before = EvaluationSet.objects.get()
+        self.assertEqual(before.population_ids, [entry.pk])
+        self.assertEqual(before.scope, 'word_audio')
+        self.assertFalse(before.mwe_only)  # Owner choice, not a linguistic MWE classification.
+        self.assertEqual(before.items.get().snapshot['entry']['audio']['id'], old.pk)
+        before.closed_at = timezone.now(); before.save()
+        self.approve(run); self.finish(run)
+        self.assertEqual(self.client.post(address, {'action':'baseline'}).status_code, 409)
+        repeat = reverse('community_dictionary:evaluation-repeat-audio', args=[self.dictionary.pk, before.pk])
+        self.assertEqual(self.client.post(repeat, {'token':uuid.uuid4()}).status_code, 302)
+        after = EvaluationSet.objects.get(based_on=before)
+        self.assertEqual(after.population_ids, [entry.pk])
+        self.assertNotEqual(after.items.get().snapshot['entry']['audio']['id'], old.pk)
+
+    def test_japanese_stale_or_foreign_selection_and_baseline_permissions(self):
+        self.dictionary.language = 'Japanese'; self.dictionary.save(update_fields=['language'])
+        entry, old = self.seed('気をつける')
+        run = mwe_audio.quote(self.owner, self.dictionary, uuid.uuid4(), entry_ids=[entry.pk])
+        start = reverse('community_dictionary:mwe-audio', args=[self.dictionary.pk])
+        detail = reverse('community_dictionary:mwe-audio-run', args=[self.dictionary.pk, run.pk])
+        self.client.force_login(self.member)
+        self.assertEqual(self.client.post(detail, {'action':'baseline'}).status_code, 404)
+        with self.assertRaises(Http404): mwe_audio.baseline(self.member, run)
+        self.client.force_login(self.owner)
+        Contribution.objects.filter(pk=old.pk).update(status='withdrawn')
+        self.assertNotContains(self.client.get(detail), '気をつける')
+        self.assertEqual(self.client.post(detail, {'action':'baseline'}).status_code, 409)
+        self.assertEqual(self.client.post(start, {'token':uuid.uuid4(), 'entry_ids':[entry.pk]}).status_code, 200)
+        self.assertEqual(PortRun.objects.count(), 1)
+
+    def test_selected_baseline_rejects_unavailable_or_non_word_ids(self):
+        entry, _ = self.seed(); sentence, _ = self.seed('A full sentence', kind='sentence')
+        data = {'token':uuid.uuid4(), 'name':'Selection', 'scope':'word_audio', 'sampling':'all',
+                'size':30, 'allow_visitors':False}
+        for ids in [[], [999999], [sentence.pk]]:
+            with self.assertRaises(Conflict):
+                ev.create_set(self.owner, self.dictionary, {**data, 'selected_entry_ids':ids})
+        batch = ev.create_set(self.owner, self.dictionary, {**data, 'selected_entry_ids':[entry.pk]})
+        self.assertEqual(batch.population_ids, [entry.pk])
+
+    def test_existing_french_and_swedish_carrier_audio_not_regenerated_after_extension(self):
+        for language, word in [('French', 'à côté de'), ('Swedish', 'ha på sig')]:
+            self.dictionary.language = language; self.dictionary.save(update_fields=['language'])
+            entry, old = self.seed(word)
+            old.provenance['instructions_version'] = 'carrier-mwe-v1'
+            old.save(update_fields=['provenance'])
+            self.assertEqual(self.quote().items.count(), 0)

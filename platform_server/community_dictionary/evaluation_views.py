@@ -84,7 +84,9 @@ class SetForm(forms.Form):
     token = forms.UUIDField(widget=forms.HiddenInput)
     name = forms.CharField(max_length=160, initial='Initial quality evaluation', label='Evaluation name')
     scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages'), ('word_audio', 'Word audio only')])
-    mwe_only = forms.BooleanField(required=False, label='Only Swedish/French multi-word entries (word pages or word audio only)')
+    mwe_only = forms.BooleanField(required=False,
+        label='Only multi-word entries in French, Swedish, German, Italian or Icelandic',
+        help_text='For word pages or word audio only. Japanese uses explicit selection on the expression-audio page.')
     sampling = forms.ChoiceField(choices=[('random', 'Random sample'), ('all', 'All eligible pages')])
     size = forms.IntegerField(min_value=1, max_value=ev.MAX_SAMPLE, initial=30,
                               label='Number of pages (random sample only)')

@@ -1,10 +1,14 @@
 {% extends 'community_dictionary/base.html' %}{% block title %}Expression audio{% endblock %}
 {% block content %}<p class="eyebrow">{{ dictionary.name }}</p><h1>Regenerate AI expression audio</h1>
 <section class="panel"><h2>{{ run.status|capfirst }} · {{ run.items.count }} expressions</h2>
+{% if run.options.carrier_explicit_selection %}<p>Only the Japanese entries you explicitly selected are included. This is a listening experiment, not an automatic identification of multi-word expressions.</p>{% endif %}
 <p>Rough API estimate: <strong>US${{ run.estimated_usd }}</strong>. Maximum approved C-LARA allowance: <strong>US${{ run.allowance_usd }}</strong>.</p>
 <p class="help">The estimate assumes about 1.4 full recordings per expression; the allowance covers five 16-second recordings each. Full carrier duration is counted, including failed extractions. These are planning estimates, not a provider invoice or provider spending cap. No pictures, recordings or translations are sent: only the expression, language, voice and carrier instructions.</p>
 {% if run.payer == 'credits' %}<p>Available credit: US${{ balance }} · currently held: US${{ held }}.</p>{% elif run.payer == 'personal' %}<p>Billed to your personal OpenAI key. Its available balance cannot be checked here.</p>{% else %}<p>Billed to the server operator; C-LARA credit charging is disabled.</p>{% endif %}
 {% if run.status == 'estimate' %}
+{% if run.items.count %}<p>For a before/after comparison, create a baseline of exactly these entries, finish and close it before approving regeneration. If the estimate expires while you evaluate, prepare a new estimate afterwards.</p>
+<form method="post">{% csrf_token %}<button name="action" value="baseline" class="secondary">Create word-audio baseline for these entries</button></form>
+<details><summary>Entries in this estimate</summary><ul>{% for entry in preview_rows %}<li>{% if entry %}{{ entry.word }}{% if entry.meaning %} — {{ entry.meaning }}{% endif %}{% else %}Entry changed or unavailable{% endif %}</li>{% endfor %}</ul></details>{% endif %}
 {% if not run.items.count %}<p>No eligible AI expression recordings need this replacement.</p>{% elif expired %}<p>This estimate expired. Prepare another below.</p>{% elif not enough_funds %}<p><strong>Insufficient C-LARA credit.</strong> Add credit or select your personal key, then prepare a new estimate.</p>{% else %}
 <form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}">{% csrf_token %}
 <label class="check"><input type="checkbox" name="approve" required> I approve this allowance, have permission to send these expressions to OpenAI, and want successful replacements published without an intermediate review.</label><button name="action" value="approve">Approve and regenerate</button></form>{% endif %}

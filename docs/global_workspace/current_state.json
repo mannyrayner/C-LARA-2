@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 82,
+  "workspace_revision": 83,
   "as_of": "2026-10-18",
-  "assessed_commit_sha": "246dfd949f99958d5dea580fcc4847551eca0141",
+  "assessed_commit_sha": "15b87f3e57bc40ced11acb3da2962d3208d18e4d",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "An optional Swedish/French MWE carrier-audio regeneration pilot is prepared, with retained old recordings, bounded paid jobs and same-word audio-only evaluation follow-ups. A standalone 40-MWE listening run was encouraging (36 acceptable, four minor), but had no concurrent direct baseline. Manny proposes dictionary-level Swedish/French audio evaluations. Laptop/AWS acceptance and before/after quality outcomes remain pending; no default-wide generation change is made.",
+  "current_focus_summary": "The optional carrier-audio batch is accepted on laptop/AWS for French and Swedish. Paired whole-eligible-collection ratings improved from 21/58 to 54/58 acceptable in French and 1/8 to 5/8 in Swedish, with no rating regressions. The authorized extension adds German, Italian and Icelandic expression batches and explicit Japanese entry selection with exact-entry baselines. New-language listening remains pending; ordinary generation, single-word defaults and existing successful replacements are preserved.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1338,6 +1338,30 @@
         "platform_server/community_dictionary/tests/test_mwe_audio.py",
         "platform_server/community_dictionary/mwe_audio.py"
       ]
+    },
+    {
+      "id": "OBS-0121",
+      "summary": "Manny supplied paired AWS exports covering all 58 eligible French and eight Swedish word pages. French acceptable/minor/major changed from 21/26/11 to 54/4/0; 33 improved and none regressed. One French recording is unchanged (entry 2042/audio 7062); 54/57 replacements are acceptable. Swedish changed from 1/7/0 to 5/3/0; all eight recordings changed, four ratings improved, none regressed. These are one involved evaluator’s unblinded sequential ratings with no concurrent regeneration control. The results support continued reversible MWE experiments, not proven single-word or language-general improvement.",
+      "observed_at": "2026-10-18",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/mwe-audio-languages-2026-10-18.md",
+        "experiments/community_dictionary/mwe-audio-paired-2026-10-18/french.csv",
+        "experiments/community_dictionary/mwe-audio-paired-2026-10-18/swedish.csv",
+        "experiments/community_dictionary/mwe-audio-paired-2026-10-18/provenance.json"
+      ]
+    },
+    {
+      "id": "OBS-0122",
+      "summary": "Manny authorizes a German/Italian/Icelandic/Japanese carrier extension. The prepared code uses native-language carriers, unchanged extraction and five-attempt ceilings, automatic spaced-expression selection for the European languages, and no-default explicit Japanese word selection. A free quote can create an exact-entry word-audio baseline before approval. Human audio, existing replacements, prior files, credit approval and source withdrawal remain protected. No new migration/dependency is required; live new-language quality is not yet established.",
+      "observed_at": "2026-10-18",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/community_dictionary/carrier.py",
+        "platform_server/community_dictionary/mwe_audio.py",
+        "platform_server/community_dictionary/tests/test_mwe_audio.py",
+        "docs/howto/community-mwe-audio.md"
+      ]
     }
   ],
   "assessments": [
@@ -1514,7 +1538,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Isolated lexical audio remains the main quality obstacle reported in the Swedish/French exploratory work. The MWE carrier experiment is encouraging enough for an optional application pilot, not proof of general superiority. Prioritise the approved regeneration control and paired word-audio evaluation on fixed entries, retaining original media and human ratings. Avoid changing single-word defaults or extending carrier languages before listening evidence. Single involved-evaluator ratings do not establish learning gains, independent accuracy or community suitability.",
+      "summary": "Paired deployed French/Swedish results now support the carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. Support the authorized reversible extension to German, Italian and Icelandic; Japanese requires explicit experimental entry choice because neither kanji count nor whitespace defines its MWEs. Keep new-language listening evidence separate from implementation tests. Preserve ordinary single-word generation, old recordings and paired baselines. Isolated-word quality, Swedish residual prosody and independent/classroom outcomes remain unresolved.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1620,11 +1644,13 @@
         "OBS-0117",
         "OBS-0118",
         "OBS-0119",
-        "OBS-0120"
+        "OBS-0120",
+        "OBS-0121",
+        "OBS-0122"
       ],
-      "urgency": "next_laptop_trial",
+      "urgency": "next_language_listening_trial",
       "risk": "medium",
-      "progress": "optional_mwe_regeneration_prepared_acceptance_pending",
+      "progress": "french_swedish_paired_gain_additional_languages_prepared",
       "confidence": "medium"
     },
     {
@@ -1732,7 +1758,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "The supplied MWE listening evidence is small and unblinded, with no concurrent direct-generation baseline. It supports trying Swedish/French only; it does not resolve isolated single-word errors or establish language-general improvement. Structural pause checks do not establish target pronunciation or guarantee semantic boundaries. Integrated laptop/AWS behavior, live costs and paired before/after outcomes remain unverified. Preserve original evaluation snapshots; report regressions and failed requests alongside gains.",
+      "summary": "French and Swedish paired exports show practical gains, but are unblinded ratings by one involved evaluator without a concurrent direct-regeneration control. One French audio remained unchanged for an unknown reason; three changed Swedish expressions retain poor-prosody ratings. New language prompts have no listening outcomes yet, and Japanese compounds must not automatically be classed as MWEs. The whitespace selector leaves European single-word compounds untreated. Quality claims, future defaults and classroom readiness require further evidence.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1845,7 +1871,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Test the optional MWE batch on the laptop, including failure preservation and restoration, before AWS. Finish a word-audio baseline before regenerating; then use the identical word-entry follow-up in Swedish and French, exporting audio IDs for comparison. Separate changed MWE recordings from unchanged singles/human recordings and retain both improvements and regressions. Use these findings to decide whether the carrier route should become a dictionary default.",
+      "summary": "Install the additional-language extension after local checks. Prioritise Italian and German paired listening using a closed baseline and identical-word follow-up. Keep Icelandic/Japanese clearly experimental; Japanese requires explicit entry selection and can create its baseline from the free estimate. Retain failed/unchanged entries in overall reporting, preserve old audio, and keep the new batch optional until language-specific results justify broader defaults.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1946,13 +1972,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-18",
-    "authorization_basis": "Manny approves the suggested MWE regeneration trial and proposes word-audio dictionary evaluations; AGENTS.md requires reflection of material implementation/evaluation evidence.",
-    "comments": "Prepared optional code and evaluation support only. Human intentions, prior archives, original ratings and recordings are preserved. No deployment, push, paid AI call or external message."
+    "authorization_basis": "Manny supplies French/Swedish paired outcomes and explicitly requests the additional-language carrier experiment; AGENTS.md requires reflection of material evidence.",
+    "comments": "Prepared incremental patch and retained derived paired evidence. No remote write, deployment, paid AI call or external message. Human intentions and prior archives unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded MWE pilot evidence and prepared optional regeneration with paired audio evaluation; live acceptance remains pending.",
+    "summary": "Recorded deployed paired MWE gains and prepared the authorized four-language experimental extension with explicit Japanese selection.",
     "added_item_ids": [
-      "OBS-0120"
+      "OBS-0121",
+      "OBS-0122"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -2116,7 +2143,8 @@
       "PRED-0003",
       "PRED-0004",
       "PRED-0005",
-      "PRED-0006"
+      "PRED-0006",
+      "OBS-0120"
     ],
     "retired_item_ids": []
   }

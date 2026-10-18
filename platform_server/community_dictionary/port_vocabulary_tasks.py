@@ -135,7 +135,8 @@ def speak(pk):
         if clip.run.port.is_audio_batch:
             from .carrier import synthesize
             prepared,duration=synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
-                model=tts.MODEL,voice=clip.item.snapshot['voice'],api_key=key,report=report,before_request=still_allowed)
+                model=tts.MODEL,voice=clip.item.snapshot['voice'],api_key=key,report=report,before_request=still_allowed,
+                explicit_selection=clip.run.options.get('carrier_explicit_selection', False))
         else:
             prepared,duration=tts.synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
                 model=tts.MODEL,voice=clip.run.port.voice,api_key=key,

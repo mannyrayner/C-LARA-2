@@ -29,8 +29,8 @@ from .views import context
 def authority(port):
     dictionary = Dictionary.objects.get(pk=port.source_id)
     require_owner(port.user, dictionary)
-    if not dictionary.tts_enabled or tts.language_code(dictionary.language) not in {'sv', 'fr'}:
-        raise Conflict('This pilot needs saved TTS enabled in a Swedish or French dictionary.')
+    if not dictionary.tts_enabled or tts.language_code(dictionary.language) not in carrier.SUPPORTED_LANGUAGES:
+        raise Conflict(f'This pilot needs saved TTS enabled in {carrier.LANGUAGE_LABEL}.')
     if (dictionary.language, dictionary.explanation_language) != (port.language, port.explanation_language):
         raise Conflict('The dictionary languages changed. Prepare another estimate.')
 
@@ -39,12 +39,13 @@ def old_audio(entry):
     return recordings(entry, entry.dictionary)
 
 
-def candidates(dictionary):
+def candidates(dictionary, *, explicit_selection=False):
     entries = dictionary.entries.filter(archived=False, entry_type='word', current_text__status='accepted').select_related(
         'dictionary', 'current_text', 'current_meaning').prefetch_related('contributions')
     result = []
     for entry in entries:
-        if entry.current_text.entry_id != entry.pk or not carrier.eligible(entry.word, dictionary.language):
+        if entry.current_text.entry_id != entry.pk or not carrier.eligible(
+                entry.word, dictionary.language, explicit_selection=explicit_selection):
             continue
         audio = old_audio(entry)
         # Protect all human recordings, including ones whose wording is unknown.
@@ -73,7 +74,8 @@ def current_item(item):
     if (item.invalidated or entry.archived or entry.entry_type != 'word' or
             entry.dictionary_id != item.run.port.source_id or not entry.current_text or
             entry.current_text.status != 'accepted' or entry.current_text.entry_id != entry.pk or
-            not carrier.eligible(entry.word, entry.dictionary.language) or
+            not carrier.eligible(entry.word, entry.dictionary.language,
+                explicit_selection=item.run.options.get('carrier_explicit_selection', False)) or
             (entry.current_meaning and (entry.current_meaning.status != 'accepted' or entry.current_meaning.entry_id != entry.pk)) or
             fingerprint(entry) != item.snapshot or
             any(c.provenance.get('origin') != 'synthetic' for c in old_audio(entry)) or
@@ -83,7 +85,7 @@ def current_item(item):
 
 
 @transaction.atomic
-def quote(user, dictionary, token):
+def quote(user, dictionary, token, *, entry_ids=None):
     porting.locks()
     require_owner(user, dictionary)
     previous = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, port__is_audio_batch=True).first()
@@ -100,13 +102,29 @@ def quote(user, dictionary, token):
     authority(port)
     if PortRun.objects.filter(port__source=dictionary, port__is_audio_batch=True, status='running').exists():
         raise Conflict('Finish or cancel the current expression-audio job first.')
+    japanese = tts.language_code(dictionary.language) == 'ja'
+    entries = candidates(dictionary, explicit_selection=japanese)
+    if japanese:
+        if not isinstance(entry_ids, (list, tuple, set)) or not entry_ids or len(entry_ids) > 500:
+            raise Conflict('Choose between 1 and 500 Japanese entries explicitly. Nothing is selected automatically.')
+        try:
+            selected = {int(pk) for pk in entry_ids}
+        except (TypeError, ValueError):
+            raise Conflict('Reload this form and choose eligible Japanese entries.')
+        by_id = {entry.pk: entry for entry in entries}
+        if not selected.issubset(by_id):
+            raise Conflict('Some selected entries changed or are not eligible. Reload this form.')
+        entries = [by_id[pk] for pk in sorted(selected)]
+    elif entry_ids is not None:
+        raise Conflict('Individual entry selection is currently only used for the Japanese pilot.')
     model, key, personal, prices = photo_ai.configuration(user)
     run = PortRun.objects.create(pk=token, port=port, stage='audio', model=model,
         source_language=dictionary.language, source_explanation_language=dictionary.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION,
-                'carrier_recipe':carrier.VERSION}, options={'budget_version':1, 'mwe_regeneration':True},
+                'carrier_recipe':carrier.VERSION}, options={'budget_version':1, 'mwe_regeneration':True,
+                'carrier_explicit_selection':japanese},
         payer=porting.payer_now(user), expires_at=timezone.now()+timedelta(hours=1))
-    for entry in candidates(dictionary):
+    for entry in entries:
         snap = fingerprint(entry)
         item = PortItem.objects.create(run=run, source_entry=entry, saved_entry=entry, snapshot=snap,
             estimated_usd=porting.money(carrier.estimate(entry.word, dictionary.language)),
@@ -187,17 +205,50 @@ def restore(user, run):
 class QuoteForm(forms.Form):
     token = forms.UUIDField(widget=forms.HiddenInput)
 
+    def __init__(self, *args, dictionary, **kwargs):
+        super().__init__(*args, **kwargs)
+        if tts.language_code(dictionary.language) == 'ja':
+            entries = candidates(dictionary, explicit_selection=True)
+            self.fields['entry_ids'] = forms.MultipleChoiceField(
+                label='Choose Japanese entries to try',
+                help_text='Nothing is selected by default. Select only recordings you want to experiment with; '
+                          'compound words are not automatically treated as multi-word expressions.',
+                choices=[(entry.pk, f'{entry.word} — {entry.meaning} (entry {entry.pk})') for entry in entries],
+                widget=forms.CheckboxSelectMultiple)
+
+
+@transaction.atomic
+def baseline(user, run):
+    """Freeze precisely the quoted words before an owner authorises replacement."""
+    from .evaluation import create_set
+    porting.locks()
+    require_owner(user, run.port.source)
+    if run.status != 'estimate':
+        raise Conflict('Create the baseline before approving regeneration.')
+    ids = []
+    for item in run.items.all():
+        item.run = run
+        ids.append(current_item(item).pk)
+    return create_set(user, run.port.source, {
+        'token':uuid.uuid5(run.pk, 'carrier-audio-baseline'),
+        'name':f'Before carrier audio: {run.port.source.name}'[:160],
+        'scope':'word_audio', 'sampling':'all', 'size':len(ids), 'allow_visitors':False,
+        'selected_entry_ids':ids,
+    })
+
 
 @page(['GET', 'POST'])
 def start(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_owner(request.user, dictionary)
-    form = QuoteForm(request.POST if request.method == 'POST' else None, initial={'token':uuid.uuid4()})
+    form = QuoteForm(request.POST if request.method == 'POST' else None,
+        dictionary=dictionary, initial={'token':uuid.uuid4()})
     if request.method == 'POST' and form.is_valid():
-        run = quote(request.user, dictionary, form.cleaned_data['token'])
+        run = quote(request.user, dictionary, form.cleaned_data['token'], entry_ids=form.cleaned_data.get('entry_ids'))
         return redirect('community_dictionary:mwe-audio-run', pk=pk, run_id=run.pk)
     return render(request, 'community_dictionary/mwe_audio_start.html', context(request, dictionary,
-        form=form, supported=tts.language_code(dictionary.language) in {'sv','fr'},
+        form=form, supported=tts.language_code(dictionary.language) in carrier.SUPPORTED_LANGUAGES,
+        japanese=tts.language_code(dictionary.language) == 'ja',
         runs=PortRun.objects.filter(port__source=dictionary, port__user=request.user, port__is_audio_batch=True)[:10]))
 
 
@@ -208,6 +259,9 @@ def detail(request, pk, run_id):
     run = get_object_or_404(PortRun.objects.select_related('port__user','port__source'), pk=run_id,
         port__source=dictionary, port__user=request.user, port__is_audio_batch=True)
     if request.method == 'POST':
+        if request.POST.get('action') == 'baseline':
+            batch = baseline(request.user, run)
+            return redirect('community_dictionary:evaluation-set', pk=pk, set_id=batch.pk)
         if request.POST.get('action') != 'restore':
             raise Conflict('Unknown action.')
         count, skipped = restore(request.user, run)
@@ -221,10 +275,19 @@ def detail(request, pk, run_id):
                 and not Contribution.objects.filter(pk__in=clip.item.snapshot['ids'], status__in=['withdrawn','removed']).exists()
                 and not Contribution.objects.filter(pk__in=clip.item.snapshot['ids'], withdrawal_holds__isnull=False).exists())
         rows.append({'clip':clip, 'entry':entry if safe else None, 'restored':clip.item.result.get('restored',False)})
+    preview_rows = []
+    if run.status == 'estimate':
+        for item in run.items.all():
+            item.run = run
+            try:
+                entry = current_item(item)
+            except (Conflict, Entry.DoesNotExist):
+                entry = None
+            preview_rows.append(entry)
     balance = get_user_balance_usd(request.user) if run.payer == 'credits' else None
     budget_offer = port_budget.offer(run)
     return render(request, 'community_dictionary/mwe_audio_run.html', context(request, dictionary,
-        run=run, rows=rows, budget_offer=budget_offer,
+        run=run, rows=rows, preview_rows=preview_rows, budget_offer=budget_offer,
         enough_extra_funds=not budget_offer or balance is None or balance >= budget_offer['amount'], expired=run.expires_at <= timezone.now(), balance=balance,
         enough_funds=balance is None or balance >= run.allowance_usd,
         held=0 if run.settled else run.reserved_usd-run.released_usd,

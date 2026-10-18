@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 82
+- **Workspace revision:** 83
 - **As of:** 2026-10-18
-- **Assessed commit:** `246dfd949f99958d5dea580fcc4847551eca0141`
+- **Assessed commit:** `15b87f3e57bc40ced11acb3da2962d3208d18e4d`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-An optional Swedish/French MWE carrier-audio regeneration pilot is prepared, with retained old recordings, bounded paid jobs and same-word audio-only evaluation follow-ups. A standalone 40-MWE listening run was encouraging (36 acceptable, four minor), but had no concurrent direct baseline. Manny proposes dictionary-level Swedish/French audio evaluations. Laptop/AWS acceptance and before/after quality outcomes remain pending; no default-wide generation change is made.
+The optional carrier-audio batch is accepted on laptop/AWS for French and Swedish. Paired whole-eligible-collection ratings improved from 21/58 to 54/58 acceptable in French and 1/8 to 5/8 in Swedish, with no rating regressions. The authorized extension adds German, Italian and Icelandic expression batches and explicit Japanese entry selection with exact-entry baselines. New-language listening remains pending; ordinary generation, single-word defaults and existing successful replacements are preserved.
 
 ## Factual observations
 
@@ -975,6 +975,22 @@ Manny approves trying MWE carrier regeneration and proposes word-audio-only Swed
 - **Confidence:** high
 - **Evidence:** [`docs/howto/community-mwe-audio.md`](../howto/community-mwe-audio.md), [`experiments/community_dictionary/mwe-audio-pilot-2026-10-18.md`](../experiments/community_dictionary/mwe-audio-pilot-2026-10-18.md), [`platform_server/community_dictionary/tests/test_mwe_audio.py`](../platform_server/community_dictionary/tests/test_mwe_audio.py), [`platform_server/community_dictionary/mwe_audio.py`](../platform_server/community_dictionary/mwe_audio.py)
 
+### OBS-0121
+
+Manny supplied paired AWS exports covering all 58 eligible French and eight Swedish word pages. French acceptable/minor/major changed from 21/26/11 to 54/4/0; 33 improved and none regressed. One French recording is unchanged (entry 2042/audio 7062); 54/57 replacements are acceptable. Swedish changed from 1/7/0 to 5/3/0; all eight recordings changed, four ratings improved, none regressed. These are one involved evaluator’s unblinded sequential ratings with no concurrent regeneration control. The results support continued reversible MWE experiments, not proven single-word or language-general improvement.
+
+- **Observed:** 2026-10-18
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/mwe-audio-languages-2026-10-18.md`](../experiments/community_dictionary/mwe-audio-languages-2026-10-18.md), [`experiments/community_dictionary/mwe-audio-paired-2026-10-18/french.csv`](../experiments/community_dictionary/mwe-audio-paired-2026-10-18/french.csv), [`experiments/community_dictionary/mwe-audio-paired-2026-10-18/swedish.csv`](../experiments/community_dictionary/mwe-audio-paired-2026-10-18/swedish.csv), [`experiments/community_dictionary/mwe-audio-paired-2026-10-18/provenance.json`](../experiments/community_dictionary/mwe-audio-paired-2026-10-18/provenance.json)
+
+### OBS-0122
+
+Manny authorizes a German/Italian/Icelandic/Japanese carrier extension. The prepared code uses native-language carriers, unchanged extraction and five-attempt ceilings, automatic spaced-expression selection for the European languages, and no-default explicit Japanese word selection. A free quote can create an exact-entry word-audio baseline before approval. Human audio, existing replacements, prior files, credit approval and source withdrawal remain protected. No new migration/dependency is required; live new-language quality is not yet established.
+
+- **Observed:** 2026-10-18
+- **Confidence:** high
+- **Evidence:** [`platform_server/community_dictionary/carrier.py`](../platform_server/community_dictionary/carrier.py), [`platform_server/community_dictionary/mwe_audio.py`](../platform_server/community_dictionary/mwe_audio.py), [`platform_server/community_dictionary/tests/test_mwe_audio.py`](../platform_server/community_dictionary/tests/test_mwe_audio.py), [`docs/howto/community-mwe-audio.md`](../howto/community-mwe-audio.md)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1069,11 +1085,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-Isolated lexical audio remains the main quality obstacle reported in the Swedish/French exploratory work. The MWE carrier experiment is encouraging enough for an optional application pilot, not proof of general superiority. Prioritise the approved regeneration control and paired word-audio evaluation on fixed entries, retaining original media and human ratings. Avoid changing single-word defaults or extending carrier languages before listening evidence. Single involved-evaluator ratings do not establish learning gains, independent accuracy or community suitability.
+Paired deployed French/Swedish results now support the carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. Support the authorized reversible extension to German, Italian and Icelandic; Japanese requires explicit experimental entry choice because neither kanji count nor whitespace defines its MWEs. Keep new-language listening evidence separate from implementation tests. Preserve ordinary single-word generation, old recordings and paired baselines. Isolated-word quality, Swedish residual prosody and independent/classroom outcomes remain unresolved.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`, `OBS-0119`, `OBS-0120`
-- **Urgency / risk / progress:** next_laptop_trial / medium / optional_mwe_regeneration_prepared_acceptance_pending
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0110`, `OBS-0111`, `OBS-0112`, `OBS-0113`, `OBS-0114`, `OBS-0115`, `OBS-0116`, `OBS-0117`, `OBS-0118`, `OBS-0119`, `OBS-0120`, `OBS-0121`, `OBS-0122`
+- **Urgency / risk / progress:** next_language_listening_trial / medium / french_swedish_paired_gain_additional_languages_prepared
 - **Confidence:** medium
 
 ### ASM-0012
@@ -1105,7 +1121,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** The supplied MWE listening evidence is small and unblinded, with no concurrent direct-generation baseline. It supports trying Swedish/French only; it does not resolve isolated single-word errors or establish language-general improvement. Structural pause checks do not establish target pronunciation or guarantee semantic boundaries. Integrated laptop/AWS behavior, live costs and paired before/after outcomes remain unverified. Preserve original evaluation snapshots; report regressions and failed requests alongside gains.
+- **UNC-0008:** French and Swedish paired exports show practical gains, but are unblinded ratings by one involved evaluator without a concurrent direct-regeneration control. One French audio remained unchanged for an unknown reason; three changed Swedish expressions retain poor-prosody ratings. New language prompts have no listening outcomes yet, and Japanese compounds must not automatically be classed as MWEs. The whitespace selector leaves European single-word compounds untreated. Quality claims, future defaults and classroom readiness require further evidence.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -1142,7 +1158,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Test the optional MWE batch on the laptop, including failure preservation and restoration, before AWS. Finish a word-audio baseline before regenerating; then use the identical word-entry follow-up in Swedish and French, exporting audio IDs for comparison. Separate changed MWE recordings from unchanged singles/human recordings and retain both improvements and regressions. Use these findings to decide whether the carrier route should become a dictionary default.
+- **ACT-0010:** Install the additional-language extension after local checks. Prioritise Italian and German paired listening using a closed baseline and identical-word follow-up. Keep Icelandic/Japanese clearly experimental; Japanese requires explicit entry selection and can create its baseline from the free estimate. Retain failed/unchanged entries in overall reporting, preserve old audio, and keep the new batch optional until language-specific results justify broader defaults.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -1178,7 +1194,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-18
-- **Basis:** Manny approves the suggested MWE regeneration trial and proposes word-audio dictionary evaluations; AGENTS.md requires reflection of material implementation/evaluation evidence.
-- **Comments:** Prepared optional code and evaluation support only. Human intentions, prior archives, original ratings and recordings are preserved. No deployment, push, paid AI call or external message.
-- **Change summary:** Recorded MWE pilot evidence and prepared optional regeneration with paired audio evaluation; live acceptance remains pending.
+- **Basis:** Manny supplies French/Swedish paired outcomes and explicitly requests the additional-language carrier experiment; AGENTS.md requires reflection of material evidence.
+- **Comments:** Prepared incremental patch and retained derived paired evidence. No remote write, deployment, paid AI call or external message. Human intentions and prior archives unchanged.
+- **Change summary:** Recorded deployed paired MWE gains and prepared the authorized four-language experimental extension with explicit Japanese selection.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

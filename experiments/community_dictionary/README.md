@@ -1,6 +1,8 @@
 # Community dictionary development experiment
 
-Current increment: [human evaluation infrastructure](evaluation-2026-10-14.md). The first paper and deployed About links are available; the next task is to collect independent quality judgements on fixed samples. The new workflow has local regression evidence, not real evaluator results or learning-outcome evidence. AI comparisons are proposed next, not implemented.
+Current increment: [paired MWE-audio results and additional-language trials](mwe-audio-languages-2026-10-18.md). French improved from 21/58 to 54/58 acceptable and Swedish from 1/8 to 5/8 in Manny’s unblinded paired evaluations. The German, Italian, Icelandic and Japanese extension is prepared; its listening outcomes remain pending.
+
+Earlier increment: [human evaluation infrastructure](evaluation-2026-10-14.md). The first paper and deployed About links are available; the next task is to collect independent quality judgements on fixed samples. The new workflow has local regression evidence, not real evaluator results or learning-outcome evidence. AI comparisons are proposed next, not implemented.
 
 
 Earlier increment: [automatic processing](automatic-processing-2026-10-12.md). The preceding Japanese/AWS reliability trial is human-reported successful. The new opt-in combined workflow passes 654 regression tests; Manny reports it working and installed on AWS on 13 October. The [first public report](../../docs/publications/community_dictionaries_first_report/README.md) is now published on AiraXiv and ResearchGate, as reported by Manny on 13–14 October; he has also posted a Goodreads invitation. Independent empirical trials remain the next research step.
@@ -290,5 +292,7 @@ See [review workflow and installation notes](../../docs/howto/community-port-rev
 
 ## Optional MWE audio pilot (18 October 2026)
 
-Owner-approved Swedish/French expression-audio regeneration and word-audio-only,
-same-entry follow-up evaluation are prepared. See [the pilot record](mwe-audio-pilot-2026-10-18.md). Laptop/AWS acceptance is pending.
+The [original pilot record](mwe-audio-pilot-2026-10-18.md) is historical.
+Laptop/AWS acceptance and the paired French/Swedish outcomes now appear in
+[the extension record](mwe-audio-languages-2026-10-18.md), alongside the new
+experimental language scope.

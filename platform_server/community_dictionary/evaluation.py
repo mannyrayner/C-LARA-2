@@ -191,11 +191,21 @@ def create_set(user, dictionary, data):
     ids = sorted(pk for pk, snap in live.items() if snap['entry']['kind'] == kind)
     if not ids:
         raise Conflict('There are no accepted pages of this kind to evaluate yet.')
+    if 'selected_entry_ids' in data:
+        # Internal caller: an owner-created, unapproved audio-regeneration quote.
+        # Keep this population explicit; do not silently draw substitute words.
+        selected_ids = data['selected_entry_ids']
+        if (data['scope'] != 'word_audio' or data['sampling'] != 'all' or data.get('based_on') or
+                not selected_ids or len(selected_ids) > MAX_SAMPLE or
+                any(pk not in ids for pk in selected_ids)):
+            raise Conflict('Select between 1 and 500 current word pages for this audio baseline.')
+        ids = sorted(set(selected_ids))
     if data.get('mwe_only'):
         from .carrier import eligible
         ids = [pk for pk in ids if eligible(live[pk]['entry']['text'], dictionary.language)]
         if not ids:
-            raise Conflict('There are no eligible Swedish or French multi-word pages.')
+            raise Conflict('There are no eligible multi-word pages for this carrier pilot. '
+                           'For Japanese, choose entries on the expression-audio page and create a baseline from its estimate.')
     if data['sampling'] == 'all' and not data.get('based_on') and len(ids) > MAX_SAMPLE:
         raise Conflict(f'Use a random sample for a collection larger than {MAX_SAMPLE} pages.')
     seed = uuid.uuid4().hex

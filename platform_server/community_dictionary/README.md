@@ -1,6 +1,8 @@
 # Community dictionary app
 
-Current increment: [human evaluation](../../docs/howto/community-evaluation.md), with [installation and laptop/AWS trial](../../docs/howto/community-evaluation-install.md). Adds private self-reported language competence, owner-created reproducible samples, independent resumable ratings, fixed content versions, owner-only summaries/CSV and ordinal inter-rater agreement. Source withdrawal and evaluator departure are honoured. Optional signed-in visitor evaluation requires explicit owner enablement and live public browsing. Migration 0024 is additive; one new static script. No AI evaluation calls or queue changes. Local automated checks pass; human laptop/AWS acceptance is pending.
+Current increment: [carrier audio in additional languages](../../docs/howto/community-mwe-audio.md). French/Swedish laptop and AWS paired evaluations are complete; German, Italian and Icelandic batches plus explicit Japanese selection are prepared for listening tests. Original recordings and the French/Swedish recipes remain unchanged. No new migration, static assets or dependencies.
+
+Earlier increment: [human evaluation](../../docs/howto/community-evaluation.md), with [installation and laptop/AWS trial](../../docs/howto/community-evaluation-install.md). Adds private self-reported language competence, owner-created reproducible samples, independent resumable ratings, fixed content versions, owner-only summaries/CSV and ordinal inter-rater agreement. Source withdrawal and evaluator departure are honoured. Optional signed-in visitor evaluation requires explicit owner enablement and live public browsing. Migration 0024 is additive; one new static script. No AI evaluation calls or queue changes. Local automated checks pass; human laptop/AWS acceptance is pending.
 
 
 Earlier increment: [fully automatic processing](../../docs/howto/community-automatic-processing.md); [laptop/AWS installation](../../docs/howto/community-automatic-processing-install.md). One owner approval can cover sentences, shared vocabulary and audio without intermediate review. 654 regression tests pass; Manny reports the automatic option working and installed on AWS on 13 October. The [first public report](../../docs/publications/community_dictionaries_first_report/README.md) is available on [AiraXiv](https://airaxiv.com/papers/view/2610.0032/) and [ResearchGate](https://www.researchgate.net/publication/415734280_Community_Dictionaries_Everyday_Pictures_Rapid_Human-AI_Development), as reported by Manny on 13–14 October. Both links are now included in About. Manny reports the preceding reliability repair and 150-entry Japanese conversion working on AWS. The tested local queue fallback is valid; do not require real Django Q. No new migration or static assets.
@@ -289,5 +291,6 @@ and [migration/install instructions](../../docs/howto/community-port-reliability
 
 ## Optional MWE audio pilot (18 October 2026)
 
-Owner-approved Swedish/French expression-audio regeneration and word-audio-only,
-same-entry follow-up evaluation are prepared. See [`docs/howto/community-mwe-audio.md`](../../docs/howto/community-mwe-audio.md). Laptop/AWS acceptance is pending.
+Owner-approved expression-audio regeneration and same-entry word-audio evaluations
+have human-reported laptop/AWS acceptance in French and Swedish. The additional
+language extension is experimental. See [the current guide](../../docs/howto/community-mwe-audio.md).
