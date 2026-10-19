@@ -1,17 +1,17 @@
-{% extends 'community_dictionary/base.html' %}
-{% block title %}Log in{% endblock %}
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Log in" %}{% endblock %}
 {% block content %}
 <section class="panel account-login">
-  <h1>Log in</h1>
-  <p>Use your account to return to your dictionaries.</p>
-  <p><a class="button secondary" href="{% url 'community_dictionary:public-home' %}">Browse without logging in</a></p>
+  <h1>{% translate "Log in" %}</h1>
+  <p>{% translate "Use your account to return to your dictionaries." %}</p>
+  <p><a class="button secondary" href="{% url 'community_dictionary:public-home' %}">{% translate "Browse without logging in" %}</a></p>
   <form method="post" class="stack">
     {% csrf_token %}
     {{ form.as_p }}
     <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit">Log in</button>
+    <button type="submit">{% translate "Log in" %}</button>
   </form>
-  {% if password_reset_email_enabled %}<p><a href="{% url 'community_dictionary:password-reset' %}">Forgotten password?</a></p>{% endif %}
-  <p class="help">New here? <a href="{% url 'register' %}">Create an account</a>.</p>
+  {% if password_reset_email_enabled %}<p><a href="{% url 'community_dictionary:password-reset' %}">{% translate "Forgotten password?" %}</a></p>{% endif %}
+  <p class="help">{% translate "New here?" %} <a href="{% url 'register' %}">{% translate "Create an account" %}</a>.</p>
 </section>
 {% endblock %}

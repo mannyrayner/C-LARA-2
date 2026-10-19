@@ -1,31 +1,35 @@
+from django.utils.translation import gettext, gettext_lazy as _
 from django import forms
 
+from .localisation import language_label
 from .models import Dictionary, Entry, Partnership, Request
 from .storage import prepare_upload
 from .voices import VOICE_CHOICES
 
 
 class DictionaryForm(forms.ModelForm):
-    sentence_capture_enabled = forms.BooleanField(required=False, label='Enable Picture descriptions (OpenAI)', help_text='Optional experiment: members describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Contributor confirmation allows immediate publication; editors can check language afterwards. Picture, description and up to 200 words/meanings are sent to OpenAI. Off by default.')
-    image_generation_enabled = forms.BooleanField(required=False, initial=False, label='Enable AI picture generation (OpenAI)', help_text='Owners and editors can approve a shared style and generate pictures from descriptions. Off by default. Each request needs permission to send its text to OpenAI and incurs API costs.')
-    photo_ai_enabled = forms.BooleanField(required=False, initial=True, label='Enable Learn from a photo (OpenAI)', help_text='Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.')
-    tts_enabled = forms.BooleanField(required=False, initial=True, label='Enable saved spoken audio (OpenAI)', help_text='Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.')
+    sentence_capture_enabled = forms.BooleanField(required=False, label=_('Enable Picture descriptions (OpenAI)'), help_text=_('Optional experiment: members describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Contributor confirmation allows immediate publication; editors can check language afterwards. Picture, description and up to 200 words/meanings are sent to OpenAI. Off by default.'))
+    image_generation_enabled = forms.BooleanField(required=False, initial=False, label=_('Enable AI picture generation (OpenAI)'), help_text=_('Owners and editors can approve a shared style and generate pictures from descriptions. Off by default. Each request needs permission to send its text to OpenAI and incurs API costs.'))
+    photo_ai_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable Learn from a photo (OpenAI)'), help_text=_('Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.'))
+    tts_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable saved spoken audio (OpenAI)'), help_text=_('Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.'))
 
     class Meta:
         model = Dictionary
         fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
-        labels = {'language': 'Language we are collecting', 'explanation_language': 'Language for explanations (optional)'}
+        labels = {'name': _('Name'), 'language': _('Language we are collecting'),
+                  'explanation_language': _('Language for explanations (optional)'),
+                  'text_direction': _('Text direction')}
 
     def clean(self):
         data = super().clean()
         if data.get('tts_enabled'):
             from .tts import language_code
             if not language_code(data.get('language', '')):
-                self.add_error('tts_enabled', 'Saved TTS is not configured for this language. Keep using human recordings.')
+                self.add_error('tts_enabled', gettext('Saved TTS is not configured for this language. Keep using human recordings.'))
         if data.get('sentence_capture_enabled'):
             from .tts import language_code
             if not data.get('tts_enabled') or not language_code(data.get('explanation_language') or 'English'):
-                self.add_error('sentence_capture_enabled', 'Enable saved audio and choose a supported explanation language for picture descriptions.')
+                self.add_error('sentence_capture_enabled', gettext('Enable saved audio and choose a supported explanation language for picture descriptions.'))
         return data
 
 
@@ -33,10 +37,15 @@ class DictionarySettingsForm(DictionaryForm):
     class Meta(DictionaryForm.Meta):
         fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['text_direction'].choices = [
+            (value, gettext(label)) for value, label in self.fields['text_direction'].choices]
+
 
 class PhotoStudyForm(forms.Form):
-    photo = forms.FileField(label='Take or choose a photo', widget=forms.FileInput(attrs={'accept': 'image/*', 'capture': 'environment'}))
-    ai_consent = forms.BooleanField(label='I have permission to send this photo to OpenAI for this analysis, at the cost shown above.')
+    photo = forms.FileField(label=_('Take or choose a photo'), widget=forms.FileInput(attrs={'accept': 'image/*', 'capture': 'environment'}))
+    ai_consent = forms.BooleanField(label=_('I have permission to send this photo to OpenAI for this analysis, at the cost shown above.'))
 
     def clean_photo(self):
         return prepare_upload(self.cleaned_data['photo'], 'image')
@@ -49,27 +58,27 @@ class PhotoStudyForm(forms.Form):
 
 
 class PhotoSaveForm(forms.Form):
-    word = forms.CharField(max_length=255)
-    meaning = forms.CharField(max_length=3000, required=False, label='Meaning or translation')
-    consent = forms.BooleanField(label='I have permission to share this photo with the dictionary.')
-    publish_now = forms.BooleanField(required=False, label='Accept this entry now (editors only)')
+    word = forms.CharField(max_length=255, label=_('Word'))
+    meaning = forms.CharField(max_length=3000, required=False, label=_('Meaning or translation'))
+    consent = forms.BooleanField(label=_('I have permission to share this photo with the dictionary.'))
+    publish_now = forms.BooleanField(required=False, label=_('Accept this entry now (editors only)'))
 
 
 class AudioGenerateForm(forms.Form):
     source_text_id = forms.IntegerField(widget=forms.HiddenInput)
     source_text_version = forms.IntegerField(widget=forms.HiddenInput)
-    voice = forms.ChoiceField(choices=VOICE_CHOICES, help_text='Your selection is remembered for this dictionary. Generate a preview to hear it before saving. Choosing another voice and generating again is a new paid request.')
-    ai_consent = forms.BooleanField(label='I have permission to send this wording, language and available meaning to OpenAI for audio and pronunciation guidance, including one retry for silent audio, at the costs shown above.')
+    voice = forms.ChoiceField(choices=VOICE_CHOICES, label=_('Voice'), help_text=_('Your selection is remembered for this dictionary. Generate a preview to hear it before saving. Choosing another voice and generating again is a new paid request.'))
+    ai_consent = forms.BooleanField(label=_('I have permission to send this wording, language and available meaning to OpenAI for audio and pronunciation guidance, including one retry for silent audio, at the costs shown above.'))
 
 
 class AudioSaveForm(forms.Form):
-    consent = forms.BooleanField(label='I have listened to this synthetic recording and have permission to share it with the dictionary.')
-    publish_now = forms.BooleanField(required=False, label='Accept this recording now (editors only)')
+    consent = forms.BooleanField(label=_('I have listened to this synthetic recording and have permission to share it with the dictionary.'))
+    publish_now = forms.BooleanField(required=False, label=_('Accept this recording now (editors only)'))
 
 
 class UploadForm(forms.Form):
-    audio = forms.FileField(required=False)
-    consent = forms.BooleanField(required=False, label='I have permission to share these pictures or recordings with this dictionary.')
+    audio = forms.FileField(required=False, label=_('Audio'))
+    consent = forms.BooleanField(required=False, label=_('I have permission to share these pictures or recordings with this dictionary.'))
 
     def clean(self):
         data = super().clean()
@@ -77,7 +86,7 @@ class UploadForm(forms.Form):
             upload = data.get(field)
             if upload:
                 if not data.get('consent'):
-                    self.add_error('consent', 'Confirm permission to share your media with the dictionary.')
+                    self.add_error('consent', gettext('Confirm permission to share your media with the dictionary.'))
                 try:
                     data['prepared_' + field] = prepare_upload(upload, kind)
                 except forms.ValidationError as exc:
@@ -86,11 +95,11 @@ class UploadForm(forms.Form):
 
 
 class ContributionForm(UploadForm):
-    photo = forms.FileField(required=False)
-    word = forms.CharField(max_length=255, required=False, label='Word or phrase (optional)')
-    meaning = forms.CharField(max_length=3000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label='Meaning or context (optional)')
-    category = forms.CharField(max_length=80, required=False, label='Category (optional)')
-    label = forms.CharField(max_length=200, required=False, label='About this recording or picture (optional)')
+    photo = forms.FileField(required=False, label=_('Photo'))
+    word = forms.CharField(max_length=255, required=False, label=_('Word or phrase (optional)'))
+    meaning = forms.CharField(max_length=3000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label=_('Meaning or context (optional)'))
+    category = forms.CharField(max_length=80, required=False, label=_('Category (optional)'))
+    label = forms.CharField(max_length=200, required=False, label=_('About this recording or picture (optional)'))
     edit_text = forms.BooleanField(required=False)
     base_version = forms.IntegerField(min_value=0, required=False)
     text_snapshot = forms.CharField(required=False, widget=forms.HiddenInput)
@@ -98,29 +107,29 @@ class ContributionForm(UploadForm):
 
     def __init__(self, *args, dictionary=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['meaning'].label = 'Meaning or translation (optional)'
-        self.fields['meaning'].widget.attrs.update(rows=2, placeholder='A translation or short explanation')
+        self.fields['meaning'].label = gettext('Meaning or translation (optional)')
+        self.fields['meaning'].widget.attrs.update(rows=2, placeholder=gettext('A translation or short explanation'))
         self.fields['word'].widget.attrs['dir'] = dictionary.text_direction if dictionary else 'auto'
         if dictionary and user and not dictionary.personal:
             from .permissions import is_editor
             if is_editor(user, dictionary):
                 from .views import member_users
-                self.fields['contributor'] = forms.ModelChoiceField(queryset=member_users(dictionary), required=False, label='Contributor', empty_label='Myself')
-                self.fields['contributor_permission'] = forms.BooleanField(required=False, label='I have this person’s permission to contribute this material and give them control of it.')
+                self.fields['contributor'] = forms.ModelChoiceField(queryset=member_users(dictionary), required=False, label=_('Contributor'), empty_label=_('Myself'))
+                self.fields['contributor_permission'] = forms.BooleanField(required=False, label=_('I have this person’s permission to contribute this material and give them control of it.'))
         if dictionary:
-            self.fields['word'].label = f'Word or phrase in {dictionary.language} (optional)'
+            self.fields['word'].label = gettext('Word or phrase in %(language)s (optional)') % {'language': language_label(dictionary.language)}
             if dictionary.explanation_language:
-                self.fields['meaning'].label = f'Meaning or translation in {dictionary.explanation_language} (optional)'
+                self.fields['meaning'].label = gettext('Meaning or translation in %(language)s (optional)') % {'language': language_label(dictionary.explanation_language)}
 
     def clean(self):
         data = super().clean()
         if data.get('contributor') and not data.get('contributor_permission'):
-            self.add_error('contributor_permission', 'Confirm that you have this person’s permission.')
+            self.add_error('contributor_permission', gettext('Confirm that you have this person’s permission.'))
         for field in ('word', 'meaning', 'category'):
             if field not in self.data:
                 data.pop(field, None)
         if not any(data.get(k) for k in ['photo', 'audio', 'word', 'meaning', 'category', 'edit_text']):
-            raise forms.ValidationError('Add a picture, recording or some written information.')
+            raise forms.ValidationError(gettext('Add a picture, recording or some written information.'))
         return data
 
 
@@ -131,7 +140,7 @@ class WordChoiceField(forms.ModelChoiceField):
 
 
 class LinkWordForm(forms.Form):
-    word_entry = WordChoiceField(queryset=Entry.objects.none(), label='Existing word or phrase', empty_label='Choose a word…')
+    word_entry = WordChoiceField(queryset=Entry.objects.none(), label=_('Existing word or phrase'), empty_label=_('Choose a word…'))
 
     def __init__(self, *args, dictionary, source_entry_id, **kwargs):
         super().__init__(*args, **kwargs)
@@ -139,8 +148,8 @@ class LinkWordForm(forms.Form):
 
 
 class EntryPictureForm(UploadForm):
-    photo = forms.FileField(label='Picture')
-    label = forms.CharField(max_length=200, required=False, label='About this picture (optional)')
+    photo = forms.FileField(label=_('Picture'))
+    label = forms.CharField(max_length=200, required=False, label=_('About this picture (optional)'))
     publish_now = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
@@ -150,30 +159,30 @@ class EntryPictureForm(UploadForm):
 
 
 class EntryAudioForm(UploadForm):
-    label = forms.CharField(max_length=200, required=False, label='About this recording (optional)')
+    label = forms.CharField(max_length=200, required=False, label=_('About this recording (optional)'))
     publish_now = forms.BooleanField(required=False)
 
     def clean(self):
         data = super().clean()
         if not data.get('audio'):
-            self.add_error('audio', 'Record or choose an audio file before saving.')
+            self.add_error('audio', gettext('Record or choose an audio file before saving.'))
         return data
 
 
 class NoteForm(UploadForm):
-    body = forms.CharField(max_length=3000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label='Comment (optional if you record it)')
+    body = forms.CharField(max_length=3000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label=_('Comment (optional if you record it)'))
 
     def clean(self):
         data = super().clean()
         if not data.get('body') and not data.get('audio'):
-            raise forms.ValidationError('Write or record a comment.')
+            raise forms.ValidationError(gettext('Write or record a comment.'))
         return data
 
 
 class RequestForm(UploadForm):
-    partnership = forms.ModelChoiceField(queryset=Partnership.objects.none(), label='Ask this partnership')
-    kind = forms.ChoiceField(choices=Request.KINDS, label='What would help?')
-    note = forms.CharField(max_length=2000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label='Explain your request (optional)')
+    partnership = forms.ModelChoiceField(queryset=Partnership.objects.none(), label=_('Ask this partnership'))
+    kind = forms.ChoiceField(choices=[(value, _(label)) for value, label in Request.KINDS], label=_('What would help?'))
+    note = forms.CharField(max_length=2000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label=_('Explain your request (optional)'))
 
     def __init__(self, *args, user, dictionary, **kwargs):
         super().__init__(*args, **kwargs)

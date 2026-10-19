@@ -9,6 +9,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 from projects.billing import has_minimum_balance_for_compile
 from . import capture, photo_ai, tts, capture_limits
@@ -249,10 +250,10 @@ def checked(request,pk,entry_id):
     capture.locks(); dictionary=get_dictionary(request.user,pk); require_editor(request.user,dictionary)
     entry=get_entry(dictionary,entry_id)
     if str(entry.current_text_id)!=request.POST.get('text_id') or str(entry.current_meaning_id or '')!=request.POST.get('meaning_id',''):
-        return fail(request,'The wording changed. Read the latest entry before marking it checked.',409)
-    if not entry.current_text_id: return fail(request,'Add the wording first.',409)
+        return fail(request,gettext('The wording changed. Read the latest entry before marking it checked.'),409)
+    if not entry.current_text_id: return fail(request,gettext('Add the wording first.'),409)
     LanguageCheck.objects.create(entry=entry,text=entry.current_text,meaning=entry.current_meaning,checked_by=request.user)
     AttentionReport.objects.filter(entry=entry,note__entry=entry,resolved_at__isnull=True).update(resolved_at=timezone.now(),resolved_by=request.user)
     event(dictionary,request.user,'language_checked',entry)
-    messages.success(request,'Current wording marked as linguistically checked.')
+    messages.success(request,gettext('Current wording marked as linguistically checked.'))
     return redirect('community_dictionary:attention',pk=pk)

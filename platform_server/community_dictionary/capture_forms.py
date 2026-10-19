@@ -1,23 +1,26 @@
 from django import forms
+from django.utils.translation import gettext, gettext_lazy as _
+
+from .localisation import language_label
 from .storage import prepare_upload
 from .voices import VOICE_CHOICES
 from .capture_vocabulary import MAX_EDITED_WORDS, aligned_surface
 
-MODES = [('text', 'Type'), ('voice', 'Speak'), ('ai', 'Suggest a description')]
+MODES = [('text', _('Type')), ('voice', _('Speak')), ('ai', _('Suggest a description'))]
 
 
 class DescriptionModeForm(forms.Form):
-    input_mode = forms.ChoiceField(choices=MODES, label='How would you like to describe it?',
+    input_mode = forms.ChoiceField(choices=MODES, label=_('How would you like to describe it?'),
                                   widget=forms.RadioSelect)
 
 
 class CaptureForm(DescriptionModeForm):
     photo=forms.FileField(required=False,widget=forms.FileInput(attrs={'accept':'image/*'}))
-    description=forms.CharField(max_length=1000,required=False,widget=forms.Textarea(attrs={'rows':3,'placeholder':'What would you like to say about this picture?'}))
-    input_language=forms.ChoiceField(label='Language I am using')
+    description=forms.CharField(max_length=1000,required=False,widget=forms.Textarea(attrs={'rows':3,'placeholder':_('What would you like to say about this picture?')}))
+    input_language=forms.ChoiceField(label=_('Language I am using'))
     audio=forms.FileField(required=False)
-    voice=forms.ChoiceField(choices=VOICE_CHOICES,label='AI voice')
-    ai_consent=forms.BooleanField(label='I have permission to send this picture, description and dictionary vocabulary to OpenAI and approve the estimated API costs shown here.')
+    voice=forms.ChoiceField(choices=VOICE_CHOICES,label=_('AI voice'))
+    ai_consent=forms.BooleanField(label=_('I have permission to send this picture, description and dictionary vocabulary to OpenAI and approve the estimated API costs shown here.'))
     def __init__(self,*args,dictionary,existing=False,**kwargs):
         # Ignore unused controls before validation. A recovered typed draft or
         # recording must not silently become input to the picture-only route.
@@ -38,30 +41,30 @@ class CaptureForm(DescriptionModeForm):
         super().__init__(*args,**kwargs)
         self.existing=existing
         self.fields['input_language'].choices=list(dict.fromkeys([
-            (dictionary.language,dictionary.language),
-            (dictionary.explanation_language or 'English',dictionary.explanation_language or 'English')]))
+            (dictionary.language,language_label(dictionary.language)),
+            (dictionary.explanation_language or 'English',language_label(dictionary.explanation_language or 'English'))]))
     def clean(self):
         d=super().clean()
         if not self.existing:
             if not d.get('photo'):
-                self.add_error('photo','Take or choose a picture.')
+                self.add_error('photo',gettext('Take or choose a picture.'))
             else:
                 d['prepared_photo']=prepare_upload(d['photo'],'image')
         if d.get('input_mode')=='voice':
             if not d.get('audio'):
-                self.add_error('audio','Record or upload your description.')
+                self.add_error('audio',gettext('Record or upload your description.'))
             else:
                 d['prepared_audio']=prepare_upload(d['audio'],'audio')
         elif d.get('input_mode')=='text' and not d.get('description'):
-            self.add_error('description','Say what you mean by this picture.')
+            self.add_error('description',gettext('Say what you mean by this picture.'))
         return d
 
 
 class VocabularyForm(forms.Form):
-    lemma = forms.CharField(label='Word or expression', max_length=100)
-    meaning = forms.CharField(label='Translation / meaning', max_length=300)
-    surface = forms.CharField(label='As used in the sentence (optional)', max_length=100,
-                              required=False, help_text='Use … between separated parts, or leave blank.')
+    lemma = forms.CharField(label=_('Word or expression'), max_length=100)
+    meaning = forms.CharField(label=_('Translation / meaning'), max_length=300)
+    surface = forms.CharField(label=_('As used in the sentence (optional)'), max_length=100,
+                              required=False, help_text=_('Use … between separated parts, or leave blank.'))
 
 
 class VocabularyFormSet(forms.BaseFormSet):
@@ -71,7 +74,7 @@ class VocabularyFormSet(forms.BaseFormSet):
 
     def add_fields(self, form, index):
         super().add_fields(form, index)
-        form.fields['DELETE'].label = 'Remove'
+        form.fields['DELETE'].label = gettext('Remove')
 
     def clean(self):
         if any(self.errors):
@@ -83,10 +86,10 @@ class VocabularyFormSet(forms.BaseFormSet):
                 continue
             identity = tuple(' '.join(data[key].split()).casefold() for key in ('lemma', 'meaning'))
             if identity in seen:
-                raise forms.ValidationError('This word and meaning appear twice. Remove one copy.')
+                raise forms.ValidationError(gettext('This word and meaning appear twice. Remove one copy.'))
             seen.add(identity)
             if data.get('surface') and not aligned_surface(data['surface'], self.sentence):
-                form.add_error('surface', 'Copy the form from the sentence, use … for a gap, or leave this blank.')
+                form.add_error('surface', gettext('Copy the form from the sentence, use … for a gap, or leave this blank.'))
 
     def words(self):
         return [{'lemma': f.cleaned_data['lemma'], 'meaning': f.cleaned_data['meaning'],
@@ -103,12 +106,12 @@ IMAGE_COPY_STATUSES = {
 
 
 class ImageCopyForm(forms.Form):
-    image_status = forms.ChoiceField(label='Images to copy', initial='both', required=False,
-        choices=[('accepted', 'Accepted'), ('pending', 'Awaiting review'), ('both', 'Both')])
+    image_status = forms.ChoiceField(label=_('Images to copy'), initial='both', required=False,
+        choices=[('accepted', _('Accepted')), ('pending', _('Awaiting review')), ('both', _('Both'))])
 
     def clean_image_status(self):
         # Old open forms without the new control use the same default.
         return self.cleaned_data['image_status'] or 'both'
 
-    name = forms.CharField(label='Name of the new dictionary', max_length=160)
-    permission = forms.BooleanField(label='I have permission to copy these images into a new dictionary.')
+    name = forms.CharField(label=_('Name of the new dictionary'), max_length=160)
+    permission = forms.BooleanField(label=_('I have permission to copy these images into a new dictionary.'))

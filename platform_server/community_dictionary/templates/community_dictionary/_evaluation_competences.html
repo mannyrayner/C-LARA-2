@@ -1,11 +1,11 @@
-<section class="panel">
-  <h2>{% if session %}Language competences saved for this evaluation{% else %}Your current language competences{% endif %}</h2>
+{% load i18n %}<section class="panel">
+  <h2>{% if session %}{% translate "Language competences saved for this evaluation" %}{% else %}{% translate "Your current language competences" %}{% endif %}</h2>
   {% for skill in competence_rows %}
   <div class="evaluation-competence">
     <h3>{{ skill.language }} <span class="help">({{ skill.role }})</span></h3>
-    <p>Reading: <strong>{{ skill.reading }}</strong><br>Listening: <strong>{{ skill.listening }}</strong></p>
+    <p>{% translate "Reading:" %} <strong>{{ skill.reading }}</strong><br>{% translate "Listening:" %} <strong>{{ skill.listening }}</strong></p>
   </div>
   {% endfor %}
-  {% if session %}<p class="help">These are the self-reports saved when you started. Later Profile changes apply to new evaluations.</p>{% else %}<p class="help">These are self-reports. Select only the aspects you feel able to judge.</p>{% endif %}
-  <p><a href="{% url 'community_dictionary:evaluation-languages' %}">Add or update your language competences</a>{% if not session %}, then return here{% endif %}.</p>
+  {% if session %}<p class="help">{% translate "These are the self-reports saved when you started. Later Profile changes apply to new evaluations." %}</p>{% else %}<p class="help">{% translate "These are self-reports. Select only the aspects you feel able to judge." %}</p>{% endif %}
+  <p><a href="{% url 'community_dictionary:evaluation-languages' %}">{% translate "Add or update your language competences" %}</a>{% if not session %}{% translate ", then return here" %}{% endif %}.</p>
 </section>

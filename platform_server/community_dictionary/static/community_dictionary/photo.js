@@ -1,5 +1,7 @@
 /* This page never automatically repeats an AI request. */
 (() => {
+  const gettext = window.gettext || (message => message);
+  const format = (message, values) => message.replace(/%\((\w+)\)s/g, (_, key) => String(values[key]));
   const form = document.querySelector('[data-photo-upload]');
   if (form) {
     const input = form.querySelector('input[type=file]');
@@ -16,7 +18,7 @@
       const button = form.querySelector('button');
       if (button.disabled) return;
       button.disabled = true;
-      status.textContent = 'Uploading and identifying… Please keep this page open.';
+      status.textContent = gettext('Uploading and identifying… Please keep this page open.');
       const data = new FormData(form);
       // Large phone photos become a small JPEG before upload; server validates again.
       try {
@@ -44,7 +46,7 @@
         }
         throw new Error('request');
       } catch (_) {
-        status.textContent = 'The connection was interrupted. Open “Learn from a photo” again and check Your recent photos before starting another attempt.';
+        status.textContent = gettext('The connection was interrupted. Open “Learn from a photo” again and check Your recent photos before starting another attempt.');
         // Leave this submitted form disabled: a new page exposes the durable receipt.
       }
     });
@@ -59,7 +61,7 @@
     const voices = synth ? synth.getVoices() : [];
     voice = voices.find(v => v.lang.toLowerCase() === language) || voices.find(v => v.lang.toLowerCase().split('-')[0] === language.split('-')[0]);
     speak.hidden = !voice;
-    status.textContent = voice ? 'Synthetic preview using an available device voice. No recording is saved. Your device’s speech service may process the word.' : 'No matching device voice is available. You can add a human recording after saving.';
+    status.textContent = voice ? gettext('Synthetic preview using an available device voice. No recording is saved. Your device’s speech service may process the word.') : gettext('No matching device voice is available. You can add a human recording after saving.');
   }
   chooseVoice();
   if (synth) synth.addEventListener('voiceschanged', chooseVoice);
@@ -68,7 +70,7 @@
     synth.cancel();
     const speech = new SpeechSynthesisUtterance(document.querySelector('[data-spoken-word]').textContent);
     speech.voice = voice; speech.lang = voice.lang;
-    speech.onerror = () => { status.textContent = 'The device voice could not play. You can add a recording after saving.'; };
+    speech.onerror = () => { status.textContent = gettext('The device voice could not play. You can add a recording after saving.'); };
     synth.speak(speech);
   });
 })();

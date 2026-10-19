@@ -1,17 +1,17 @@
 {% extends 'community_dictionary/base.html' %}
-{% load static %}
-{% block title %}Evaluate page {{ item.position }}{% endblock %}
+{% load static i18n %}
+{% block title %}{% blocktranslate with position=item.position %}Evaluate page {{ position }}{% endblocktranslate %}{% endblock %}
 {% block content %}
-<p><a href="{% url 'community_dictionary:evaluation-session' dictionary.pk batch.pk %}">Your session / stop for now</a></p>
-<p class="eyebrow">{{ batch.name }} · Page {{ item.position }} of {{ total }}</p>
+<p><a href="{% url 'community_dictionary:evaluation-session' dictionary.pk batch.pk %}">{% translate "Your session / stop for now" %}</a></p>
+<p class="eyebrow">{{ batch.name }} · {% blocktranslate with position=item.position total=total %}Page {{ position }} of {{ total }}{% endblocktranslate %}</p>
 <h1 dir="{{ dictionary.text_direction }}">{{ root.text }}</h1>
 <details class="panel">
-  <summary>How to judge</summary>
-  <p><strong>Acceptable:</strong> suitable for this learning resource, including legitimate alternative descriptions and regional pronunciations.</p>
-  <p><strong>Minor problem:</strong> understandable and basically right, but a small correction would improve it (for example, slightly awkward phrasing).</p>
-  <p><strong>Major problem:</strong> misleading or seriously incorrect (for example, the wrong object, wrong meaning or pronunciation in the wrong language).</p>
-  <p><strong>Cannot judge:</strong> you are uncertain, cannot hear the recording, or cannot decide. This is not counted as a correctness score. Missing material is reported separately. No judgements are preselected.</p>
-  <p>Assess the material shown here independently before discussing it with others.</p>
+  <summary>{% translate "How to judge" %}</summary>
+  <p><strong>{% translate "Acceptable:" %}</strong> {% translate "suitable for this learning resource, including legitimate alternative descriptions and regional pronunciations." %}</p>
+  <p><strong>{% translate "Minor problem:" %}</strong> {% translate "understandable and basically right, but a small correction would improve it (for example, slightly awkward phrasing)." %}</p>
+  <p><strong>{% translate "Major problem:" %}</strong> {% translate "misleading or seriously incorrect (for example, the wrong object, wrong meaning or pronunciation in the wrong language)." %}</p>
+  <p><strong>{% translate "Cannot judge:" %}</strong> {% translate "you are uncertain, cannot hear the recording, or cannot decide. This is not counted as a correctness score. Missing material is reported separately. No judgements are preselected." %}</p>
+  <p>{% translate "Assess the material shown here independently before discussing it with others." %}</p>
 </details>
 <form method="post" class="evaluation-form" data-evaluation-form>
   {% csrf_token %}{{ form.revision }}{{ form.non_field_errors }}
@@ -23,55 +23,55 @@
         {% if row.show_image %}
         <div>
           {% if root.image %}
-          <img class="entry-image" src="{% url 'community_dictionary:evaluation-media' dictionary.pk batch.pk item.pk root.image.id %}" alt="Picture for this judgement">
-          {% else %}<p class="notice">No picture was available when this page was sampled.</p>{% endif %}
+          <img class="entry-image" src="{% url 'community_dictionary:evaluation-media' dictionary.pk batch.pk item.pk root.image.id %}" alt="{% translate "Picture for this judgement" %}">
+          {% else %}<p class="notice">{% translate "No picture was available when this page was sampled." %}</p>{% endif %}
         </div>
         {% endif %}
         <div>
           {% if root.kind == 'sentence' %}
-          <p>{{ batch.language }} sentence: <strong dir="{{ dictionary.text_direction }}">{{ root.text }}</strong></p>
+          <p>{% blocktranslate with language=batch.language %}{{ language }} sentence:{% endblocktranslate %} <strong dir="{{ dictionary.text_direction }}">{{ root.text }}</strong></p>
           {% endif %}
           {% if row.word_task %}
-          <p>{{ batch.language }} word or expression: <strong dir="{{ dictionary.text_direction }}">{{ row.word.text }}</strong></p>
-          {% if row.word.surface and row.word.surface != row.word.text %}<p>Form in the sentence: <span dir="{{ dictionary.text_direction }}">{{ row.word.surface }}</span></p>{% endif %}
+          <p>{% blocktranslate with language=batch.language %}{{ language }} word or expression:{% endblocktranslate %} <strong dir="{{ dictionary.text_direction }}">{{ row.word.text }}</strong></p>
+          {% if row.word.surface and row.word.surface != row.word.text %}<p>{% translate "Form in the sentence:" %} <span dir="{{ dictionary.text_direction }}">{{ row.word.surface }}</span></p>{% endif %}
           {% endif %}
           {% if row.unit.dimension == 'translation' %}
-          <p>{{ batch.explanation_language|default:'Translation' }}: <span dir="auto">{{ root.meaning|default:'No translation available' }}</span></p>
+          <p>{% if batch.explanation_language %}{{ batch.explanation_language }}{% else %}{% translate "Translation" %}{% endif %}: <span dir="auto">{% if root.meaning %}{{ root.meaning }}{% else %}{% translate "No translation available" %}{% endif %}</span></p>
           {% elif row.unit.dimension == 'word_translation' %}
-          <p>{{ batch.explanation_language|default:'Translation' }}: <span dir="auto">{{ row.word.meaning|default:'No translation available' }}</span></p>
+          <p>{% if batch.explanation_language %}{{ batch.explanation_language }}{% else %}{% translate "Translation" %}{% endif %}: <span dir="auto">{% if row.word.meaning %}{{ row.word.meaning }}{% else %}{% translate "No translation available" %}{% endif %}</span></p>
           {% endif %}
           {% if row.audio_task %}
             {% if row.word.audio %}
             <audio controls preload="none" aria-label="{{ row.label }}: {{ row.word.text }}" src="{% url 'community_dictionary:evaluation-media' dictionary.pk batch.pk item.pk row.word.audio.id %}"></audio>
-            {% else %}<p>No current recording was available when sampled.</p>{% endif %}
+            {% else %}<p>{% translate "No current recording was available when sampled." %}</p>{% endif %}
           {% endif %}
         </div>
       </div>
       {% if row.unit.dimension == 'vocabulary' %}
-      <h2>Extracted words and expressions</h2>
+      <h2>{% translate "Extracted words and expressions" %}</h2>
       <ul class="evaluation-vocabulary">
         {% for word in words %}
-        <li dir="auto"><strong>{{ word.text }}</strong>{% if word.surface != word.text %} ({{ word.surface }}){% endif %} — {{ word.meaning|default:'No translation' }}</li>
-        {% empty %}<li>No linked vocabulary was available when sampled.</li>{% endfor %}
+        <li dir="auto"><strong>{{ word.text }}</strong>{% if word.surface != word.text %} ({{ word.surface }}){% endif %} — {% if word.meaning %}{{ word.meaning }}{% else %}{% translate "No translation" %}{% endif %}</li>
+        {% empty %}<li>{% translate "No linked vocabulary was available when sampled." %}</li>{% endfor %}
       </ul>
       {% endif %}
     </div>
     <p>{{ row.help }}</p>
     {% if row.unit.missing %}
-    <p class="notice">Missing material at sampling — recorded separately, no score required.</p>
+    <p class="notice">{% translate "Missing material at sampling — recorded separately, no score required." %}</p>
     {% else %}
     <p>{{ row.score.errors }}{{ row.score.label_tag }}{{ row.score }}</p>
     <details {% if row.comment.errors or row.comment.value %}open{% endif %}>
-      <summary>Add a comment</summary>
+      <summary>{% translate "Add a comment" %}</summary>
       {{ row.comment.errors }}{{ row.comment.label_tag }}{{ row.comment }}
     </details>
     {% endif %}
   </fieldset>
   {% empty %}
-  <p>There are no new judgements for your chosen aspects on this page. Shared words may already have been offered on an earlier page.</p>
+  <p>{% translate "There are no new judgements for your chosen aspects on this page. Shared words may already have been offered on an earlier page." %}</p>
   {% endfor %}
-  <div class="actions"><button name="action" value="save">Save and next</button><button class="secondary" name="action" value="skip" formnovalidate>Skip for now</button></div>
-  <p class="help" data-evaluation-save-state>Choose Save and next to keep your judgements.</p>
+  <div class="actions"><button name="action" value="save">{% translate "Save and next" %}</button><button class="secondary" name="action" value="skip" formnovalidate>{% translate "Skip for now" %}</button></div>
+  <p class="help" data-evaluation-save-state>{% translate "Choose Save and next to keep your judgements." %}</p>
 </form>
-<script src="{% static 'community_dictionary/evaluation.js' %}?v=1" defer></script>
+<script src="{% static 'community_dictionary/evaluation.js' %}?v=3" defer></script>
 {% endblock %}

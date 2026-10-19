@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from .voices import DEFAULT_VOICE, VOICE_CHOICES
 
@@ -324,9 +325,14 @@ class Contribution(models.Model):
     class Meta:
         ordering = ['-created_at', '-pk']
 
+    def get_status_display(self):
+        # Translate presentation at request time without changing stored choices.
+        return gettext(self._get_FIELD_display(self._meta.get_field('status')))
+
     @property
     def component_label(self):
-        return self.get_text_field_display() if self.kind == 'text' and self.text_field else self.get_kind_display()
+        label = self.get_text_field_display() if self.kind == 'text' and self.text_field else self.get_kind_display()
+        return gettext(label)
 
     @property
     def text_value(self):

@@ -1,6 +1,7 @@
 """Read-only, no-login routes; member endpoints retain their existing checks."""
 from functools import wraps
 
+from django.utils.translation import gettext, gettext_lazy as _
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -22,8 +23,8 @@ from .views import fail, private_media_response
 class AccessForm(forms.Form):
     revision = forms.IntegerField(min_value=0, widget=forms.HiddenInput)
     permission = forms.BooleanField(required=False,
-        label='I have permission from the contributors to make the accepted content '
-              'in this dictionary available to anyone, including future accepted content.')
+        label=_('I have permission from the contributors to make the accepted content '
+              'in this dictionary available to anyone, including future accepted content.'))
 
 
 def visitor_page(view):
@@ -51,6 +52,7 @@ def context(request, dictionary=None, **extra):
 @visitor_page
 def home(request):
     from . import discovery
+    from .localisation import learning_options
     query = request.GET.get('q', '').strip()[:200]
     dictionaries = discovery.dictionaries()
     if query:
@@ -58,7 +60,8 @@ def home(request):
     page = Paginator(dictionaries, 24).get_page(request.GET.get('page'))
     rows = [discovery.row(d, request.user) for d in page]
     return render(request, 'community_dictionary/public_home.html',
-                  context(request, discovery_rows=rows, page=page, query=query))
+                  context(request, discovery_rows=rows, page=page, query=query,
+                          **learning_options(request)))
 
 
 @visitor_page
@@ -137,19 +140,19 @@ def change_access(request, pk):
     form = AccessForm(request.POST)
     action = request.POST.get('action')
     if action not in {'enable', 'disable'} or not form.is_valid():
-        return fail(request, 'Reload Settings and choose whether to allow public browsing.')
+        return fail(request, gettext('Reload Settings and choose whether to allow public browsing.'))
     enabled = action == 'enable'
     revision = form.cleaned_data['revision']
     if enabled and (not form.cleaned_data['permission'] or item.hidden):
-        return fail(request, 'Make this dictionary visible and confirm permission from its contributors before enabling public browsing.')
+        return fail(request, gettext('Make this dictionary visible and confirm permission from its contributors before enabling public browsing.'))
     if item.public_browsing_enabled == enabled and revision == item.public_browsing_revision - 1:
         return redirect('community_dictionary:settings', pk=pk)
     if revision != item.public_browsing_revision:
-        return fail(request, 'Public browsing changed. Reload Settings before trying again.', 409)
+        return fail(request, gettext('Public browsing changed. Reload Settings before trying again.'), 409)
     if item.public_browsing_enabled != enabled:
         item.public_browsing_enabled = enabled
         item.public_browsing_revision += 1
         item.save(update_fields=['public_browsing_enabled', 'public_browsing_revision'])
         event(item, request.user, 'public_browsing', detail='Enabled; contributor permission confirmed' if enabled else 'Disabled')
-    messages.success(request, 'Public browsing enabled.' if enabled else 'Public browsing disabled.')
+    messages.success(request, gettext('Public browsing enabled.') if enabled else gettext('Public browsing disabled.'))
     return redirect('community_dictionary:settings', pk=pk)

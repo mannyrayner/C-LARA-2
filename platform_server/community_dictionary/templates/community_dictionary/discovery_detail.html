@@ -1,16 +1,16 @@
-{% extends 'community_dictionary/base.html' %}{% block title %}{{ row.name }}{% endblock %}
-{% block content %}<p class="eyebrow">Discover a dictionary</p><h1>{{ row.name }}</h1>
-<section class="panel"><p>{{ row.language }}{% if row.explanation_language %} · Translations: {{ row.explanation_language }}{% endif %}</p>
-<p>{{ row.entry_count }} accepted entr{{ row.entry_count|pluralize:'y,ies' }} · {{ row.sentence_count }} sentence{{ row.sentence_count|pluralize }} · {{ row.word_count }} word{{ row.word_count|pluralize }}</p>
-{% if row.owner_name %}<p>Owner: <a href="{% url 'community_dictionary:contributor' row.owner_id %}">{{ row.owner_name }}</a></p>{% endif %}
-{% if row.public %}<a class="button secondary" href="{% url 'community_dictionary:public-dictionary' row.id %}">Browse without joining</a>{% else %}<p>The contents are private to members. Being listed here does not make the pictures, words or recordings public.</p>{% endif %}</section>
-<section class="panel"><h2>Membership</h2>
-{% if row.state == 'anonymous' %}<p>Log in to ask to join. The owner decides who becomes a member.</p><a class="button" href="{% url 'community_dictionary:login' %}?next={{ request.path|urlencode }}">Log in to request membership</a><p>New here? <a href="{% url 'register' %}">Create an account</a>, then return to this page.</p>
-{% elif row.state == 'available' %}<p>Ask to join as a contributing member. Approval by the owner grants membership; it does not make you an editor.</p><form method="post" class="stack" action="{% url 'community_dictionary:request-membership' row.id %}">{% csrf_token %}{{ form.as_p }}<button>Request membership</button></form>
-{% elif row.state == 'pending' %}<p>Your request is awaiting the owner. No email is sent.</p><a href="{% url 'community_dictionary:profile' %}#my-requests">View or cancel your request</a>
-{% elif row.state == 'declined' %}<p>The owner declined your request. They can still invite you later if circumstances change.</p>
-{% elif row.state == 'invited' %}<p>You already have an invitation. Accept it from <a href="{% url 'community_dictionary:home' %}">My dictionaries</a>.</p>
-{% elif row.state == 'withdrawn' %}<p>Your contributions are withdrawn. Use <a href="{% url 'community_dictionary:home' %}">My dictionaries</a> to view or restore them. Requesting membership cannot restore them for you.</p>
-{% elif row.state == 'inactive' %}<p>Your membership is inactive. The dictionary's existing membership process must be used to reactivate it.</p>
-{% else %}<p>You are already {% if row.state == 'owner' %}the owner{% else %}a member{% endif %}.</p><a class="button" href="{% url 'community_dictionary:dictionary' row.id %}">Open member view</a>{% endif %}
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% load pronunciation_tags %}{% block title %}{{ row.name }}{% endblock %}
+{% block content %}<p class="eyebrow">{% translate "Discover a dictionary" %}</p><h1>{{ row.name }}</h1>
+<section class="panel"><p>{{ row.language|community_language_name }}{% if row.explanation_language %} · {% translate "Translations:" %} {{ row.explanation_language|community_language_name }}{% endif %}</p>
+<p>{% blocktranslate count count=row.entry_count %}{{ count }} accepted entry{% plural %}{{ count }} accepted entries{% endblocktranslate %} · {% blocktranslate count count=row.sentence_count %}{{ count }} sentence{% plural %}{{ count }} sentences{% endblocktranslate %} · {% blocktranslate count count=row.word_count %}{{ count }} word{% plural %}{{ count }} words{% endblocktranslate %}</p>
+{% if row.owner_name %}<p>{% translate "Owner:" %} <a href="{% url 'community_dictionary:contributor' row.owner_id %}">{{ row.owner_name }}</a></p>{% endif %}
+{% if row.public %}<a class="button secondary" href="{% url 'community_dictionary:public-dictionary' row.id %}">{% translate "Browse without joining" %}</a>{% else %}<p>{% translate "The contents are private to members. Being listed here does not make the pictures, words or recordings public." %}</p>{% endif %}</section>
+<section class="panel"><h2>{% translate "Membership" %}</h2>
+{% if row.state == 'anonymous' %}<p>{% translate "Log in to ask to join. The owner decides who becomes a member." %}</p><a class="button" href="{% url 'community_dictionary:login' %}?next={{ request.path|urlencode }}">{% translate "Log in to request membership" %}</a><p>{% translate "New here?" %} <a href="{% url 'register' %}">{% translate "Create an account" %}</a>{% translate ", then return to this page." %}</p>
+{% elif row.state == 'available' %}<p>{% translate "Ask to join as a contributing member. Approval by the owner grants membership; it does not make you an editor." %}</p><form method="post" class="stack" action="{% url 'community_dictionary:request-membership' row.id %}">{% csrf_token %}{{ form.as_p }}<button>{% translate "Request membership" %}</button></form>
+{% elif row.state == 'pending' %}<p>{% translate "Your request is awaiting the owner. No email is sent." %}</p><a href="{% url 'community_dictionary:profile' %}#my-requests">{% translate "View or cancel your request" %}</a>
+{% elif row.state == 'declined' %}<p>{% translate "The owner declined your request. They can still invite you later if circumstances change." %}</p>
+{% elif row.state == 'invited' %}<p>{% translate "You already have an invitation. Accept it from" %} <a href="{% url 'community_dictionary:home' %}">{% translate "My dictionaries" %}</a>.</p>
+{% elif row.state == 'withdrawn' %}<p>{% translate "Your contributions are withdrawn. Use" %} <a href="{% url 'community_dictionary:home' %}">{% translate "My dictionaries" %}</a> {% translate "to view or restore them. Requesting membership cannot restore them for you." %}</p>
+{% elif row.state == 'inactive' %}<p>{% translate "Your membership is inactive. The dictionary's existing membership process must be used to reactivate it." %}</p>
+{% else %}<p>{% if row.state == 'owner' %}{% translate "You are already the owner." %}{% else %}{% translate "You are already a member." %}{% endif %}</p><a class="button" href="{% url 'community_dictionary:dictionary' row.id %}">{% translate "Open member view" %}</a>{% endif %}
 </section>{% endblock %}

@@ -5,6 +5,7 @@ from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 
 from .forms import LinkWordForm
@@ -32,7 +33,7 @@ def image_words(request, pk, entry_id, image_id):
     require_editor(request.user, dictionary)
     action = request.POST.get('action')
     if action not in {'link', 'unlink'}:
-        return fail(request, 'Choose a word to link or a link to remove.')
+        return fail(request, gettext('Choose a word to link or a link to remove.'))
     form = LinkWordForm(request.POST, dictionary=dictionary, source_entry_id=entry_id)
     if not form.is_valid():
         return fail(request, form.errors.as_text())
@@ -55,11 +56,11 @@ def image_words(request, pk, entry_id, image_id):
             link, made = ImageWordLink.objects.get_or_create(image=image, word_entry=entries[target_id], defaults={'created_by': request.user})
             if made:
                 event(dictionary, request.user, 'link_picture_word', entries[entry_id], f'Picture {image.pk}; word entry {target_id}')
-            messages.success(request, 'Word linked to this picture.')
+            messages.success(request, gettext('Word linked to this picture.'))
         else:
             removed, _ = ImageWordLink.objects.filter(image=image, word_entry_id=target_id).delete()
             if removed:
                 event(dictionary, request.user, 'unlink_picture_word', entries[entry_id], f'Picture {image.pk}; word entry {target_id}')
-            messages.success(request, 'Word link removed. The word and picture are unchanged.')
+            messages.success(request, gettext('Word link removed. The word and picture are unchanged.'))
     url = reverse('community_dictionary:entry', args=[pk, entry_id])
     return redirect(f'{url}?picture={image_id}#picture-words')

@@ -1,28 +1,28 @@
-{% extends 'community_dictionary/base.html' %}{% load static %}
+{% extends 'community_dictionary/base.html' %}{% load static i18n %}{% load pronunciation_tags %}
 {% block title %}{{ entry.title }}{% endblock %}{% block content %}
-<p class="eyebrow">{% if dictionary.personal %}Private collection · {% endif %}{{ dictionary.name }}{% if entry.category %} · {{ entry.category }}{% endif %}</p>
-<div class="page-heading"><h1 dir="{{ dictionary.text_direction }}">{{ entry.title }}</h1><span class="badge {% if not accepted %}pending{% endif %}">{% if accepted %}Accepted material{% else %}Awaiting review{% endif %}</span></div>
-{% if automatic_publication %}<p class="badge">{% if language_check %}Language checked by {{ language_check.checked_by.username }}{% else %}AI-generated · published automatically without human review{% endif %}</p>{% endif %}
+<p class="eyebrow">{% if dictionary.personal %}{% translate "Private collection" %} · {% endif %}{{ dictionary.name }}{% if entry.category %} · {{ entry.category }}{% endif %}</p>
+<div class="page-heading"><h1 dir="{{ dictionary.text_direction }}">{{ entry.title }}</h1><span class="badge {% if not accepted %}pending{% endif %}">{% if accepted %}{% translate "Accepted material" %}{% else %}{% translate "Awaiting review" %}{% endif %}</span></div>
+{% if automatic_publication %}<p class="badge">{% if language_check %}{% blocktranslate with username=language_check.checked_by.username %}Language checked by {{ username }}{% endblocktranslate %}{% else %}{% translate "AI-generated · published automatically without human review" %}{% endif %}</p>{% endif %}
 <div class="entry-layout">
   <section>
     {% if image %}
-      <img class="entry-image" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="Picture for {{ entry.title }}">
-      {% if image.status == 'pending' %}<p class="badge pending">Picture awaiting review</p>{% endif %}
-      {% if image.provenance.origin == 'generated' %}<p class="badge">AI-generated picture</p>{% endif %}
-      <p class="credit">Picture: {{ image.controlled_by.username|default:image.author.username }}</p>
+      <img class="entry-image" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% blocktranslate with title=entry.title %}Picture for {{ title }}{% endblocktranslate %}">
+      {% if image.status == 'pending' %}<p class="badge pending">{% translate "Picture awaiting review" %}</p>{% endif %}
+      {% if image.provenance.origin == 'generated' %}<p class="badge">{% translate "AI-generated picture" %}</p>{% endif %}
+      <p class="credit">{% translate "Picture:" %} {{ image.controlled_by.username|default:image.author.username }}</p>
       {% if not entry.word %}{% include 'community_dictionary/entry_description.html' %}{% endif %}
     {% else %}
-      <div class="empty image-empty">A picture can come later.</div>
+      <div class="empty image-empty">{% translate "A picture can come later." %}</div>
       {% include 'community_dictionary/entry_picture_actions.html' %}
     {% endif %}
   </section>
-  <section class="panel"><h2>Listen and explore</h2>
-    {% if entry.word and entry.entry_type != 'sentence' %}<p><a href="{% url 'community_dictionary:word' dictionary.pk entry.pk %}">Word page →</a></p>{% endif %}
-    {% if entry.meaning %}<p class="eyebrow">Meaning{% if dictionary.explanation_language %} · {{ dictionary.explanation_language }}{% endif %}</p><p class="meaning" dir="auto">{{ entry.meaning|linebreaksbr }}</p>{% endif %}
+  <section class="panel"><h2>{% translate "Listen and explore" %}</h2>
+    {% if entry.word and entry.entry_type != 'sentence' %}<p><a href="{% url 'community_dictionary:word' dictionary.pk entry.pk %}">{% translate "Word page →" %}</a></p>{% endif %}
+    {% if entry.meaning %}<p class="eyebrow">{% translate "Meaning" %}{% if dictionary.explanation_language %} · {{ dictionary.explanation_language|community_language_name }}{% endif %}</p><p class="meaning" dir="auto">{{ entry.meaning|linebreaksbr }}</p>{% endif %}
     {% for recording in audio %}<div class="audio-item">
-      <p><strong>{{ recording.label|default:'Recording' }}</strong> · {{ recording.controlled_by.username|default:recording.author.username }}{% if recording.provenance.origin == 'synthetic' %} · AI-generated voice{% endif %}</p>
+      <p><strong>{% if recording.label %}{{ recording.label }}{% else %}{% translate "Recording" %}{% endif %}</strong> · {{ recording.controlled_by.username|default:recording.author.username }}{% if recording.provenance.origin == 'synthetic' %} · {% translate "AI-generated voice" %}{% endif %}</p>
       <audio controls preload="none" src="{% url 'community_dictionary:media' dictionary.pk recording.pk %}"></audio>
-    </div>{% empty %}<p>No accepted recording for this wording yet.</p>{% endfor %}
+    </div>{% empty %}<p>{% translate "No accepted recording for this wording yet." %}</p>{% endfor %}
     {% if not audio %}{% include 'community_dictionary/entry_audio_actions.html' %}{% endif %}
     {% if not entry.word or not entry.meaning %}{% include 'community_dictionary/entry_text_actions.html' %}{% endif %}
   </section>
@@ -31,13 +31,13 @@
 {% include 'community_dictionary/sentence_links.html' %}
 {% include 'community_dictionary/entry_attention.html' %}
 {% include 'community_dictionary/entry_requests.html' %}
-<details class="panel" id="entry-options"><summary>Show more options{% if pending %} <span class="badge pending">{{ pending }} awaiting review</span>{% endif %}</summary>
+<details class="panel" id="entry-options"><summary>{% translate "Show more options" %}{% if pending %} <span class="badge pending">{% blocktranslate count count=pending %}{{ count }} awaiting review{% plural %}{{ count }} awaiting review{% endblocktranslate %}</span>{% endif %}</summary>
   {% if image %}{% include 'community_dictionary/entry_picture_actions.html' %}{% if entry.word %}{% include 'community_dictionary/entry_description.html' %}{% endif %}{% endif %}
   {% if audio %}{% include 'community_dictionary/entry_audio_actions.html' %}{% endif %}
   {% if entry.word and entry.meaning %}{% include 'community_dictionary/entry_text_actions.html' %}{% endif %}
-  <p><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}">Add a contribution</a></p>
-  {% if not can_request and not dictionary.personal %}<p><a href="{% url 'community_dictionary:people' dictionary.pk %}">Set up a partnership</a></p>{% endif %}
-  {% if owner and not dictionary.personal and not dictionary.tts_enabled %}<p class="help">Enable saved spoken audio in <a href="{% url 'community_dictionary:settings' dictionary.pk %}">Settings</a>.</p>{% endif %}
+  <p><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}">{% translate "Add a contribution" %}</a></p>
+  {% if not can_request and not dictionary.personal %}<p><a href="{% url 'community_dictionary:people' dictionary.pk %}">{% translate "Set up a partnership" %}</a></p>{% endif %}
+  {% if owner and not dictionary.personal and not dictionary.tts_enabled %}<p class="help">{% translate "Enable saved spoken audio in" %} <a href="{% url 'community_dictionary:settings' dictionary.pk %}">{% translate "Settings" %}</a>.</p>{% endif %}
   {% include 'community_dictionary/picture_word_editor.html' %}
   {% include 'community_dictionary/entry_pronunciation.html' %}
   {% include 'community_dictionary/entry_language_check.html' %}
@@ -45,5 +45,5 @@
   {% include 'community_dictionary/entry_history.html' %}
 </details>
 {% include 'community_dictionary/entry_discussion.html' %}
-<script src="{% static 'community_dictionary/capture.js' %}?v=4" defer></script>
+<script src="{% static 'community_dictionary/capture.js' %}?v=5" defer></script>
 {% endblock %}

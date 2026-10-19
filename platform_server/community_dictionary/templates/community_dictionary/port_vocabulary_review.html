@@ -17,4 +17,4 @@
 <p class="help">Missing word recordings are generated using the cost allowance you approved. Accepting confirms your choice; it does not mark the language as checked by an expert.</p></form>
 <form method="post">{% csrf_token %}<button class="quiet" name="action" value="discard">Discard these suggestions</button></form>
 </section></div>
-<script src="{% static 'community_dictionary/capture.js' %}" defer></script>{% endblock %}
+<script src="{% static 'community_dictionary/capture.js' %}?v=5" defer></script>{% endblock %}

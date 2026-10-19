@@ -19,5 +19,5 @@
 <p class="help">A private learning attempt lasts 24 hours. Nothing enters the dictionary until you choose to save it. OpenAI’s own retention rules also apply to photos sent for analysis.</p>
 {% if recent %}<section class="panel"><h2>Your recent photos</h2><p class="help">If your connection was interrupted, open the existing attempt here.</p><ul>{% for study in recent %}<li><a href="{% url 'community_dictionary:photo-study' dictionary.pk study.pk %}">{{ study.created_at|date:'j M, H:i' }} · {{ study.get_status_display }}</a></li>{% endfor %}</ul></section>{% endif %}
 <p><a href="{% url 'community_dictionary:new' dictionary.pk %}">Add a photo or recording without AI</a></p>
-<script src="{% static 'community_dictionary/photo.js' %}?v=2" defer></script>
+<script src="{% static 'community_dictionary/photo.js' %}?v=3" defer></script>
 {% endblock %}

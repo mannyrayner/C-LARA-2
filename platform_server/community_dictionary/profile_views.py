@@ -1,4 +1,5 @@
 """Community account presentation and separately consented public profiles."""
+from django.utils.translation import gettext, gettext_lazy as _
 from django import forms
 from django.conf import settings
 from django.contrib import messages
@@ -24,37 +25,37 @@ class ContributorForm(forms.ModelForm):
     class Meta:
         model = CommunityProfile
         fields = ['public_name', 'introduction', 'list_as_contributor']
-        labels = {'public_name': 'Public name (a pseudonym is fine)',
-                  'introduction': 'Short introduction (optional)',
-                  'list_as_contributor': 'List me as a contributor'}
+        labels = {'public_name': _('Public name (a pseudonym is fine)'),
+                  'introduction': _('Short introduction (optional)'),
+                  'list_as_contributor': _('List me as a contributor')}
         widgets = {'introduction': forms.Textarea(attrs={'rows': 3})}
 
     def clean(self):
         data = super().clean()
         if data.get('list_as_contributor') and not data.get('public_name'):
-            self.add_error('public_name', 'Choose the name you want people to see.')
+            self.add_error('public_name', gettext('Choose the name you want people to see.'))
         return data
 
 
 class PreferencesForm(forms.ModelForm):
-    timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES)
-    openai_api_key = forms.CharField(required=False, label='New OpenAI API key',
+    timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES, label=_('Timezone'))
+    openai_api_key = forms.CharField(required=False, label=_('New OpenAI API key'),
         widget=forms.PasswordInput(render_value=False, attrs={'autocomplete': 'new-password'}),
-        help_text='Leave blank to keep your saved key. It is never shown on public pages.')
-    clear_key = forms.BooleanField(required=False, label='Remove my saved API key')
+        help_text=_('Leave blank to keep your saved key. It is never shown on public pages.'))
+    clear_key = forms.BooleanField(required=False, label=_('Remove my saved API key'))
 
     class Meta:
         model = Profile
         fields = ['timezone', 'use_personal_openai_key', 'openai_api_key']
-        labels = {'use_personal_openai_key': 'Use my own OpenAI API key instead of platform credits'}
+        labels = {'use_personal_openai_key': _('Use my own OpenAI API key instead of platform credits')}
 
     def clean(self):
         data = super().clean()
         key = '' if data.get('clear_key') else data.get('openai_api_key') or self.instance.openai_api_key
         if data.get('clear_key') and data.get('openai_api_key'):
-            self.add_error('openai_api_key', 'Choose either a new key or removal of the saved key.')
+            self.add_error('openai_api_key', gettext('Choose either a new key or removal of the saved key.'))
         if data.get('use_personal_openai_key') and not key:
-            self.add_error('use_personal_openai_key', 'Supply a key, or turn off this option to use platform credits.')
+            self.add_error('use_personal_openai_key', gettext('Supply a key, or turn off this option to use platform credits.'))
         data['openai_api_key'] = key
         return data
 
@@ -78,11 +79,11 @@ def profile(request):
             contributor = ContributorForm(request.POST, instance=local)
             if contributor.is_valid():
                 if contributor.cleaned_data['revision'] != local.revision:
-                    return fail(request, 'Your public profile changed. Reload Profile before saving.', 409)
+                    return fail(request, gettext('Your public profile changed. Reload Profile before saving.'), 409)
                 local = contributor.save(commit=False)
                 local.revision += 1
                 local.save(update_fields=['public_name', 'introduction', 'list_as_contributor', 'revision'])
-                messages.success(request, 'Contributor listing saved.')
+                messages.success(request, gettext('Contributor listing saved.'))
                 return redirect('community_dictionary:profile')
         elif action == 'preferences':
             preferences = PreferencesForm(request.POST, instance=common)
@@ -92,15 +93,15 @@ def profile(request):
                 # password field (ModelForm otherwise keeps its model default).
                 updated.openai_api_key = preferences.cleaned_data['openai_api_key']
                 updated.save(update_fields=['timezone', 'use_personal_openai_key', 'openai_api_key', 'updated_at'])
-                messages.success(request, 'Account preferences saved.')
+                messages.success(request, gettext('Account preferences saved.'))
                 return redirect('community_dictionary:profile')
         else:
-            return fail(request, 'Choose which profile settings to save.')
+            return fail(request, gettext('Choose which profile settings to save.'))
     requests_page = Paginator(MembershipRequest.objects.filter(user=request.user).select_related('dictionary'), 20).get_page(request.GET.get('page'))
     rows = []
     for item in requests_page:
         listed = discovery.dictionaries().filter(pk=item.dictionary_id).exists()
-        rows.append({'item': item, 'listed': listed, 'name': item.dictionary.name if listed else 'Dictionary no longer listed'})
+        rows.append({'item': item, 'listed': listed, 'name': item.dictionary.name if listed else gettext('Dictionary no longer listed')})
     return render(request, 'community_dictionary/profile.html', {
         'contributor_form': contributor, 'preferences_form': preferences,
         'is_listed': local.list_as_contributor and bool(local.public_name),

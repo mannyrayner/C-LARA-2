@@ -10,6 +10,7 @@ import unicodedata
 
 from django.db.models import Prefetch
 from django.urls import reverse
+from django.utils.translation import gettext_noop as N_
 
 from core.picture_games import _build_crossword_item, _generate_word_scramble_items, _exercise_near_duplicate
 from .lexicon import outdated_tts, valid_links
@@ -17,9 +18,9 @@ from .models import Contribution, Entry
 
 
 MODES = (
-    ('image-text', 'Picture → words'), ('text-image', 'Words → picture'),
-    ('audio-text', 'Recording → words'), ('text-audio', 'Words → recording'),
-    ('audio-image', 'Recording → picture'), ('image-audio', 'Picture → recording'),
+    ('image-text', N_('Picture → words')), ('text-image', N_('Words → picture')),
+    ('audio-text', N_('Recording → words')), ('text-audio', N_('Words → recording')),
+    ('audio-image', N_('Recording → picture')), ('image-audio', N_('Picture → recording')),
 )
 GRID_SIZE = 12
 

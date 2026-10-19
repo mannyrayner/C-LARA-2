@@ -1,1 +1,2 @@
-<p><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">{% if not entry.word %}Add words{% elif not entry.meaning %}Add translation{% else %}Edit words{% endif %}</a></p>
+{% load i18n %}
+<p><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">{% if not entry.word %}{% translate "Add words" %}{% elif not entry.meaning %}{% translate "Add translation" %}{% else %}{% translate "Edit words" %}{% endif %}</a></p>

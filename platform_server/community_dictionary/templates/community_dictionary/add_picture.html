@@ -1,25 +1,25 @@
-{% extends 'community_dictionary/base.html' %}
-{% block title %}Add a photo · {{ entry.title }}{% endblock %}
-{% block content %}
-<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>Add a photo</h1>
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% blocktranslate with value1=entry.title %}Add a photo · {{ value1 }}{% endblocktranslate %}{% endblock %}
+{% block content %}{% translate "Save picture" as save_picture_label %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>{% translate "Add a photo" %}</h1>
 <div class="audio-entry-context">
-{% if image %}<img src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="Current picture for {{ entry.title }}">{% endif %}
+{% if image %}<img src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% blocktranslate with value1=entry.title %}Current picture for {{ value1 }}{% endblocktranslate %}">{% endif %}
 <div><h2 dir="{{ dictionary.text_direction }}">{{ entry.title }}</h2>{% if entry.meaning %}<p dir="auto">{{ entry.meaning }}</p>{% endif %}</div>
 </div>
-<p class="lead">Take a photo or choose a picture, then save it to this entry.</p>
+<p class="lead">{% translate "Take a photo or choose a picture, then save it to this entry." %}</p>
 <form method="post" enctype="multipart/form-data" class="stack" data-draft-form>
 {% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
-{% include 'community_dictionary/save_controls.html' with position='top' save_label='Save picture' %}
+{% include 'community_dictionary/save_controls.html' with position='top' save_label=save_picture_label %}
 <section class="panel">
-<label class="button photo-button">Take photo<input type="file" name="photo" accept="image/*" capture="environment" data-camera></label>
-<label class="file-alternative">Or choose a picture <input type="file" name="photo" accept="image/*"></label>
-<img data-photo-preview class="photo-preview" alt="Your picture preview" hidden>
-<button type="button" class="quiet" data-clear-photo hidden>Remove picture</button>
+<label class="button photo-button">{% translate "Take photo" %}<input type="file" name="photo" accept="image/*" capture="environment" data-camera></label>
+<label class="file-alternative">{% translate "Or choose a picture" %} <input type="file" name="photo" accept="image/*"></label>
+<img data-photo-preview class="photo-preview" alt="{% translate "Your picture preview" %}" hidden>
+<button type="button" class="quiet" data-clear-photo hidden>{% translate "Remove picture" %}</button>
 </section>
 <p>{{ form.label.label_tag }}{{ form.label }}</p>
-{% if editor %}<label class="check"><input type="checkbox" name="publish_now" checked>Accept my picture immediately</label>{% else %}<p class="help">Your picture will be sent for review by an editor.</p>{% endif %}
+{% if editor %}<label class="check"><input type="checkbox" name="publish_now" checked>{% translate "Accept my picture immediately" %}</label>{% else %}<p class="help">{% translate "Your picture will be sent for review by an editor." %}</p>{% endif %}
 {% include 'community_dictionary/draft_status.html' %}
-{% include 'community_dictionary/save_controls.html' with position='bottom' save_label='Save picture' %}
-<a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Back to entry</a>
+{% include 'community_dictionary/save_controls.html' with position='bottom' save_label=save_picture_label %}
+<a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Back to entry" %}</a>
 </form>
 {% endblock %}

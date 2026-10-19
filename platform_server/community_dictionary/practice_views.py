@@ -2,6 +2,7 @@
 import random
 import secrets
 
+from django.utils.translation import gettext
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -25,7 +26,7 @@ def home(request, pk):
 
 
 def page_data(request, dictionary, rows, categories, *, public=False):
-    modes = [{'value': mode, 'label': label, 'count': len(practice.eligible(rows, mode))}
+    modes = [{'value': mode, 'label': gettext(label), 'count': len(practice.eligible(rows, mode))}
              for mode, label in practice.MODES]
     return dict(categories=categories, selected_category=request.GET.get('category', ''),
         practice_modes=modes, has_cards=any(mode['count'] for mode in modes),
@@ -48,14 +49,14 @@ def game_response(request, rows, revision):
     if game == 'flashcards':
         mode = request.GET.get('mode', 'image-text')
         if mode not in dict(practice.MODES):
-            return JsonResponse({'error': 'Choose a flashcard direction.'}, status=400)
+            return JsonResponse({'error': gettext('Choose a flashcard direction.')}, status=400)
         style = request.GET.get('style', 'recall')
         if style not in {'choice', 'recall'}:
-            return JsonResponse({'error': 'Choose multiple choice or reveal the answer.'}, status=400)
+            return JsonResponse({'error': gettext('Choose multiple choice or reveal the answer.')}, status=400)
         if style == 'choice':
             cards = practice.choice_cards(rows, mode)
             if not cards:
-                return JsonResponse({'error': 'There are not enough distinct answers for multiple choice in this category. Choose another category or use Reveal the answer.'}, status=400)
+                return JsonResponse({'error': gettext('There are not enough distinct answers for multiple choice in this category. Choose another category or use Reveal the answer.')}, status=400)
         else:
             cards = practice.eligible(rows, mode)
             random.SystemRandom().shuffle(cards)
@@ -63,9 +64,9 @@ def game_response(request, rows, revision):
     elif game in {'crossword', 'scramble'}:
         content = practice.puzzle(rows, game, secrets.token_hex(8))
         if content is None:
-            return JsonResponse({'error': 'We need at least two different picture words that fit together. Try another category or add some shorter words.'}, status=400)
+            return JsonResponse({'error': gettext('We need at least two different picture words that fit together. Try another category or add some shorter words.')}, status=400)
     else:
-        return JsonResponse({'error': 'Choose a game.'}, status=400)
+        return JsonResponse({'error': gettext('Choose a game.')}, status=400)
     return JsonResponse({'game': game, 'revision': revision, **content})
 
 

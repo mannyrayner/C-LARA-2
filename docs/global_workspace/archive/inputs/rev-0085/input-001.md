@@ -1,0 +1,1 @@
+Thank you! I have been testing on the laptop, and almost everything is already displaying correctly in French mode. I have attached screenshots showing the most obvious things left to adjust. Can you fix these, and I'll carry on looking?

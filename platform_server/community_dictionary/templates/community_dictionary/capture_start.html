@@ -1,28 +1,28 @@
-{% extends 'community_dictionary/base.html' %}{% load static %}{% block title %}Describe a picture{% endblock %}
-{% block content %}<h1>Describe a picture</h1><p class="lead">Type, speak or ask AI to suggest a description of your picture. Confirm the meaning, then save a sentence and its words together.</p>
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% load static %}{% block title %}{% translate "Describe a picture" %}{% endblock %}
+{% block content %}{% translate "AI-suggested description" as default_ai_description %}{% translate "Spoken description" as default_spoken_description %}<h1>{% translate "Describe a picture" %}</h1><p class="lead">{% translate "Type, speak or ask AI to suggest a description of your picture. Confirm the meaning, then save a sentence and its words together." %}</p>
 {% if setup_error %}<p class="notice error">{{ setup_error }}</p>{% endif %}
-<p class="help">{{ counts.remaining }} of {{ counts.limit }} picture descriptions remaining for this dictionary in the last 24 hours.
-{% if owner %}<a href="{% url 'community_dictionary:settings' dictionary.pk %}#picture-description-allowance">Change allowance</a>{% else %}The owner can change the allowance in Settings.{% endif %}</p>
+<p class="help">{% blocktranslate with value1=counts.remaining value2=counts.limit %}{{ value1 }} of {{ value2 }} picture descriptions remaining for this dictionary in the last 24 hours.{% endblocktranslate %}
+{% if owner %}<a href="{% url 'community_dictionary:settings' dictionary.pk %}#picture-description-allowance">{% translate "Change allowance" %}</a>{% else %}{% translate "The owner can change the allowance in Settings." %}{% endif %}</p>
 <form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-capture-form data-choice-fixed="{{ choice_fixed|yesno:'yes,no' }}" data-dictionary="{{ dictionary.pk }}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.non_field_errors }}
-<section class="panel"><h2>1. Picture</h2>
-{% if image.status == 'pending' or previous.source_image.status == 'pending' %}<p class="help">This picture is awaiting review. Preparing a suggestion keeps it that way; confirming the description will also accept the picture.</p>{% endif %}
-{% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="Picture to describe">
-{% elif previous %}<img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk previous.pk 'picture' %}" alt="Your picture">
-{% else %}<p><label for="picture-method">Picture source</label><select id="picture-method" data-picture-method><option value="camera">Camera</option><option value="upload">Choose a picture</option></select></p>
-<label class="button photo-button" data-camera-choice>Take photo<input type="file" name="photo" accept="image/*" capture="environment"></label>
-<label class="file-alternative" data-upload-choice>Choose a picture<input type="file" name="photo" accept="image/*"></label>
-<img data-photo-preview class="capture-picture" alt="Your picture preview" hidden><button type="button" class="quiet" data-clear-photo hidden>Remove picture</button>{{ form.photo.errors }}{% endif %}</section>
-<section class="panel"><h2>2. Describe this picture</h2>
+<section class="panel"><h2>{% translate "1. Picture" %}</h2>
+{% if image.status == 'pending' or previous.source_image.status == 'pending' %}<p class="help">{% translate "This picture is awaiting review. Preparing a suggestion keeps it that way; confirming the description will also accept the picture." %}</p>{% endif %}
+{% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% translate "Picture to describe" %}">
+{% elif previous %}<img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk previous.pk 'picture' %}" alt="{% translate "Your picture" %}">
+{% else %}<p><label for="picture-method">{% translate "Picture source" %}</label><select id="picture-method" data-picture-method><option value="camera">{% translate "Camera" %}</option><option value="upload">{% translate "Choose a picture" %}</option></select></p>
+<label class="button photo-button" data-camera-choice>{% translate "Take photo" %}<input type="file" name="photo" accept="image/*" capture="environment"></label>
+<label class="file-alternative" data-upload-choice>{% translate "Choose a picture" %}<input type="file" name="photo" accept="image/*"></label>
+<img data-photo-preview class="capture-picture" alt="{% translate "Your picture preview" %}" hidden><button type="button" class="quiet" data-clear-photo hidden>{% translate "Remove picture" %}</button>{{ form.photo.errors }}{% endif %}</section>
+<section class="panel"><h2>{% translate "2. Describe this picture" %}</h2>
 {% include 'community_dictionary/capture_modes.html' with mode_field=form.input_mode %}
-<p><label for="{{ form.input_language.id_for_label }}" data-description-language-label>Language I am using</label>{{ form.input_language }}{{ form.input_language.errors }}</p>
+<p><label for="{{ form.input_language.id_for_label }}" data-description-language-label>{% translate "Language I am using" %}</label>{{ form.input_language }}{{ form.input_language.errors }}</p>
 <div data-description-text>{{ form.description.errors }}{{ form.description }}</div>
 <div data-description-voice>{% include 'community_dictionary/recording.html' %}{{ form.audio.errors }}</div>
-<div data-description-ai><p>AI will suggest a short description of what it can see. You can change the description and its words before saving.</p></div>
-<details><summary>AI voice</summary><p>{{ form.voice.label_tag }}{{ form.voice }}</p></details><p class="help">Rough estimate: US${{ estimate|floatformat:2 }} for a short description and up to six words with audio. Actual usage varies. {% if personal %}Your own OpenAI key is used.{% else %}Costs are charged to your C-LARA account when credits are enabled.{% endif %} A failed or interrupted call may still incur a provider charge.</p>
-<p class="help">OpenAI receives this picture, your description when supplied, and up to 200 existing words and meanings to help reuse vocabulary. Spoken input is transcribed. Confirmation speech and dictionary audio are synthetic.</p>
+<div data-description-ai><p>{% translate "AI will suggest a short description of what it can see. You can change the description and its words before saving." %}</p></div>
+<details><summary>{% translate "AI voice" %}</summary><p>{{ form.voice.label_tag }}{{ form.voice }}</p></details><p class="help">{% blocktranslate with value1=estimate|floatformat:2 %}Rough estimate: US${{ value1 }} for a short description and up to six words with audio. Actual usage varies.{% endblocktranslate %} {% if personal %}{% translate "Your own OpenAI key is used." %}{% else %}{% translate "Costs are charged to your C-LARA account when credits are enabled." %}{% endif %} {% translate "A failed or interrupted call may still incur a provider charge." %}</p>
+<p class="help">{% translate "OpenAI receives this picture, your description when supplied, and up to 200 existing words and meanings to help reuse vocabulary. Spoken input is transcribed. Confirmation speech and dictionary audio are synthetic." %}</p>
 <p>{{ form.ai_consent }}{{ form.ai_consent.label_tag }}{{ form.ai_consent.errors }}</p>
-<button data-save-submit {% if setup_error %}disabled{% endif %}>Prepare suggestion</button>
+<button data-save-submit {% if setup_error %}disabled{% endif %}>{% translate "Prepare suggestion" %}</button>
 {% include 'community_dictionary/draft_status.html' %}</section></form>
-{% if recent %}<details class="panel"><summary>Recent descriptions — continue or discard</summary><ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:capture-detail' dictionary.pk item.pk %}">{% if item.input_mode == 'ai' %}{{ item.result.sentence|default:'AI-suggested description'|truncatechars:65 }}{% else %}{{ item.description|default:'Spoken description'|truncatechars:65 }}{% endif %}</a> · {{ item.status }}</li>{% endfor %}</ul></details>{% endif %}
-<script src="{% static 'community_dictionary/capture.js' %}?v=4" defer></script>{% endblock %}
+{% if recent %}<details class="panel"><summary>{% translate "Recent descriptions — continue or discard" %}</summary><ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:capture-detail' dictionary.pk item.pk %}">{% if item.input_mode == 'ai' %}{{ item.result.sentence|default:default_ai_description|truncatechars:65 }}{% else %}{{ item.description|default:default_spoken_description|truncatechars:65 }}{% endif %}</a> · {{ item.status }}</li>{% endfor %}</ul></details>{% endif %}
+<script src="{% static 'community_dictionary/capture.js' %}?v=5" defer></script>{% endblock %}

@@ -3,6 +3,7 @@ import re
 import uuid
 import zipfile
 
+from django.utils.translation import gettext
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -57,7 +58,9 @@ def summary(entry, dictionary):
 
 @login_required
 def home(request):
-    form = DictionaryForm(request.POST or None)
+    from .localisation import interface_language, learning_options
+    explanation = 'French' if interface_language(request) == 'fr' else 'English'
+    form = DictionaryForm(request.POST or None, initial={'explanation_language': explanation})
     if request.method == 'POST' and form.is_valid():
         dictionary = form.save(commit=False)
         dictionary.owner = request.user
@@ -89,7 +92,7 @@ def home(request):
         'hidden_projects': [row for row in projects if row['dictionary'].hidden],
         'invitations': [invite for invite in invitations if not invite.dictionary.hidden],
         'hidden_invitations': [invite for invite in invitations if invite.dictionary.hidden],
-        'form': form})
+        'form': form, **learning_options(request, member=True)})
 
 
 @login_required
@@ -164,7 +167,7 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, pi
         if not Partner.objects.filter(partnership=response_to.partnership, user=request.user, accepted=True).exists():
             raise Http404
         if request.method == 'GET' and response_to.progress in {'complete', 'withdrawn'}:
-            return fail(request, 'This request is closed. You can still contribute directly to the entry.', 409)
+            return fail(request, gettext('This request is closed. You can still contribute directly to the entry.'), 409)
         entry = get_entry(dictionary, response_to.entry_id)
     editing = bool(entry and request.GET.get('wording') == '1' and not response_to and not audio_only and not picture_only)
     initial = {'publish_now': is_editor(request.user, dictionary), 'base_version': entry.text_version if entry else 0}
@@ -183,12 +186,12 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, pi
         if not form.is_valid():
             return fail(request, form.errors.as_text())
         if response_to and not form.cleaned_data.get('prepared_' + ('photo' if response_to.kind == 'image' else 'audio')):
-            return fail(request, 'Please add the requested picture or recording.')
+            return fail(request, gettext('Please add the requested picture or recording.'))
         def create(paths):
             if response_to:
                 response_to.refresh_from_db()
                 if response_to.progress in {'complete', 'withdrawn'}:
-                    raise Conflict('This request has closed. Reload the entry before contributing.')
+                    raise Conflict(gettext('This request has closed. Reload the entry before contributing.'))
             target = entry or Entry.objects.create(dictionary=dictionary, created_by=request.user)
             publish = bool(is_editor(request.user, dictionary) and form.cleaned_data.get('publish_now'))
             add_contributions(target, request.user, form.cleaned_data, paths, publish=publish, response_to=response_to)
@@ -280,13 +283,13 @@ def review(request, pk, contribution_id):
     contribution = get_object_or_404(Contribution.objects.select_related('entry'), pk=contribution_id, entry__dictionary=dictionary)
     action = request.POST.get('action')
     if action == 'withdraw':
-        return fail(request, 'Use Withdraw my content on the dictionary page.', 409)
+        return fail(request, gettext('Use Withdraw my content on the dictionary page.'), 409)
     if action == 'remove':
         from .collections import withdraw
         try:
             require_editor(request.user, dictionary)
             if (contribution.controlled_by_id or contribution.author_id) == request.user.pk:
-                raise Conflict('Use Withdraw my content on the dictionary page for your own material.')
+                raise Conflict(gettext('Use Withdraw my content on the dictionary page for your own material.'))
             withdraw(request.user, [contribution.pk], moderator_dictionary=dictionary)
         except Conflict as exc:
             return fail(request, exc, 409)
@@ -303,17 +306,17 @@ def review(request, pk, contribution_id):
                 accept(contribution, request.user)
             elif action == 'reject':
                 if contribution.status != 'pending':
-                    raise Conflict('This contribution is no longer awaiting review.')
+                    raise Conflict(gettext('This contribution is no longer awaiting review.'))
                 contribution.status = 'rejected'
                 contribution.save(update_fields=['status'])
                 event(dictionary, request.user, action, entry, f'Contribution {contribution.pk}: {request.POST.get("reason", "")}'[:400])
             elif action == 'restore':
                 from .text import FIELDS
                 if contribution.kind != 'text' or contribution.status != 'accepted' or contribution.text_field not in FIELDS:
-                    raise Conflict('Only a shared, accepted text component can be restored.')
+                    raise Conflict(gettext('Only a shared, accepted text component can be restored.'))
                 pointer, counter = FIELDS[contribution.text_field]
                 if str(getattr(entry, counter)) != request.POST.get('version'):
-                    raise Conflict('This component changed. Reload before restoring a version.')
+                    raise Conflict(gettext('This component changed. Reload before restoring a version.'))
                 restored = Contribution.objects.create(entry=entry, author=contribution.author,
                     controlled_by=contribution.controlled_by, kind='text', text_field=contribution.text_field,
                     shared_from=contribution, previous_revision=getattr(entry, pointer),
@@ -323,12 +326,12 @@ def review(request, pk, contribution_id):
                 event(dictionary, request.user, 'restore_text', entry, f'Restored contribution {contribution.pk} as {restored.pk}')
             elif action == 'select':
                 if contribution.kind != 'image' or contribution.status != 'accepted':
-                    raise Conflict('Choose an accepted picture.')
+                    raise Conflict(gettext('Choose an accepted picture.'))
                 entry.selected_image = contribution
                 entry.save(update_fields=['selected_image'])
                 event(dictionary, request.user, 'select_image', entry, f'Contribution {contribution.pk}')
             else:
-                return fail(request, 'Unknown review action.')
+                return fail(request, gettext('Unknown review action.'))
     except Conflict as exc:
         return fail(request, exc, 409)
     return redirect(entry_url(contribution.entry))
@@ -408,7 +411,7 @@ def request_action(request, pk, request_id):
         require_editor(request.user, dictionary)
     action = request.POST.get('action')
     if action not in {'withdraw', 'reopen'}:
-        return fail(request, 'Unknown request action.')
+        return fail(request, gettext('Unknown request action.'))
     req.withdrawn = action == 'withdraw'
     if action == 'reopen':
         req.completed_with = None
@@ -431,7 +434,7 @@ def dictionary_visibility(request, pk):
     require_owner(request.user, dictionary)
     visibility = request.POST.get('visibility')
     if visibility not in {'visible', 'hidden'}:
-        return fail(request, 'Choose Visible or Hidden.', 400)
+        return fail(request, gettext('Choose Visible or Hidden.'), 400)
     hidden = visibility == 'hidden'
     # Hiding keeps member access but closes public access. Unhiding requires a
     # fresh public-sharing decision, rather than silently republishing content.
@@ -449,8 +452,8 @@ def dictionary_visibility(request, pk):
         dictionary.discovery_revision += 1
         dictionary.save(update_fields=['discoverable', 'discovery_revision'])
         event(dictionary, request.user, 'dictionary_discovery', detail='Disabled by hiding dictionary')
-    messages.success(request, 'Dictionary hidden from the main list.' if hidden else
-                     'Dictionary visible in the main list again.')
+    messages.success(request, gettext('Dictionary hidden from the main list.') if hidden else
+                     gettext('Dictionary visible in the main list again.'))
     return redirect('community_dictionary:settings', pk=pk)
 
 
@@ -479,7 +482,7 @@ def dictionary_settings(request, pk):
                 discard_studies(ImageStudy.objects.filter(dictionary=dictionary, status__in=['processing', 'ready']))
             form.save()
             event(dictionary, request.user, 'dictionary_settings')
-            messages.success(request, 'Dictionary settings saved.')
+            messages.success(request, gettext('Dictionary settings saved.'))
             return redirect('community_dictionary:settings', pk=pk)
         # Bound form values survive, but style controls reflect saved policy.
         dictionary.refresh_from_db()
@@ -518,7 +521,7 @@ def people(request, pk):
             user = get_user_model().objects.filter(username=request.POST.get('username', '').strip(), is_active=True).first()
             role = request.POST.get('role', 'member')
             if not user or user.pk == dictionary.owner_id or role not in {'member', 'editor'}:
-                return fail(request, 'Choose an existing account other than the owner, and a valid role.')
+                return fail(request, gettext('Choose an existing account other than the owner, and a valid role.'))
             from . import membership as membership_service
             with transaction.atomic():
                 locked = Dictionary.objects.select_for_update().get(pk=dictionary.pk)
@@ -529,24 +532,24 @@ def people(request, pk):
                             membership_service.propose(request.user, locked, 'role', existing, role)
                         except Conflict as exc:
                             return fail(request, exc, 409)
-                    messages.success(request, 'Membership retained. Use the status controls to reactivate an inactive member.')
+                    messages.success(request, gettext('Membership retained. Use the status controls to reactivate an inactive member.'))
                 else:
                     # A new coordinator must first join as an ordinary member.
                     if role != 'member' and locked.membership_policy == 'coordinators':
-                        return fail(request, 'Invite as a member first, then propose the role change.', 409)
+                        return fail(request, gettext('Invite as a member first, then propose the role change.'), 409)
                     Membership.objects.create(dictionary=dictionary, user=user, role=role)
                     locked.membership_revision += 1
                     locked.save(update_fields=['membership_revision'])
                     event(dictionary, request.user, 'invite', detail=user.username)
-                    messages.success(request, 'Invitation saved. No email is sent.')
+                    messages.success(request, gettext('Invitation saved. No email is sent.'))
         elif action == 'remove_member':
-            return fail(request, 'Use Make inactive. Membership and contribution rights are retained.', 409)
+            return fail(request, gettext('Use Make inactive. Membership and contribution rights are retained.'), 409)
         elif action == 'create_group':
             name = request.POST.get('name', '').strip()[:100]
             ids = set(request.POST.getlist('partners'))
             valid = list(member_users(dictionary).filter(pk__in=[int(i) for i in ids if i.isdigit()]).exclude(pk=request.user.pk))
             if not name or not valid or len(valid) != len(ids - {str(request.user.pk)}):
-                return fail(request, 'Name the partnership and choose at least one other dictionary member.')
+                return fail(request, gettext('Name the partnership and choose at least one other dictionary member.'))
             with transaction.atomic():
                 group = Partnership.objects.create(dictionary=dictionary, name=name, created_by=request.user)
                 Partner.objects.create(partnership=group, user=request.user, accepted=True)
@@ -564,11 +567,11 @@ def people(request, pk):
             group = get_object_or_404(Partnership, pk=request.POST.get('group_id'), dictionary=dictionary, partners__user=request.user, partners__accepted=True)
             user = member_users(dictionary).filter(username=request.POST.get('username', '').strip()).first()
             if not user:
-                return fail(request, 'Choose someone who has already joined this dictionary.')
+                return fail(request, gettext('Choose someone who has already joined this dictionary.'))
             Partner.objects.get_or_create(partnership=group, user=user)
             event(dictionary, request.user, 'invite_partner', detail=f'{group.pk}: {user.username}')
         else:
-            return fail(request, 'Unknown membership action.')
+            return fail(request, gettext('Unknown membership action.'))
         return redirect('community_dictionary:people', pk=pk)
     my_partners = Partner.objects.filter(user=request.user, partnership__dictionary=dictionary).select_related('partnership')
     group_rows = [{'group': p.partnership, 'membership': p, 'members': p.partnership.partners.select_related('user')} for p in my_partners]

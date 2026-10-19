@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 83,
-  "as_of": "2026-10-18",
-  "assessed_commit_sha": "15b87f3e57bc40ced11acb3da2962d3208d18e4d",
+  "workspace_revision": 86,
+  "as_of": "2026-10-19",
+  "assessed_commit_sha": "cae762876b8060592e4d8327d4d107c981cdc2b6",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "The optional carrier-audio batch is accepted on laptop/AWS for French and Swedish. Paired whole-eligible-collection ratings improved from 21/58 to 54/58 acceptable in French and 1/8 to 5/8 in Swedish, with no rating regressions. The authorized extension adds German, Italian and Icelandic expression batches and explicit Japanese entry selection with exact-entry baselines. New-language listening remains pending; ordinary generation, single-word defaults and existing successful replacements are preserved.",
+  "current_focus_summary": "Manny reports the previous French-interface screenshot fixes working on the laptop and identifies one remaining Link more words panel. A final incremental label/provenance fix is prepared and verified; 680 application tests pass, along with 68 existing focused tests and English/French link/unlink and provenance render checks. The accepted combined localisation changes are ready for AWS preparation after this small fix is checked; AWS deployment and phone acceptance are not yet established. Manny plans an English/French version of the existing French/English dictionary using the normal language-version workflow. Some advanced interface coverage remains incomplete. The carrier-audio work remains active: The optional carrier-audio batch is accepted on laptop/AWS for French and Swedish. Paired whole-eligible-collection ratings improved from 21/58 to 54/58 acceptable in French and 1/8 to 5/8 in Swedish, with no rating regressions. The authorized extension adds German, Italian and Icelandic expression batches and explicit Japanese entry selection with exact-entry baselines. New-language listening remains pending; ordinary generation, single-word defaults and existing successful replacements are preserved.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1362,6 +1362,48 @@
         "platform_server/community_dictionary/tests/test_mwe_audio.py",
         "docs/howto/community-mwe-audio.md"
       ]
+    },
+    {
+      "id": "OBS-0123",
+      "summary": "Manny requests resumption of English/French localisation after a previous unavailable execution environment, and states that no earlier implementation changes were made. The current environment runs the app tests. The prepared first cut adds an app-scoped English/Français selector with a persistent browser cookie, matching-explanation learning-language defaults and remembered explicit choices, preserving existing dictionary lists and content/permission boundaries. The unchanged base passed 653 tests; the combined 668-test suite, including 15 new localisation regressions, passes after correcting language-name filter and evaluation count integration issues. A focused 98-test rerun and clean-base patch application with its 15 localisation tests also pass. All 94 templates compile, JavaScript syntax and translation formats validate, and no migration changes are detected. Browser layout interaction could not be verified because Chromium was unavailable and its download failed. Main navigation, browsing and supported learning/contribution/evaluation flows have French catalog coverage, while some advanced AI/porting, group-management and private-content pages remain English. No installation, live French-user acceptance or content-language conversion is claimed.",
+      "observed_at": "2026-10-19",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/community_dictionary/localisation.py",
+        "platform_server/community_dictionary/middleware.py",
+        "platform_server/community_dictionary/tests/test_localisation.py",
+        "platform_server/community_dictionary/locale/fr/LC_MESSAGES/django.po",
+        "platform_server/community_dictionary/templates/community_dictionary/learning_languages.html",
+        "docs/howto/community-localisation-install.md"
+      ]
+    },
+    {
+      "id": "OBS-0124",
+      "summary": "Manny reports laptop testing of the initial localisation patch, with almost everything already displaying correctly in French, and supplies screenshots of remaining English in the next-step card, Needs attention and People/partnerships. The incremental follow-up translates those templates, dynamic workflow labels/counts/buttons, roles/statuses, cost/approval details, language-check responses, participation controls and known language display headings. All 680 application tests pass, including 12 new rendered-page/workflow regressions. English next-step HTML is unchanged across 144 render combinations. No dictionary content, paid processing, authorization or schema change is made. The new screenshot fixes still await Manny's continued browser review; this does not establish AWS or phone acceptance.",
+      "observed_at": "2026-10-19",
+      "confidence": "high",
+      "evidence": [
+        "docs/howto/community-localisation-screenshots-install.md",
+        "platform_server/community_dictionary/tests/test_localisation_followup.py",
+        "platform_server/community_dictionary/templates/community_dictionary/next_step.html",
+        "platform_server/community_dictionary/templates/community_dictionary/attention.html",
+        "platform_server/community_dictionary/templates/community_dictionary/people.html",
+        "platform_server/community_dictionary/workflow.py"
+      ]
+    },
+    {
+      "id": "OBS-0125",
+      "summary": "Manny reports that the earlier screenshot fixes all appear to work well on the laptop, supplies the remaining Link more words screenshot and says fixing it would leave him ready for AWS installation. He also plans to create an English/French version of the existing French/English Finley dictionary and requests a colloquial French title. The new incremental patch localises picture-word linking controls, their relevant validation/confirmation messages and the displayed language in synthetic-voice provenance. Stored words, language metadata, audio and link permissions remain unchanged. The prior combined suite passed 680 tests; final verification is 680 application tests pass, along with 68 existing focused tests and English/French link/unlink and provenance render checks. No new persistent tests are added for the small label change; existing tests and a temporary rendered-page smoke check provide verification. This is positive laptop acceptance of the preceding follow-up, not evidence of AWS installation, phone acceptance or completed English/French content conversion.",
+      "observed_at": "2026-10-19",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/community_dictionary/templates/community_dictionary/picture_word_editor.html",
+        "platform_server/community_dictionary/templates/community_dictionary/entry_pronunciation.html",
+        "platform_server/community_dictionary/templates/community_dictionary/entry_versions.html",
+        "platform_server/community_dictionary/lexicon_views.py",
+        "platform_server/community_dictionary/tests/test_localisation_followup.py",
+        "docs/howto/community-localisation-link-words-install.md"
+      ]
     }
   ],
   "assessments": [
@@ -1538,7 +1580,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Paired deployed French/Swedish results now support the carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. Support the authorized reversible extension to German, Italian and Icelandic; Japanese requires explicit experimental entry choice because neither kanji count nor whitespace defines its MWEs. Keep new-language listening evidence separate from implementation tests. Preserve ordinary single-word generation, old recordings and paired baselines. Isolated-word quality, Swedish residual prosody and independent/classroom outcomes remain unresolved.",
+      "summary": "Paired deployed French/Swedish results now support the carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. Support the authorized reversible extension to German, Italian and Icelandic; Japanese requires explicit experimental entry choice because neither kanji count nor whitespace defines its MWEs. Keep new-language listening evidence separate from implementation tests. Preserve ordinary single-word generation, old recordings and paired baselines. Isolated-word quality, Swedish residual prosody and independent/classroom outcomes remain unresolved. The English/French interface first cut now removes the fixed-English navigation assumption and prepares a concrete route for francophones learning English through suitably configured dictionaries. This broadens potential access, but dictionary availability, untranslated secondary pages and deployment/usability acceptance remain distinct from automated regression evidence. Keep language recommendation separate from content conversion and permission changes. Manny's positive laptop report is the first human interface evidence for the francophone path. Manny subsequently reports the screenshot corrections working on the laptop; that removes their prior human-review blocker. A remaining picture-word-linking label gap is a bounded final follow-up before the requested AWS rollout. Continued coverage, deployment and phone acceptance remain separate from laptop success; the planned English/French content version requires its existing reviewed workflow.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1646,11 +1688,14 @@
         "OBS-0119",
         "OBS-0120",
         "OBS-0121",
-        "OBS-0122"
+        "OBS-0122",
+        "OBS-0123",
+        "OBS-0124",
+        "OBS-0125"
       ],
-      "urgency": "next_language_listening_trial",
+      "urgency": "finish_link_words_fix_then_aws_trial_and_next_language_listening",
       "risk": "medium",
-      "progress": "french_swedish_paired_gain_additional_languages_prepared",
+      "progress": "previous_screenshot_followup_laptop_accepted_link_words_fix_prepared_aws_pending",
       "confidence": "medium"
     },
     {
@@ -1769,6 +1814,13 @@
       "assessment_ids": [
         "ASM-0012"
       ]
+    },
+    {
+      "id": "UNC-0010",
+      "summary": "The English/French interface remains a first cut, with some advanced AI/porting, group-management and private-content pages still in English. Stored user text and dictionary content are not automatically translated. Suitable English dictionaries with French explanations must exist and be accessible for the French-interface default to offer them. Manny now reports both the initial first cut and its previous screenshot follow-up working on the laptop. That evidence improves readiness, but the newly reported linking-label follow-up, AWS deployment, mobile usability and francophone-learner acceptance remain unverified. His planned English/French language version has not yet been created in this session.",
+      "assessment_ids": [
+        "ASM-0011"
+      ]
     }
   ],
   "requested_human_decisions": [
@@ -1882,6 +1934,13 @@
       "assessment_ids": [
         "ASM-0012"
       ]
+    },
+    {
+      "id": "ACT-0012",
+      "summary": "Complete and verify the small picture-word-linking localisation patch, then let Manny install the accepted combined changes on AWS using the existing service account/environment helper and collectstatic for the original localisation static files. Recheck the English/Français choice and persistence, matching learning defaults, dictionary selection and picture-word panel on AWS and a phone. Support the planned English/French dictionary version through the existing owner-approved reviewed language-version workflow; preserve source content, provenance, permissions and the unrelated C-LARA interface.",
+      "assessment_ids": [
+        "ASM-0011"
+      ]
     }
   ],
   "predictions": [
@@ -1971,20 +2030,19 @@
   "approval": {
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
-    "authorized_at": "2026-10-18",
-    "authorization_basis": "Manny supplies French/Swedish paired outcomes and explicitly requests the additional-language carrier experiment; AGENTS.md requires reflection of material evidence.",
-    "comments": "Prepared incremental patch and retained derived paired evidence. No remote write, deployment, paid AI call or external message. Human intentions and prior archives unchanged."
+    "authorized_at": "2026-10-19",
+    "authorization_basis": "Manny supplies positive laptop acceptance of the previous screenshot follow-up, reports one remaining localisation gap and plans AWS installation and an English/French content version; AGENTS.md requires reflection of changed acceptance evidence and next steps.",
+    "comments": "Verified final incremental label/provenance patch with the 680-test application suite, existing 68-test focused coverage, real-page render checks, template/catalog validation and clean-base patch application. No AWS deployment, paid request, content conversion or dictionary rename is claimed. Human intentions and immutable archived states remain unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded deployed paired MWE gains and prepared the authorized four-language experimental extension with explicit Japanese selection.",
+    "summary": "Recorded laptop acceptance of the previous screenshot fixes, a remaining picture-word-linking localisation follow-up and the next combined AWS deployment/content-version trial.",
     "added_item_ids": [
-      "OBS-0121",
-      "OBS-0122"
+      "OBS-0125"
     ],
     "revised_item_ids": [
       "ASM-0011",
-      "UNC-0008",
-      "ACT-0010"
+      "UNC-0010",
+      "ACT-0012"
     ],
     "retained_item_ids": [
       "OBS-0001",
@@ -2106,6 +2164,11 @@
       "OBS-0117",
       "OBS-0118",
       "OBS-0119",
+      "OBS-0120",
+      "OBS-0121",
+      "OBS-0122",
+      "OBS-0123",
+      "OBS-0124",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -2124,6 +2187,7 @@
       "UNC-0005",
       "UNC-0006",
       "UNC-0007",
+      "UNC-0008",
       "UNC-0009",
       "REQ-0005",
       "REQ-0007",
@@ -2137,14 +2201,14 @@
       "ACT-0007",
       "ACT-0008",
       "ACT-0009",
+      "ACT-0010",
       "ACT-0011",
       "PRED-0001",
       "PRED-0002",
       "PRED-0003",
       "PRED-0004",
       "PRED-0005",
-      "PRED-0006",
-      "OBS-0120"
+      "PRED-0006"
     ],
     "retired_item_ids": []
   }

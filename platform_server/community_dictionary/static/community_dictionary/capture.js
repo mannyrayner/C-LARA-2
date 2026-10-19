@@ -1,6 +1,7 @@
 /* Store only UI preferences here; app.js owns recoverable picture/audio drafts. */
 (() => {
   'use strict';
+  const gettext = window.gettext || (message => message);
   document.querySelectorAll('[data-capture-form], [data-capture-choice]').forEach(form => {
     const method = form.querySelector('[data-picture-method]');
     const key = `community-capture:${document.body.dataset.user}:${form.dataset.dictionary}`;
@@ -27,7 +28,7 @@
         if (panel) panel.hidden = mode.value !== value;
       }
       const label = form.querySelector('[data-description-language-label]');
-      if (label) label.textContent = mode.value === 'ai' ? 'Language for feedback' : 'Language I am using';
+      if (label) label.textContent = mode.value === 'ai' ? gettext("Language for feedback") : gettext("Language I am using");
     }
     form.querySelectorAll('[name="input_mode"]').forEach(input => input.addEventListener('change', () => {
       try { localStorage.setItem(modeKey, mode.value); } catch (_) {}
@@ -67,7 +68,7 @@
       const total = vocabulary.elements['words-TOTAL_FORMS'];
       const count = Number(total.value);
       if (count >= 12) {
-        vocabulary.querySelector('[data-vocabulary-status]').textContent = 'Keep up to 12 words or expressions for this picture.'; return;
+        vocabulary.querySelector('[data-vocabulary-status]').textContent = gettext("Keep up to 12 words or expressions for this picture."); return;
       }
       rows.insertAdjacentHTML('beforeend', vocabulary.querySelector('[data-vocabulary-template]').innerHTML.replaceAll('__prefix__', String(count)));
       total.value = String(count + 1); vocabularyDirty = true;
@@ -87,11 +88,11 @@
     }
     function poll(url) {
       if (Date.now() - began >= 180000) {
-        stopped('Audio is still pending. You can continue to another picture, refresh its status later, or use Continue creating audio.');
+        stopped(gettext("Audio is still pending. You can continue to another picture, refresh its status later, or use Continue creating audio."));
         return;
       }
       timer = setTimeout(() => refresh(url).catch(() => {
-        stopped('Could not refresh the audio status. Your saved picture is safe. Reload to check progress.');
+        stopped(gettext("Could not refresh the audio status. Your saved picture is safe. Reload to check progress."));
       }), 2000);
     }
     async function refresh(url) {
@@ -103,9 +104,9 @@
       // in place, retaining edits, scroll position, open translations and players
       // whose recording has not changed.
       const response = await fetch(url, {credentials:'same-origin'});
-      if (!response.ok) throw new Error('Could not refresh the audio status.');
+      if (!response.ok) throw new Error(gettext("Could not refresh the audio status."));
       const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-      if (!page.querySelector('[data-capture-stage]')) throw new Error('This preview is no longer available. Reload to view the current entry.');
+      if (!page.querySelector('[data-capture-stage]')) throw new Error(gettext("This preview is no longer available. Reload to view the current entry."));
       for (const selector of ['[data-capture-feedback]', '[data-capture-audio-status]']) {
         const old = document.querySelector(selector), fresh = page.querySelector(selector);
         if (old && fresh && old.innerHTML !== fresh.innerHTML) old.replaceWith(fresh);
@@ -122,7 +123,7 @@
         document.dispatchEvent(new Event('community-audio-updated'));
       }
       if (page.querySelector('[data-capture-process]')) {
-        process.querySelector('[data-process-status]').textContent = 'Audio is being prepared in the background. You can continue using this page or go to the next picture.';
+        process.querySelector('[data-process-status]').textContent = gettext("Audio is being prepared in the background. You can continue using this page or go to the next picture.");
         process.querySelector('button').disabled = false; busy = false;
         poll(url);
       } else {
@@ -138,21 +139,21 @@
       const button = process.querySelector('button');
       const status = process.querySelector('[data-process-status]');
       const data = new FormData(process); data.set('action', 'process');
-      button.disabled = true; status.textContent = 'Working… Your saved picture is safe. Audio continues in the background when the worker is running.';
+      button.disabled = true; status.textContent = gettext("Working… Your saved picture is safe. Audio continues in the background when the worker is running.");
       try {
         const response = await fetch(process.getAttribute('action'), {method:'POST', body:data, credentials:'same-origin', headers:{Accept:'application/json'}});
         const result = await response.json();
-        if (!response.ok || !result.saved) throw new Error(result.error || 'The request could not finish.');
+        if (!response.ok || !result.saved) throw new Error(result.error || gettext("The request could not finish."));
         await refresh(result.url);
       } catch (error) {
-        status.textContent = `${error.message || 'Connection interrupted.'} Reload to check the result; an in-flight request will not be repeated automatically.`;
+        status.textContent = `${error.message || gettext("Connection interrupted.")} ${gettext("Reload to check the result; an in-flight request will not be repeated automatically.")}`;
         button.disabled = false; busy = false;
       }
     }
     process.addEventListener('submit', run);
     if (process.dataset.auto === 'yes') void run();
     else {
-      process.querySelector('[data-process-status]').textContent = 'Audio is being prepared in the background. You can go to the next picture.';
+      process.querySelector('[data-process-status]').textContent = gettext("Audio is being prepared in the background. You can go to the next picture.");
       poll(location.href);
     }
   }

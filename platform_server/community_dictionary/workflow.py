@@ -8,6 +8,7 @@ from django.core import signing
 from django.db.models import Q
 from django.http import Http404
 from django.urls import reverse
+from django.utils.translation import gettext as _, ngettext
 
 from projects.billing import get_user_balance_usd
 from . import batch_descriptions as batch, port_vocabulary as vocabulary, porting, photo_ai, tts, port_ai
@@ -49,8 +50,8 @@ def _suggestion(user, dictionary, *, details=False):
         return None
     count = MembershipRequest.objects.filter(dictionary=dictionary, status='pending').count()
     if count:
-        return {'kind': 'requests', 'label': f'{count} membership request' + ('s' if count != 1 else ''),
-            'button': 'View requests', 'url': reverse('community_dictionary:membership-requests') + f'?dictionary={dictionary.pk}'}
+        return {'kind': 'requests', 'label': ngettext('%(count)s membership request', '%(count)s membership requests', count) % {'count': count},
+            'button': _('View requests'), 'url': reverse('community_dictionary:membership-requests') + f'?dictionary={dictionary.pk}'}
     ports = []
     for port in ports_for(user, dictionary):
         try:
@@ -75,32 +76,37 @@ def _suggestion(user, dictionary, *, details=False):
                 sentence_count += run.stage == 'descriptions' or item.source_entry.entry_type == 'sentence'
             if ready:
                 words = run.stage == 'vocabulary'
-                noun = 'sentence' if sentence_count == ready else 'entry'
-                plural = 'sentences' if noun == 'sentence' else 'entries'
-                label = (f'Word suggestions for {ready} sentence' + ('s' if ready != 1 else '') + ' ready to review') if words else (
-                    f'{ready} {noun if ready == 1 else plural} ready to review')
-                button = 'Review word suggestions' if words else ('Review sentences' if noun == 'sentence' else 'Review language results')
+                sentences = sentence_count == ready
+                if words:
+                    label = ngettext('Word suggestions for %(count)s sentence ready to review',
+                        'Word suggestions for %(count)s sentences ready to review', ready) % {'count': ready}
+                elif sentences:
+                    label = ngettext('%(count)s sentence ready to review', '%(count)s sentences ready to review', ready) % {'count': ready}
+                else:
+                    label = ngettext('%(count)s entry ready to review', '%(count)s entries ready to review', ready) % {'count': ready}
+                button = _('Review word suggestions') if words else (_('Review sentences') if sentences else _('Review language results'))
                 return {'kind': 'review', 'label': label, 'button': button, 'url': run_url(run)}
     for port in ports:
         run = port.runs.filter(status='running').first()
         if run:
             if run.items.filter(status='budget').exists() or run.speech.filter(status='budget').exists():
-                return {'kind':'processing','label':'More allowance needs your approval',
-                    'button':'Review allowance','url':run_url(run)}
-            return {'kind': 'processing', 'label': 'Processing…', 'button': 'View progress', 'url': run_url(run)}
+                return {'kind':'processing','label':_('More allowance needs your approval'),
+                    'button':_('Review allowance'),'url':run_url(run)}
+            return {'kind': 'processing', 'label': _('Processing…'), 'button': _('View progress'), 'url': run_url(run)}
     # Finish vocabulary for accepted sentences before describing more pictures.
     for port in ports:
         try:
             vocabulary.authority(port)
         except (Conflict, Http404):
             continue
-        entries, _ = vocabulary.candidates(port)
+        entries, _skipped = vocabulary.candidates(port)
         if entries:
             count = len(entries)
             result = {'kind': 'vocabulary', 'port_id': port.pk,
-                'label': 'Word pages ready to create',
-                'scope': f'Words and expressions from {count} accepted sentence' + ('s' if count != 1 else ''),
-                'button': 'Approve and create word suggestions', 'count': count}
+                'label': _('Word pages ready to create'),
+                'scope': ngettext('Words and expressions from %(count)s accepted sentence',
+                    'Words and expressions from %(count)s accepted sentences', count) % {'count': count},
+                'button': _('Approve and create word suggestions'), 'count': count}
             break
     else:
         port = batch_port(user, dictionary)
@@ -114,9 +120,9 @@ def _suggestion(user, dictionary, *, details=False):
             return related_suggestion(user, dictionary, details=details)
         count = len(pictures)
         result = {'kind': 'descriptions', 'port_id': port.pk,
-            'label': f'{count} picture' + ('s' if count != 1 else '') + ' ready for sentences',
-            'scope': 'Accepted pictures and pictures awaiting review, keeping existing words and translations as hints.',
-            'button': 'Approve and create sentences', 'count': count}
+            'label': ngettext('%(count)s picture ready for sentences', '%(count)s pictures ready for sentences', count) % {'count': count},
+            'scope': _('Accepted pictures and pictures awaiting review, keeping existing words and translations as hints.'),
+            'button': _('Approve and create sentences'), 'count': count}
     return complete_suggestion(user, dictionary, result, port, details=details)
 
 
@@ -132,7 +138,7 @@ def complete_suggestion(user, dictionary, result, port, *, details):
                 'stage': result['kind'], 'port': port.pk, 'id': str(uuid.uuid4()),
                 'fingerprint': planned['fingerprint']}, salt=SALT, compress=True)
         except (Conflict, Http404) as exc:
-            result['unavailable'] = str(exc) or 'This operation is not currently available.'
+            result['unavailable'] = _(str(exc)) if str(exc) else _('This operation is not currently available.')
     return result
 
 
@@ -163,7 +169,7 @@ def fingerprint(stage, port, model, prices, payer, items, *, category_plan=None)
 
 
 def prepare(user, dictionary, stage, port):
-    model, _, _, prices = photo_ai.configuration(user)
+    model, _key, _personal, prices = photo_ai.configuration(user)
     payer = porting.payer_now(user)
     if stage == 'descriptions':
         porting.authority(port)
@@ -176,7 +182,7 @@ def prepare(user, dictionary, stage, port):
         planned = vocabulary.plan(port, prices)
     items = planned['items']
     if not items:
-        raise Conflict('No new work is ready. Reload the dictionary.')
+        raise Conflict(_('No new work is ready. Reload the dictionary.'))
     return {'estimated': sum((i['estimated_usd'] for i in items), Decimal('0')),
         'allowance': sum((i['allowance_usd'] for i in items), Decimal('0')),
         'model': model, 'voice': port.voice, 'payer': payer,
@@ -213,37 +219,39 @@ def related_suggestion(user, dictionary, *, details=False):
         # progress/review screen also allows stale previews to be discarded.
         run = port.runs.filter(status='running').first()
         if run:
-            return {'kind':'related-progress', 'label':f'{label}: work in progress',
-                'button':'View progress', 'url':run_url(run)}
+            return {'kind':'related-progress', 'label':_('%(dictionary)s: work in progress') % {'dictionary': label},
+                'button':_('View progress'), 'url':run_url(run)}
         item = (PortItem.objects.filter(run__port=port, status__in=['ready','unclear'])
             .select_related('run__port').order_by('pk').first())
         if item:
-            return {'kind':'related-review', 'label':f'{label}: finish reviewing the previous results',
-                'button':'Review previous results', 'url':run_url(item.run)}
+            return {'kind':'related-review', 'label':_('%(dictionary)s: finish reviewing the previous results') % {'dictionary': label},
+                'button':_('Review previous results'), 'url':run_url(item.run)}
         # On the source side, point at unfinished destination vocabulary before
         # offering a new update. Word work itself remains on the destination.
         if dictionary.pk == port.source_id:
             try:
                 vocabulary.authority(port)
-                pending_words, _ = vocabulary.candidates(port)
+                pending_words, _skipped = vocabulary.candidates(port)
             except (Conflict, Http404):
                 pending_words = []
             if pending_words:
-                return {'kind':'related-vocabulary', 'label':f'{label}: word pages ready to create',
-                    'button':'Open language version',
+                return {'kind':'related-vocabulary', 'label':_('%(dictionary)s: word pages ready to create') % {'dictionary': label},
+                    'button':_('Open language version'),
                     'url':reverse('community_dictionary:dictionary',args=[destination.pk])+'#next-step'}
         planned = porting.plan(port, sentence_updates=True)
         count = len(planned['items'])
         if not count:
             continue
         new, changed = planned['new'], planned['changed']
-        def amount(n, adjective):
-            return f'{n} {adjective} sentence' + ('s' if n != 1 else '')
-        summary = ' and '.join(text for text in [amount(new,'new') if new else '', amount(changed,'changed') if changed else ''] if text)
+        new_summary = ngettext('%(count)s new sentence', '%(count)s new sentences', new) % {'count': new} if new else ''
+        changed_summary = ngettext('%(count)s changed sentence', '%(count)s changed sentences', changed) % {'count': changed} if changed else ''
+        summary = _('%(new)s and %(changed)s') % {'new': new_summary, 'changed': changed_summary} if new and changed else new_summary or changed_summary
         result = {'kind':'sentences', 'port_id':port.pk, 'count':count,
-            'label':f'{label}: {summary} to translate' if dictionary.pk == port.source_id else f'{summary.capitalize()} available from {port.source.name}',
-            'scope':f'Update {destination.name} ({destination.language} / {destination.explanation_language}) from {port.source.name}.',
-            'button':f'Approve and update {destination.name}', 'destination_name':destination.name,
+            'label':_('%(dictionary)s: %(summary)s to translate') % {'dictionary': label, 'summary': summary} if dictionary.pk == port.source_id else _('%(summary)s available from %(source)s') % {'summary': summary.capitalize(), 'source': port.source.name},
+            'scope':_('Update %(destination)s (%(language)s / %(explanation_language)s) from %(source)s.') % {
+                'destination': destination.name, 'language': destination.language,
+                'explanation_language': destination.explanation_language, 'source': port.source.name},
+            'button':_('Approve and update %(dictionary)s') % {'dictionary': destination.name}, 'destination_name':destination.name,
             'new_count':new, 'changed_count':changed, 'protected_count':planned['protected'],
             'url':reverse('community_dictionary:dictionary',args=[destination.pk])+'#next-step'}
         return complete_suggestion(user, dictionary, result, port, details=details)

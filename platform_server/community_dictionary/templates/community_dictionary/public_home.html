@@ -1,6 +1,7 @@
-{% extends 'community_dictionary/base.html' %}
-{% block title %}Find dictionaries{% endblock %}{% block content %}
-<div class="hero"><p class="eyebrow">Pictures · Words · Voices</p><h1>Find dictionaries</h1><p>Explore groups that have chosen to be discoverable. Some share their contents publicly; others invite you to request membership.</p></div>
-<form class="search" method="get"><label class="sr-only" for="search">Find a dictionary or language</label><input id="search" name="q" value="{{ query }}" placeholder="Find a dictionary or language"><button class="secondary">Search</button></form>
-<div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p class="empty">{% if query %}No discoverable dictionaries match your search.{% else %}No dictionaries are listed yet. You can still follow a public browsing link or log in to your own dictionaries.{% endif %}</p>{% endfor %}</div>
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Find dictionaries" %}{% endblock %}{% block content %}
+<div class="hero"><p class="eyebrow">{% translate "Pictures · Words · Voices" %}</p><h1>{% translate "Find dictionaries" %}</h1><p>{% translate "Explore groups that have chosen to be discoverable. Some share their contents publicly; others invite you to request membership." %}</p></div>
+{% include 'community_dictionary/learning_languages.html' %}
+<form class="search" method="get">{% if learning_language %}<input type="hidden" name="learning" value="{{ learning_language }}">{% endif %}<label class="sr-only" for="search">{% translate "Find a dictionary or language" %}</label><input id="search" name="q" value="{{ query }}" placeholder="{% translate "Find a dictionary or language" %}"><button class="secondary">{% translate "Search" %}</button></form>
+<div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p class="empty">{% if query %}{% translate "No discoverable dictionaries match your search." %}{% else %}{% translate "No dictionaries are listed yet. You can still follow a public browsing link or log in to your own dictionaries." %}{% endif %}</p>{% endfor %}</div>
 {% include 'community_dictionary/public_pagination.html' %}{% endblock %}

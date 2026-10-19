@@ -1,15 +1,16 @@
 /* Local drafts are recovery copies, not confirmation of a dictionary save. */
 (() => {
   'use strict';
+  const gettext = window.gettext || (message => message);
   let database;
   const openDatabase = () => {
     if (!database) database = new Promise((resolve, reject) => {
-      if (!window.indexedDB) return reject(new Error('Local storage unavailable'));
+      if (!window.indexedDB) return reject(new Error(gettext('Local storage unavailable')));
       const request = indexedDB.open('clara-community-drafts', 1);
       request.onupgradeneeded = () => request.result.createObjectStore('drafts');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
-      request.onblocked = () => reject(new Error('Close another open dictionary tab and reload.'));
+      request.onblocked = () => reject(new Error(gettext('Close another open dictionary tab and reload.')));
     });
     return database;
   };
@@ -54,14 +55,14 @@
       writes = write.catch(() => {});
       try {
         await write;
-        if (!sending && !leaving && version === revision) status('Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.');
+        if (!sending && !leaving && version === revision) status(gettext('Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.'));
       } catch (_) {
-        if (!sending && !leaving) status('Not saved. Draft recovery is unavailable on this device. Keep this page open and choose Save.');
+        if (!sending && !leaving) status(gettext('Not saved. Draft recovery is unavailable on this device. Keep this page open and choose Save.'));
       }
     }
     function changed() {
       dirty = true; revision += 1;
-      if (!sending) status('Not saved to the dictionary. Preparing a recovery draft…');
+      if (!sending) status(gettext('Not saved to the dictionary. Preparing a recovery draft…'));
       clearTimeout(timer);
       timer = setTimeout(persist, 250);
     }
@@ -117,7 +118,7 @@
         if (files[kind] !== file) return; // Removed or replaced while preparing.
         files[kind] = prepared;
         preview(kind);
-        if (files[kind].size > 15 * 1024 * 1024) tellError('This file is larger than 15 MB. Choose a shorter recording or a smaller picture.');
+        if (files[kind].size > 15 * 1024 * 1024) tellError(gettext('This file is larger than 15 MB. Choose a shorter recording or a smaller picture.'));
         changed();
         await persist();
       });
@@ -142,9 +143,9 @@
         Object.assign(files, existing.files);
         preview('photo'); preview('audio');
         dirty = true;
-        status('Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.');
+        status(gettext('Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.'));
       }
-    } catch (_) { status('Draft recovery is unavailable on this device. Keep this page open until you save.'); }
+    } catch (_) { status(gettext('Draft recovery is unavailable on this device. Keep this page open until you save.')); }
     ready = true;
     form.dispatchEvent(new Event('community-draft-ready'));
     initialControls.forEach(([el, disabled]) => { el.disabled = disabled; });
@@ -160,18 +161,18 @@
     }
     form.querySelector('[data-discard]')?.addEventListener('click', async () => {
       if (sending) return;
-      if (recorder?.busy) { tellError('Finish recording or stop the microphone check first.'); return; }
-      if (!confirm('Discard the draft stored on this device? This does not remove anything already saved to the dictionary.')) return;
+      if (recorder?.busy) { tellError(gettext('Finish recording or stop the microphone check first.')); return; }
+      if (!confirm(gettext('Discard the draft stored on this device? This does not remove anything already saved to the dictionary.'))) return;
       sending = true; clearTimeout(timer);
       await mediaPending; clearTimeout(timer); await writes;
       try { await draftOperation(key, 'delete'); }
-      catch (_) { sending = false; tellError('Could not remove the recovery draft. Keep editing or try again.'); return; }
+      catch (_) { sending = false; tellError(gettext('Could not remove the recovery draft. Keep editing or try again.')); return; }
       dirty = false; leaving = true; location.reload();
     });
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (!ready || sending) return;
-      if (recorder?.busy) { afterSave = null; tellError('Finish recording or stop the microphone check before saving.'); return; }
+      if (recorder?.busy) { afterSave = null; tellError(gettext('Finish recording or stop the microphone check before saving.')); return; }
       if (!form.reportValidity()) return;
       clearError();
       const data = new FormData(form);
@@ -182,7 +183,7 @@
       const controls = Array.from(form.elements).map(el => [el, el.disabled]);
       controls.forEach(([el]) => { el.disabled = true; });
       sending = true; dirty = true; clearTimeout(timer);
-      status('Saving to the dictionary… waiting for confirmation.');
+      status(gettext('Saving to the dictionary… waiting for confirmation.'));
       const controller = new AbortController();
       let timeout;
       try {
@@ -199,17 +200,17 @@
         timeout = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: controller.signal});
         const type = response.headers.get('Content-Type') || '';
-        if (!type.includes('application/json')) throw new Error(response.status === 413 ? 'The upload is too large for this server. Try a smaller picture or recording.' : 'Your session may have expired, or the server could not respond. Your draft remains here. Reload or sign in, then retry.');
+        if (!type.includes('application/json')) throw new Error(response.status === 413 ? gettext('The upload is too large for this server. Try a smaller picture or recording.') : gettext('Your session may have expired, or the server could not respond. Your draft remains here. Reload or sign in, then retry.'));
         const result = await response.json();
-        if (!response.ok || !result.saved) throw new Error(result.error || 'The server could not save this yet.');
+        if (!response.ok || !result.saved) throw new Error(result.error || gettext('The server could not save this yet.'));
         try { await draftOperation(key, 'delete'); } catch (_) { /* Replaying the retained token is safe. */ }
         dirty = false; sending = false; confirmed = true; leaving = true;
-        status('Saved to the dictionary.');
+        status(gettext('Saved to the dictionary.'));
         if (afterSave) afterSave();
         else location.assign(result.url);
       } catch (exc) {
-        tellError(exc.name === 'AbortError' ? 'Confirmation took too long. You can retry safely: the same submission will not be added twice.' : exc.message || 'Connection lost. Keep this page open or restore the draft and retry.');
-        status('Not confirmed as saved. Your contribution is still here; choose Save to retry when connected.');
+        tellError(exc.name === 'AbortError' ? gettext('Confirmation took too long. You can retry safely: the same submission will not be added twice.') : exc.message || gettext('Connection lost. Keep this page open or restore the draft and retry.'));
+        status(gettext('Not confirmed as saved. Your contribution is still here; choose Save to retry when connected.'));
         sending = false; afterSave = null;
         controls.forEach(([el, disabled]) => { el.disabled = disabled; });
       } finally { clearTimeout(timeout); }
@@ -221,8 +222,8 @@
       if (leaving || !(dirty || sending || recorder?.busy)) return;
       if (!dialog?.showModal) return; // Native beforeunload remains available.
       event.preventDefault();
-      if (sending) { tellError('Saving is in progress. Please wait for confirmation.'); return; }
-      if (recorder?.busy) { tellError('Finish recording or stop the microphone check before leaving.'); return; }
+      if (sending) { tellError(gettext('Saving is in progress. Please wait for confirmation.')); return; }
+      if (recorder?.busy) { tellError(gettext('Finish recording or stop the microphone check before leaving.')); return; }
       if (dialog.open) return;
       const save = form.querySelector('[data-save-submit]') || form.querySelector('button:not([type]), button[type=submit]');
       dialog.querySelector('[data-leave-permission]').hidden = save?.name !== 'consent';

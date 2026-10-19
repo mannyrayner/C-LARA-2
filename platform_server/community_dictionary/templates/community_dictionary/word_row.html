@@ -1,14 +1,14 @@
-{% load pronunciation_tags %}
+{% load i18n pronunciation_tags %}
 <article class="word-row" data-word-row data-entry-id="{{ row.entry.pk }}" data-audio-id="{{ row.audio.pk|default:'' }}">
   <h3 dir="{{ dictionary.text_direction }}"{% if hide_word_heading %} class="sr-only"{% endif %}>{{ row.entry.word }}</h3>
   <div class="word-actions">
     {% if row.audio %}
-    <button type="button" class="secondary" data-word-listen aria-label="Listen to {{ row.entry.word }}" aria-pressed="false" hidden>Listen</button>
-    <audio controls preload="none" data-word-audio aria-label="Recording of {{ row.entry.word }}" src="{% url 'community_dictionary:media' dictionary.pk row.audio.pk %}"></audio>
-    {% else %}<span class="help">No recording yet</span>{% endif %}
-    {% if row.entry.meaning %}<details class="word-translation"><summary>Translation</summary><p dir="auto">{{ row.entry.meaning|linebreaksbr }}</p></details>{% endif %}
-    {% if not on_word_page %}<a class="word-page-link" href="{% url 'community_dictionary:word' dictionary.pk row.entry.pk %}">Word page →</a>{% endif %}
+    <button type="button" class="secondary" data-word-listen aria-label="{% blocktranslate with word=row.entry.word %}Listen to {{ word }}{% endblocktranslate %}" aria-pressed="false" hidden>{% translate "Listen" %}</button>
+    <audio controls preload="none" data-word-audio aria-label="{% blocktranslate with word=row.entry.word %}Recording of {{ word }}{% endblocktranslate %}" src="{% url 'community_dictionary:media' dictionary.pk row.audio.pk %}"></audio>
+    {% else %}<span class="help">{% translate "No recording yet" %}</span>{% endif %}
+    {% if row.entry.meaning %}<details class="word-translation"><summary>{% translate "Translation" %}</summary><p dir="auto">{{ row.entry.meaning|linebreaksbr }}</p></details>{% endif %}
+    {% if not on_word_page %}<a class="word-page-link" href="{% url 'community_dictionary:word' dictionary.pk row.entry.pk %}">{% translate "Word page →" %}</a>{% endif %}
   </div>
-  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice</p>{% if row.entry.entry_type != 'sentence' and not hide_pronunciation_warning %}{% pronunciation_warning row.entry.word dictionary.language %}{% endif %}{% endif %}
+  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">{% translate "AI-generated voice" %}</p>{% if row.entry.entry_type != 'sentence' and not hide_pronunciation_warning %}{% pronunciation_warning row.entry.word dictionary.language %}{% endif %}{% endif %}
   <p class="help" data-word-playback-status role="status" hidden></p>
 </article>

@@ -1,69 +1,69 @@
-{% extends 'community_dictionary/base.html' %}
-{% block title %}Settings{% endblock %}
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Settings" %}{% endblock %}
 {% block content %}
-<p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
+<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Settings" %}</h1>
 {% if owner %}
-<section class="panel" id="workflow-suggestions"><h2>Workflow suggestions</h2><p>Show a useful next step while browsing and on your dictionary card. Suggestions are for the owner only. Nothing is sent to AI until you approve the displayed scope and cost.</p><form method="post" action="{% url 'community_dictionary:workflow-setting' dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ dictionary.workflow_suggestions_revision }}">{% if dictionary.show_workflow_suggestions %}<p><strong>On</strong></p><button class="secondary" name="action" value="disable">Turn off workflow suggestions</button>{% else %}<p><strong>Off</strong></p><button name="action" value="enable">Show workflow suggestions</button>{% endif %}</form><p class="help">The other Settings controls remain available either way.</p></section>
-<section class="panel" id="discoverability"><h2>Discoverability</h2><p><strong>{% if dictionary.discoverable and not dictionary.hidden %}On — listed in Find dictionaries{% else %}Off — not listed{% endif %}</strong></p>
-<p>List this dictionary's name, languages and accepted entry counts so anyone can find it and ask to join. Your chosen public name is shown only if you opt into the contributor listing in Profile. Contents remain private unless you separately enable public browsing below.</p>
-<form method="post" action="{% url 'community_dictionary:discovery-setting' dictionary.pk %}">{% csrf_token %}{{ discovery_form.revision }}{% if dictionary.discoverable %}<button class="secondary" name="action" value="disable">Turn off discoverability</button>{% elif dictionary.hidden %}<p>Make this dictionary visible before listing it.</p>{% else %}<button name="action" value="enable">Make dictionary discoverable</button>{% endif %}</form>
-{% if dictionary.discoverable and not dictionary.hidden %}<p><a href="{% url 'community_dictionary:discover-dictionary' dictionary.pk %}">View discovery listing</a></p>{% endif %}
-<p><a href="{% url 'community_dictionary:membership-requests' %}">Pending membership requests ({{ pending_membership_count }})</a></p></section>
-<section class="panel" id="public-browsing"><h2>Public browsing</h2>
-<p><strong>{% if dictionary.public_browsing_enabled and not dictionary.hidden %}On — anyone can browse{% else %}Off — members only{% endif %}</strong></p>
+<section class="panel" id="workflow-suggestions"><h2>{% translate "Workflow suggestions" %}</h2><p>{% translate "Show a useful next step while browsing and on your dictionary card. Suggestions are for the owner only. Nothing is sent to AI until you approve the displayed scope and cost." %}</p><form method="post" action="{% url 'community_dictionary:workflow-setting' dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ dictionary.workflow_suggestions_revision }}">{% if dictionary.show_workflow_suggestions %}<p><strong>{% translate "On" %}</strong></p><button class="secondary" name="action" value="disable">{% translate "Turn off workflow suggestions" %}</button>{% else %}<p><strong>{% translate "Off" %}</strong></p><button name="action" value="enable">{% translate "Show workflow suggestions" %}</button>{% endif %}</form><p class="help">{% translate "The other Settings controls remain available either way." %}</p></section>
+<section class="panel" id="discoverability"><h2>{% translate "Discoverability" %}</h2><p><strong>{% if dictionary.discoverable and not dictionary.hidden %}{% translate "On — listed in Find dictionaries" %}{% else %}{% translate "Off — not listed" %}{% endif %}</strong></p>
+<p>{% translate "List this dictionary's name, languages and accepted entry counts so anyone can find it and ask to join. Your chosen public name is shown only if you opt into the contributor listing in Profile. Contents remain private unless you separately enable public browsing below." %}</p>
+<form method="post" action="{% url 'community_dictionary:discovery-setting' dictionary.pk %}">{% csrf_token %}{{ discovery_form.revision }}{% if dictionary.discoverable %}<button class="secondary" name="action" value="disable">{% translate "Turn off discoverability" %}</button>{% elif dictionary.hidden %}<p>{% translate "Make this dictionary visible before listing it." %}</p>{% else %}<button name="action" value="enable">{% translate "Make dictionary discoverable" %}</button>{% endif %}</form>
+{% if dictionary.discoverable and not dictionary.hidden %}<p><a href="{% url 'community_dictionary:discover-dictionary' dictionary.pk %}">{% translate "View discovery listing" %}</a></p>{% endif %}
+<p><a href="{% url 'community_dictionary:membership-requests' %}">{% blocktranslate with count=pending_membership_count %}Pending membership requests ({{ count }}){% endblocktranslate %}</a></p></section>
+<section class="panel" id="public-browsing"><h2>{% translate "Public browsing" %}</h2>
+<p><strong>{% if dictionary.public_browsing_enabled and not dictionary.hidden %}{% translate "On — anyone can browse" %}{% else %}{% translate "Off — members only" %}{% endif %}</strong></p>
 {% if dictionary.public_browsing_enabled and not dictionary.hidden %}
-<p><a class="button secondary" href="{% url 'community_dictionary:public-dictionary' dictionary.pk %}">View as a visitor</a></p>
-<label for="public-link">Link to share</label><input id="public-link" type="text" readonly value="{{ public_url }}">
-<form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}">{% csrf_token %}{{ public_access_form.revision }}<button class="secondary" name="action" value="disable">Turn off public browsing</button></form>
+<p><a class="button secondary" href="{% url 'community_dictionary:public-dictionary' dictionary.pk %}">{% translate "View as a visitor" %}</a></p>
+<label for="public-link">{% translate "Link to share" %}</label><input id="public-link" type="text" readonly value="{{ public_url }}">
+<form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}">{% csrf_token %}{{ public_access_form.revision }}<button class="secondary" name="action" value="disable">{% translate "Turn off public browsing" %}</button></form>
 {% else %}
-<p>Let anyone browse accepted pictures, sentences, words, translations and recordings, without an account. Its link works directly; turn on Discoverability above to include it in the dictionary list.</p>
-<p>Only enable this with your contributors’ permission. Future accepted content will also be public. Drafts, discussions and member details remain private.</p>
-{% if dictionary.hidden %}<p>Make this dictionary visible below before enabling public browsing.</p>{% else %}
+<p>{% translate "Let anyone browse accepted pictures, sentences, words, translations and recordings, without an account. Its link works directly; turn on Discoverability above to include it in the dictionary list." %}</p>
+<p>{% translate "Only enable this with your contributors’ permission. Future accepted content will also be public. Drafts, discussions and member details remain private." %}</p>
+{% if dictionary.hidden %}<p>{% translate "Make this dictionary visible below before enabling public browsing." %}</p>{% else %}
 <form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}" class="stack">{% csrf_token %}{{ public_access_form.revision }}
 <label class="check">{{ public_access_form.permission }} <span>{{ public_access_form.permission.label }}</span></label>
-<button name="action" value="enable">Enable public browsing</button></form>{% endif %}
+<button name="action" value="enable">{% translate "Enable public browsing" %}</button></form>{% endif %}
 {% endif %}
-<p class="help">Turning this off, hiding the dictionary or withdrawing content blocks future visitor access to that material. It cannot recall copies that visitors have already saved. Public browsing does not give visitors editing, AI-generation or export permissions.</p>
+<p class="help">{% translate "Turning this off, hiding the dictionary or withdrawing content blocks future visitor access to that material. It cannot recall copies that visitors have already saved. Public browsing does not give visitors editing, AI-generation or export permissions." %}</p>
 </section>
-<section class="panel" id="dictionary-name"><h2>Rename dictionary</h2>
-<form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">Save name</button></form></section>
-<section class="panel"><h2>Expression audio pilot</h2><p>Try carrier-based AI audio for French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected.</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">Regenerate AI expression audio</a></section>
-<section class="panel"><h2>Add missing sentences</h2>
-<p>Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions.</p>
-<a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">Add missing sentences</a>
+<section class="panel" id="dictionary-name"><h2>{% translate "Rename dictionary" %}</h2>
+<form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">{% translate "Save name" %}</button></form></section>
+<section class="panel"><h2>{% translate "Expression audio pilot" %}</h2><p>{% translate "Try carrier-based AI audio for French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected." %}</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">{% translate "Regenerate AI expression audio" %}</a></section>
+<section class="panel"><h2>{% translate "Add missing sentences" %}</h2>
+<p>{% translate "Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions." %}</p>
+<a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">{% translate "Add missing sentences" %}</a>
 </section>
-<section class="panel" id="dictionary-visibility"><h2>Dictionary visibility</h2>
-<p><strong>{% if dictionary.hidden %}Hidden{% else %}Visible{% endif %}</strong> in the dictionary list.</p>
-<p class="help">Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Hiding also turns off discoverability and public browsing; making it visible again does not turn either back on. Content and contribution rights are unchanged.</p>
+<section class="panel" id="dictionary-visibility"><h2>{% translate "Dictionary visibility" %}</h2>
+<p><strong>{% if dictionary.hidden %}{% translate "Hidden" %}{% else %}{% translate "Visible" %}{% endif %}</strong> {% translate "in the dictionary list." %}</p>
+<p class="help">{% translate "Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Hiding also turns off discoverability and public browsing; making it visible again does not turn either back on. Content and contribution rights are unchanged." %}</p>
 <form method="post" action="{% url 'community_dictionary:visibility' dictionary.pk %}">{% csrf_token %}
-{% if dictionary.hidden %}<button name="visibility" value="visible">Make dictionary visible</button>
-{% else %}<button class="secondary" name="visibility" value="hidden">Hide dictionary</button>{% endif %}
+{% if dictionary.hidden %}<button name="visibility" value="visible">{% translate "Make dictionary visible" %}</button>
+{% else %}<button class="secondary" name="visibility" value="hidden">{% translate "Hide dictionary" %}</button>{% endif %}
 </form></section>
-<section class="panel" id="picture-description-allowance"><h2>Picture-description allowance</h2>
-<p>{{ capture_usage.used }} of {{ capture_usage.limit }} descriptions used in the last 24 hours · {{ capture_usage.remaining }} remaining.</p>
+<section class="panel" id="picture-description-allowance"><h2>{% translate "Picture-description allowance" %}</h2>
+<p>{% blocktranslate with used=capture_usage.used limit=capture_usage.limit remaining=capture_usage.remaining %}{{ used }} of {{ limit }} descriptions used in the last 24 hours · {{ remaining }} remaining.{% endblocktranslate %}</p>
 {% if capture_usage.ceiling %}
 <form method="post" action="{% url 'community_dictionary:capture-limit' dictionary.pk %}" class="stack">
-{% csrf_token %}{{ capture_allowance_form.as_p }}<button name="action" value="preview">Preview daily cost</button></form>
-<p class="help">Review the estimate, then confirm. The new allowance applies to Picture descriptions; other AI tools have their own limits.</p>
-{% else %}<p>The server administrator has paused new picture-description requests.</p>{% endif %}
+{% csrf_token %}{{ capture_allowance_form.as_p }}<button name="action" value="preview">{% translate "Preview daily cost" %}</button></form>
+<p class="help">{% translate "Review the estimate, then confirm. The new allowance applies to Picture descriptions; other AI tools have their own limits." %}</p>
+{% else %}<p>{% translate "The server administrator has paused new picture-description requests." %}</p>{% endif %}
 </section>
-<section class="panel"><h2>Language versions</h2>
-<a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">Create a version in another language</a>
-{% if dictionary.language_port %}<p><a class="button secondary" href="{% url 'community_dictionary:port-vocabulary' dictionary.language_port.source_id dictionary.language_port.pk %}">Build or update vocabulary from accepted sentences</a></p><p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">Update this version from its source dictionary</a></p>{% endif %}
-<p class="help">Preview the cost, approve processing, then review the translated entries.</p></section>
-<section class="panel"><h2>Testing picture descriptions</h2>
-<p>Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review.</p>
-<a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">Create an image-only copy</a>
+<section class="panel"><h2>{% translate "Language versions" %}</h2>
+<a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">{% translate "Create a version in another language" %}</a>
+{% if dictionary.language_port %}<p><a class="button secondary" href="{% url 'community_dictionary:port-vocabulary' dictionary.language_port.source_id dictionary.language_port.pk %}">{% translate "Build or update vocabulary from accepted sentences" %}</a></p><p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">{% translate "Update this version from its source dictionary" %}</a></p>{% endif %}
+<p class="help">{% translate "Preview the cost, approve processing, then review the translated entries." %}</p></section>
+<section class="panel"><h2>{% translate "Testing picture descriptions" %}</h2>
+<p>{% translate "Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review." %}</p>
+<a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">{% translate "Create an image-only copy" %}</a>
 </section>
-<section class="panel"><h2>Dictionary settings</h2>
-<form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>Save settings</button></form>
+<section class="panel"><h2>{% translate "Dictionary settings" %}</h2>
+<form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>{% translate "Save settings" %}</button></form>
 </section>
-{% else %}<p class="help">The dictionary owner manages its name, languages and AI options.</p>{% endif %}
-<section class="panel"><h2>Image style</h2>
+{% else %}<p class="help">{% translate "The dictionary owner manages its name, languages and AI options." %}</p>{% endif %}
+<section class="panel"><h2>{% translate "Image style" %}</h2>
 {% if dictionary.image_generation_enabled %}
-<p>Choose the shared style for AI-generated pictures.</p>
-<a class="button secondary" href="{% url 'community_dictionary:image-style' dictionary.pk %}">Set up or view image style</a>
-{% else %}<p>{% if owner %}Enable AI picture generation above and save to set up an image style.{% else %}The owner can enable AI picture generation here before you set up a style.{% endif %}</p>{% endif %}
-<p class="help">You can always take or upload your own pictures, whether AI generation is enabled or not.</p>
+<p>{% translate "Choose the shared style for AI-generated pictures." %}</p>
+<a class="button secondary" href="{% url 'community_dictionary:image-style' dictionary.pk %}">{% translate "Set up or view image style" %}</a>
+{% else %}<p>{% if owner %}{% translate "Enable AI picture generation above and save to set up an image style." %}{% else %}{% translate "The owner can enable AI picture generation here before you set up a style." %}{% endif %}</p>{% endif %}
+<p class="help">{% translate "You can always take or upload your own pictures, whether AI generation is enabled or not." %}</p>
 </section>
 {% endblock %}

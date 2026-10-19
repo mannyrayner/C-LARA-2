@@ -1,17 +1,18 @@
-{% extends 'community_dictionary/base.html' %}{% block content %}
-<div class="hero"><p class="eyebrow">C-LARA · COLLECT TOGETHER</p><h1>A place for our<br>pictures and voices.</h1><p>Build a dictionary with people you know. Start with a photograph, a recording or a question.</p></div>
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
+<div class="hero"><p class="eyebrow">{% translate "C-LARA · COLLECT TOGETHER" %}</p><h1>{% blocktranslate %}A place for our<br>pictures and voices.{% endblocktranslate %}</h1><p>{% translate "Build a dictionary with people you know. Start with a photograph, a recording or a question." %}</p></div>
+{% include 'community_dictionary/learning_languages.html' %}
 {% if invitations %}{% include 'community_dictionary/home_invitations.html' %}{% endif %}
-<p><a href="{% url 'community_dictionary:public-home' %}">Find dictionaries</a></p>
-{% if pending_membership_count %}<p><a class="button secondary" href="{% url 'community_dictionary:membership-requests' %}">Pending membership requests ({{ pending_membership_count }})</a></p>{% endif %}
-<section id="visible-dictionaries"><h2>Your dictionaries</h2><div class="dictionary-grid">
+<p><a href="{% url 'community_dictionary:public-home' %}">{% translate "Find dictionaries" %}</a></p>
+{% if pending_membership_count %}<p><a class="button secondary" href="{% url 'community_dictionary:membership-requests' %}">{% blocktranslate with count=pending_membership_count %}Pending membership requests ({{ count }}){% endblocktranslate %}</a></p>{% endif %}
+<section id="visible-dictionaries"><h2>{% translate "Your dictionaries" %}</h2><div class="dictionary-grid">
 {% for row in projects %}{% include 'community_dictionary/home_card.html' %}
-{% empty %}<div class="empty">{% if hidden_projects %}All your dictionaries are hidden. Open Hidden dictionaries below to find them.{% else %}Your dictionaries will appear here. Create one below or ask its owner to invite your username: <strong>{{ request.user.username }}</strong>.{% endif %}</div>{% endfor %}
+{% empty %}<div class="empty">{% if hidden_projects %}{% translate "All your dictionaries are hidden. Open Hidden dictionaries below to find them." %}{% else %}{% translate "Your dictionaries will appear here. Create one below or ask its owner to invite your username:" %} <strong>{{ request.user.username }}</strong>.{% endif %}</div>{% endfor %}
 </div></section>
-{% if hidden_projects or hidden_invitations %}<details class="panel" id="hidden-dictionaries"><summary>Hidden dictionaries</summary>
-<p class="help">These dictionaries have been hidden by their owners. You can still open them and manage your own contributions.</p>
+{% if hidden_projects or hidden_invitations %}<details class="panel" id="hidden-dictionaries"><summary>{% translate "Hidden dictionaries" %}</summary>
+<p class="help">{% translate "These dictionaries have been hidden by their owners. You can still open them and manage your own contributions." %}</p>
 {% if hidden_invitations %}{% include 'community_dictionary/home_invitations.html' with invitations=hidden_invitations %}{% endif %}
 <div class="dictionary-grid">{% for row in hidden_projects %}{% include 'community_dictionary/home_card.html' %}{% endfor %}</div>
 </details>{% endif %}
-<details class="panel" {% if form.errors %}open{% endif %}><summary>Create a dictionary</summary><form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button>Create dictionary</button></form></details>
-<section id="discoverable-dictionaries"><h2>Discover dictionaries</h2><div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p>No dictionaries have been listed yet.</p>{% endfor %}</div>{% include 'community_dictionary/public_pagination.html' %}</section>
+<details class="panel" {% if form.errors %}open{% endif %}><summary>{% translate "Create a dictionary" %}</summary><form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button>{% translate "Create dictionary" %}</button></form></details>
+<section id="discoverable-dictionaries"><h2>{% translate "Discover dictionaries" %}</h2><div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p>{% translate "No dictionaries have been listed yet." %}</p>{% endfor %}</div>{% include 'community_dictionary/public_pagination.html' %}</section>
 {% endblock %}

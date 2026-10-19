@@ -1,6 +1,7 @@
 /* Inline vocabulary controls. Native audio/details remain usable without JS. */
 (() => {
   'use strict';
+  const gettext = window.gettext || (message => message);
   // Also include the ordinary entry recordings, so words never speak over them.
   function pauseOthers(current) {
     document.querySelectorAll('audio').forEach(audio => {
@@ -21,12 +22,12 @@
     const name = row.querySelector('h3').textContent.trim();
     function update() {
       const playing = !audio.paused && !audio.ended;
-      button.textContent = playing ? 'Pause' : 'Listen';
-      button.setAttribute('aria-label', (playing ? 'Pause ' : 'Listen to ') + name);
+      button.textContent = playing ? gettext("Pause") : gettext("Listen");
+      button.setAttribute('aria-label', (playing ? gettext("Pause %(word)s") : gettext("Listen to %(word)s")).replace("%(word)s", () => name));
       button.setAttribute('aria-pressed', String(playing));
     }
     function failed() {
-      status.textContent = 'This recording could not play. Try again, or open the word page for other recordings.';
+      status.textContent = gettext("This recording could not play. Try again, or open the word page for other recordings.");
       status.hidden = false;
       audio.hidden = false;
       update();
@@ -94,7 +95,7 @@
         const message = document.createElement('p');
         message.dataset.audioRefreshError = ''; message.className = 'notice';
         message.setAttribute('role', 'status');
-        message.textContent = 'Could not refresh recordings. Reload this page to check for saved audio.';
+        message.textContent = gettext("Could not refresh recordings. Reload this page to check for saved audio.");
         document.querySelector('[data-word-row]')?.before(message);
       }
     } finally { refreshing = false; }

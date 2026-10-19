@@ -1,0 +1,861 @@
+# French translations for C-LARA-2 Community Dictionaries.
+# Copyright (c) C-LARA contributors. Distributed under the repository license.
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: C-LARA-2 Community Dictionaries\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-18 23:56+0000\n"
+"PO-Revision-Date: 2026-10-19 00:00+0000\n"
+"Last-Translator: C-LARA team\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: community_dictionary/static/community_dictionary/app.js:8
+msgid "Local storage unavailable"
+msgstr "Stockage local indisponible"
+
+#: community_dictionary/static/community_dictionary/app.js:13
+msgid "Close another open dictionary tab and reload."
+msgstr "Fermez un autre onglet du dictionnaire et rechargez la page."
+
+#: community_dictionary/static/community_dictionary/app.js:58
+msgid ""
+"Not saved to the dictionary yet. A recovery draft is stored on this device. "
+"Choose Save when ready."
+msgstr ""
+"Pas encore enregistré dans le dictionnaire. Un brouillon de secours est "
+"conservé sur cet appareil. Choisissez Enregistrer quand vous êtes prêt."
+
+#: community_dictionary/static/community_dictionary/app.js:60
+msgid ""
+"Not saved. Draft recovery is unavailable on this device. Keep this page open"
+" and choose Save."
+msgstr ""
+"Non enregistré. La récupération des brouillons est indisponible sur cet "
+"appareil. Gardez cette page ouverte et choisissez Enregistrer."
+
+#: community_dictionary/static/community_dictionary/app.js:65
+msgid "Not saved to the dictionary. Preparing a recovery draft…"
+msgstr ""
+"Non enregistré dans le dictionnaire. Préparation d’un brouillon de secours…"
+
+#: community_dictionary/static/community_dictionary/app.js:121
+msgid ""
+"This file is larger than 15 MB. Choose a shorter recording or a smaller "
+"picture."
+msgstr ""
+"Ce fichier dépasse 15 Mo. Choisissez un enregistrement plus court ou une "
+"image plus petite."
+
+#: community_dictionary/static/community_dictionary/app.js:146
+msgid ""
+"Draft restored on this device. Not confirmed as saved to the dictionary. "
+"Choose Save when ready."
+msgstr ""
+"Brouillon restauré sur cet appareil. Son enregistrement dans le dictionnaire"
+" n’est pas confirmé. Choisissez Enregistrer quand vous êtes prêt."
+
+#: community_dictionary/static/community_dictionary/app.js:148
+msgid ""
+"Draft recovery is unavailable on this device. Keep this page open until you "
+"save."
+msgstr ""
+"La récupération des brouillons est indisponible sur cet appareil. Gardez "
+"cette page ouverte jusqu’à l’enregistrement."
+
+#: community_dictionary/static/community_dictionary/app.js:164
+msgid "Finish recording or stop the microphone check first."
+msgstr "Terminez d’abord l’enregistrement ou arrêtez le test du microphone."
+
+#: community_dictionary/static/community_dictionary/app.js:165
+msgid ""
+"Discard the draft stored on this device? This does not remove anything "
+"already saved to the dictionary."
+msgstr ""
+"Supprimer le brouillon conservé sur cet appareil ? Cela ne supprime rien de "
+"ce qui est déjà enregistré dans le dictionnaire."
+
+#: community_dictionary/static/community_dictionary/app.js:169
+msgid "Could not remove the recovery draft. Keep editing or try again."
+msgstr ""
+"Impossible de supprimer le brouillon de secours. Continuez à modifier ou "
+"réessayez."
+
+#: community_dictionary/static/community_dictionary/app.js:175
+msgid "Finish recording or stop the microphone check before saving."
+msgstr ""
+"Terminez l’enregistrement ou arrêtez le test du microphone avant "
+"d’enregistrer."
+
+#: community_dictionary/static/community_dictionary/app.js:186
+msgid "Saving to the dictionary… waiting for confirmation."
+msgstr "Enregistrement dans le dictionnaire… en attente de confirmation."
+
+#: community_dictionary/static/community_dictionary/app.js:203
+msgid ""
+"The upload is too large for this server. Try a smaller picture or recording."
+msgstr ""
+"Le fichier est trop volumineux pour ce serveur. Essayez une image ou un "
+"enregistrement plus petit."
+
+#: community_dictionary/static/community_dictionary/app.js:203
+msgid ""
+"Your session may have expired, or the server could not respond. Your draft "
+"remains here. Reload or sign in, then retry."
+msgstr ""
+"Votre session a peut-être expiré, ou le serveur n’a pas pu répondre. Votre "
+"brouillon reste ici. Rechargez la page ou connectez-vous, puis réessayez."
+
+#: community_dictionary/static/community_dictionary/app.js:205
+msgid "The server could not save this yet."
+msgstr "Le serveur n’a pas encore pu enregistrer ce contenu."
+
+#: community_dictionary/static/community_dictionary/app.js:208
+msgid "Saved to the dictionary."
+msgstr "Enregistré dans le dictionnaire."
+
+#: community_dictionary/static/community_dictionary/app.js:212
+msgid ""
+"Confirmation took too long. You can retry safely: the same submission will "
+"not be added twice."
+msgstr ""
+"La confirmation a pris trop de temps. Vous pouvez réessayer sans risque : le"
+" même envoi ne sera pas ajouté deux fois."
+
+#: community_dictionary/static/community_dictionary/app.js:212
+msgid "Connection lost. Keep this page open or restore the draft and retry."
+msgstr ""
+"Connexion perdue. Gardez cette page ouverte ou restaurez le brouillon, puis "
+"réessayez."
+
+#: community_dictionary/static/community_dictionary/app.js:213
+msgid ""
+"Not confirmed as saved. Your contribution is still here; choose Save to "
+"retry when connected."
+msgstr ""
+"Enregistrement non confirmé. Votre contribution est toujours ici ; "
+"choisissez Enregistrer pour réessayer une fois connecté."
+
+#: community_dictionary/static/community_dictionary/app.js:225
+msgid "Saving is in progress. Please wait for confirmation."
+msgstr "L’enregistrement est en cours. Veuillez attendre la confirmation."
+
+#: community_dictionary/static/community_dictionary/app.js:226
+msgid "Finish recording or stop the microphone check before leaving."
+msgstr ""
+"Terminez l’enregistrement ou arrêtez le test du microphone avant de quitter "
+"la page."
+
+#: community_dictionary/static/community_dictionary/capture.js:31
+msgid "Language for feedback"
+msgstr "Langue des commentaires"
+
+#: community_dictionary/static/community_dictionary/capture.js:31
+msgid "Language I am using"
+msgstr "Langue que j’utilise"
+
+#: community_dictionary/static/community_dictionary/capture.js:71
+msgid "Keep up to 12 words or expressions for this picture."
+msgstr "Gardez jusqu’à 12 mots ou expressions pour cette image."
+
+#: community_dictionary/static/community_dictionary/capture.js:91
+msgid ""
+"Audio is still pending. You can continue to another picture, refresh its "
+"status later, or use Continue creating audio."
+msgstr ""
+"L’audio est toujours en attente. Vous pouvez passer à une autre image, "
+"actualiser son état plus tard ou utiliser « Continuer la création audio »."
+
+#: community_dictionary/static/community_dictionary/capture.js:95
+msgid ""
+"Could not refresh the audio status. Your saved picture is safe. Reload to "
+"check progress."
+msgstr ""
+"Impossible d’actualiser l’état de l’audio. Votre image est bien enregistrée."
+" Rechargez la page pour voir la progression."
+
+#: community_dictionary/static/community_dictionary/capture.js:107
+msgid "Could not refresh the audio status."
+msgstr "Impossible d’actualiser l’état de l’audio."
+
+#: community_dictionary/static/community_dictionary/capture.js:109
+msgid "This preview is no longer available. Reload to view the current entry."
+msgstr ""
+"Cet aperçu n’est plus disponible. Rechargez la page pour voir l’entrée "
+"actuelle."
+
+#: community_dictionary/static/community_dictionary/capture.js:126
+msgid ""
+"Audio is being prepared in the background. You can continue using this page "
+"or go to the next picture."
+msgstr ""
+"L’audio est en cours de préparation en arrière-plan. Vous pouvez continuer à"
+" utiliser cette page ou passer à l’image suivante."
+
+#: community_dictionary/static/community_dictionary/capture.js:142
+msgid ""
+"Working… Your saved picture is safe. Audio continues in the background when "
+"the worker is running."
+msgstr ""
+"Traitement en cours… Votre image est bien enregistrée. La création audio "
+"continue en arrière-plan lorsque le processus de traitement est actif."
+
+#: community_dictionary/static/community_dictionary/capture.js:146
+msgid "The request could not finish."
+msgstr "La demande n’a pas pu aboutir."
+
+#: community_dictionary/static/community_dictionary/capture.js:149
+msgid "Connection interrupted."
+msgstr "Connexion interrompue."
+
+#: community_dictionary/static/community_dictionary/capture.js:149
+msgid ""
+"Reload to check the result; an in-flight request will not be repeated "
+"automatically."
+msgstr ""
+"Rechargez la page pour vérifier le résultat ; une demande en cours ne sera "
+"pas répétée automatiquement."
+
+#: community_dictionary/static/community_dictionary/capture.js:156
+msgid ""
+"Audio is being prepared in the background. You can go to the next picture."
+msgstr ""
+"L’audio est en cours de préparation en arrière-plan. Vous pouvez passer à "
+"l’image suivante."
+
+#: community_dictionary/static/community_dictionary/evaluation.js:10
+msgid "Unsaved judgements. Choose Save and next before leaving."
+msgstr ""
+"Avis non enregistrés. Choisissez Enregistrer et continuer avant de quitter."
+
+#: community_dictionary/static/community_dictionary/lexicon.js:25
+msgid "Pause"
+msgstr "Pause"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:25
+msgid "Listen"
+msgstr "Écouter"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:26
+msgid "Pause %(word)s"
+msgstr "Mettre %(word)s en pause"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:26
+msgid "Listen to %(word)s"
+msgstr "Écouter %(word)s"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:30
+msgid ""
+"This recording could not play. Try again, or open the word page for other "
+"recordings."
+msgstr ""
+"Impossible de lire cet enregistrement. Réessayez ou ouvrez la page du mot "
+"pour trouver d’autres enregistrements."
+
+#: community_dictionary/static/community_dictionary/lexicon.js:98
+msgid ""
+"Could not refresh recordings. Reload this page to check for saved audio."
+msgstr ""
+"Impossible d’actualiser les enregistrements. Rechargez cette page pour "
+"vérifier les enregistrements sauvegardés."
+
+#: community_dictionary/static/community_dictionary/photo.js:21
+msgid "Uploading and identifying… Please keep this page open."
+msgstr "Envoi et identification… Gardez cette page ouverte."
+
+#: community_dictionary/static/community_dictionary/photo.js:49
+msgid ""
+"The connection was interrupted. Open “Learn from a photo” again and check "
+"Your recent photos before starting another attempt."
+msgstr ""
+"La connexion a été interrompue. Rouvrez « Apprendre avec une photo » et "
+"consultez Vos photos récentes avant de réessayer."
+
+#: community_dictionary/static/community_dictionary/photo.js:64
+msgid ""
+"Synthetic preview using an available device voice. No recording is saved. "
+"Your device’s speech service may process the word."
+msgstr ""
+"Aperçu de synthèse avec une voix disponible sur votre appareil. Aucun "
+"enregistrement n’est conservé. Le service vocal de votre appareil peut "
+"traiter le mot."
+
+#: community_dictionary/static/community_dictionary/photo.js:64
+msgid ""
+"No matching device voice is available. You can add a human recording after "
+"saving."
+msgstr ""
+"Aucune voix adaptée n’est disponible sur l’appareil. Vous pouvez ajouter un "
+"enregistrement humain après avoir enregistré la fiche."
+
+#: community_dictionary/static/community_dictionary/photo.js:73
+msgid "The device voice could not play. You can add a recording after saving."
+msgstr ""
+"La voix de l’appareil n’a pas pu être lue. Vous pouvez ajouter un "
+"enregistrement après avoir enregistré la fiche."
+
+#: community_dictionary/static/community_dictionary/practice.js:39
+msgid "The connection is taking too long. Please try again."
+msgstr "La connexion prend trop de temps. Veuillez réessayer."
+
+#: community_dictionary/static/community_dictionary/practice.js:39
+msgid "Unable to reach the dictionary. Reconnect and start a new activity."
+msgstr ""
+"Impossible de joindre le dictionnaire. Reconnectez-vous et démarrez une "
+"nouvelle activité."
+
+#: community_dictionary/static/community_dictionary/practice.js:41
+msgid "This dictionary is no longer available. Return to the dictionary list."
+msgstr ""
+"Ce dictionnaire n’est plus disponible. Revenez à la liste des dictionnaires."
+
+#: community_dictionary/static/community_dictionary/practice.js:42
+msgid "Unable to check the dictionary. Please try again when connected."
+msgstr "Impossible de vérifier le dictionnaire. Réessayez une fois connecté."
+
+#: community_dictionary/static/community_dictionary/practice.js:44
+msgid "Unable to start this activity. Please try again."
+msgstr "Impossible de démarrer cette activité. Veuillez réessayer."
+
+#: community_dictionary/static/community_dictionary/practice.js:53
+msgid ""
+"The dictionary changed. Choose an activity to practise with the current "
+"shared content."
+msgstr ""
+"Le dictionnaire a changé. Choisissez une activité pour travailler avec le "
+"contenu partagé actuel."
+
+#: community_dictionary/static/community_dictionary/practice.js:57
+msgid "The connection is taking too long. Reconnect and start a new activity."
+msgstr ""
+"La connexion prend trop de temps. Reconnectez-vous et démarrez une nouvelle "
+"activité."
+
+#: community_dictionary/static/community_dictionary/practice.js:57
+msgid "Connection lost. Reconnect and start a new activity."
+msgstr "Connexion perdue. Reconnectez-vous et démarrez une nouvelle activité."
+
+#: community_dictionary/static/community_dictionary/practice.js:70
+msgid "Dictionary picture"
+msgstr "Image du dictionnaire"
+
+#: community_dictionary/static/community_dictionary/practice.js:71
+msgid "AI-generated picture"
+msgstr "Image générée par l’IA"
+
+#: community_dictionary/static/community_dictionary/practice.js:72
+msgid ""
+"This picture could not be loaded. You can skip it or start another activity."
+msgstr ""
+"Cette image n’a pas pu être chargée. Vous pouvez la passer ou démarrer une "
+"autre activité."
+
+#: community_dictionary/static/community_dictionary/practice.js:75
+msgid "Dictionary recording"
+msgstr "Enregistrement du dictionnaire"
+
+#: community_dictionary/static/community_dictionary/practice.js:77
+msgid ""
+"This recording could not be played. You can skip it or try another browser."
+msgstr ""
+"Cet enregistrement n’a pas pu être lu. Vous pouvez le passer ou essayer un "
+"autre navigateur."
+
+#: community_dictionary/static/community_dictionary/practice.js:78
+msgid "Synthetic voice"
+msgstr "Voix de synthèse"
+
+#: community_dictionary/static/community_dictionary/practice.js:83
+msgid "Translation"
+msgstr "Traduction"
+
+#: community_dictionary/static/community_dictionary/practice.js:86
+msgid "Visit word page"
+msgstr "Voir la page du mot"
+
+#: community_dictionary/static/community_dictionary/practice.js:86
+msgid "Visit entry"
+msgstr "Voir la fiche"
+
+#: community_dictionary/static/community_dictionary/practice.js:91
+msgid "%(learned)s of %(total)s remembered · %(remaining)s left"
+msgstr "%(learned)s retenues sur %(total)s · %(remaining)s restantes"
+
+#: community_dictionary/static/community_dictionary/practice.js:93
+msgid "Well done!"
+msgstr "Bravo !"
+
+#: community_dictionary/static/community_dictionary/practice.js:93
+msgid "You recalled %(total)s cards."
+msgstr "Vous avez retenu %(total)s cartes."
+
+#: community_dictionary/static/community_dictionary/practice.js:93
+#: community_dictionary/static/community_dictionary/practice.js:118
+msgid "Practise again"
+msgstr "S’entraîner à nouveau"
+
+#: community_dictionary/static/community_dictionary/practice.js:97
+msgid "Recall the word or phrase."
+msgstr "Retrouvez le mot ou l’expression."
+
+#: community_dictionary/static/community_dictionary/practice.js:97
+msgid "Recall the picture."
+msgstr "Retrouvez l’image."
+
+#: community_dictionary/static/community_dictionary/practice.js:97
+msgid "Recall the pronunciation."
+msgstr "Retrouvez la prononciation."
+
+#: community_dictionary/static/community_dictionary/practice.js:101
+#: community_dictionary/static/community_dictionary/practice.js:166
+#: community_dictionary/static/community_dictionary/practice.js:227
+msgid "Show answer"
+msgstr "Afficher la réponse"
+
+#: community_dictionary/static/community_dictionary/practice.js:104
+msgid "Again"
+msgstr "Revoir"
+
+#: community_dictionary/static/community_dictionary/practice.js:104
+msgid "Got it"
+msgstr "Retenu"
+
+#: community_dictionary/static/community_dictionary/practice.js:106
+#: community_dictionary/static/community_dictionary/practice.js:166
+msgid "Skip"
+msgstr "Passer"
+
+#: community_dictionary/static/community_dictionary/practice.js:115
+msgid "%(completed)s of %(total)s completed · %(correct)s correct first time"
+msgstr ""
+"%(completed)s terminées sur %(total)s · %(correct)s bonnes réponses du "
+"premier coup"
+
+#: community_dictionary/static/community_dictionary/practice.js:118
+msgid "Session complete"
+msgstr "Séance terminée"
+
+#: community_dictionary/static/community_dictionary/practice.js:118
+msgid "%(correct)s of %(total)s correct first time."
+msgstr "%(correct)s bonnes réponses du premier coup sur %(total)s."
+
+#: community_dictionary/static/community_dictionary/practice.js:123
+msgid "Choose the matching word or phrase."
+msgstr "Choisissez le mot ou l’expression qui correspond."
+
+#: community_dictionary/static/community_dictionary/practice.js:123
+msgid "Choose the matching picture."
+msgstr "Choisissez l’image qui correspond."
+
+#: community_dictionary/static/community_dictionary/practice.js:123
+msgid "Choose the matching recording."
+msgstr "Choisissez l’enregistrement qui correspond."
+
+#: community_dictionary/static/community_dictionary/practice.js:125
+#: community_dictionary/static/community_dictionary/practice.js:224
+msgid "Correct!"
+msgstr "Correct !"
+
+#: community_dictionary/static/community_dictionary/practice.js:125
+msgid "Answer shown."
+msgstr "Réponse affichée."
+
+#: community_dictionary/static/community_dictionary/practice.js:125
+msgid "Not this one. Try another, or show the answer."
+msgstr ""
+"Ce n’est pas celle-ci. Essayez une autre réponse ou affichez la réponse."
+
+#: community_dictionary/static/community_dictionary/practice.js:127
+msgid "Answer choices"
+msgstr "Choix de réponses"
+
+#: community_dictionary/static/community_dictionary/practice.js:144
+msgid "Choose picture %(label)s"
+msgstr "Choisir l’image %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:145
+msgid "Choose %(label)s"
+msgstr "Choisir %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:147
+msgid "Recording %(label)s"
+msgstr "Enregistrement %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:149
+msgid "Choose recording %(label)s"
+msgstr "Choisir l’enregistrement %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:153
+msgid "✓ Matching answer"
+msgstr "✓ Bonne réponse"
+
+#: community_dictionary/static/community_dictionary/practice.js:154
+msgid "Try another answer"
+msgstr "Essayer une autre réponse"
+
+#: community_dictionary/static/community_dictionary/practice.js:164
+msgid "Next card"
+msgstr "Carte suivante"
+
+#: community_dictionary/static/community_dictionary/practice.js:176
+msgid ""
+"%(completed)s of %(total)s completed · %(remembered)s solved without showing"
+" the answer"
+msgstr ""
+"%(completed)s terminés sur %(total)s · %(remembered)s résolus sans afficher "
+"la réponse"
+
+#: community_dictionary/static/community_dictionary/practice.js:181
+msgid "Crossword grid"
+msgstr "Grille de mots croisés"
+
+#: community_dictionary/static/community_dictionary/practice.js:181
+msgid "Word search grid"
+msgstr "Grille de mots mêlés"
+
+#: community_dictionary/static/community_dictionary/practice.js:195
+msgid "Row %(row)s, column %(column)s%(letter)s"
+msgstr "Ligne %(row)s, colonne %(column)s%(letter)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:206
+msgid "Fit grid"
+msgstr "Adapter la grille"
+
+#: community_dictionary/static/community_dictionary/practice.js:206
+msgid "Larger grid"
+msgstr "Agrandir la grille"
+
+#: community_dictionary/static/community_dictionary/practice.js:209
+msgid "%(number)s%(direction)s · %(letters)s letters"
+msgstr "%(number)s%(direction)s · %(letters)s lettres"
+
+#: community_dictionary/static/community_dictionary/practice.js:212
+msgid "Type the word for this picture. Spaces and punctuation are not needed."
+msgstr ""
+"Saisissez le mot correspondant à cette image. Les espaces et la ponctuation "
+"ne sont pas nécessaires."
+
+#: community_dictionary/static/community_dictionary/practice.js:212
+msgid ""
+"Tap the first letter, then the last letter of the word. It can go across, "
+"down or diagonally."
+msgstr ""
+"Touchez la première lettre, puis la dernière lettre du mot. Il peut être "
+"horizontal, vertical ou en diagonale."
+
+#: community_dictionary/static/community_dictionary/practice.js:215
+msgid "Answer shown"
+msgstr "Réponse affichée"
+
+#: community_dictionary/static/community_dictionary/practice.js:215
+msgid "Found!"
+msgstr "Trouvé !"
+
+#: community_dictionary/static/community_dictionary/practice.js:220
+msgid "Your answer"
+msgstr "Votre réponse"
+
+#: community_dictionary/static/community_dictionary/practice.js:222
+msgid "Check answer"
+msgstr "Vérifier la réponse"
+
+#: community_dictionary/static/community_dictionary/practice.js:224
+msgid "Not quite. Try again, or show the answer."
+msgstr "Pas tout à fait. Réessayez ou affichez la réponse."
+
+#: community_dictionary/static/community_dictionary/practice.js:230
+msgid "Previous clue"
+msgstr "Indice précédent"
+
+#: community_dictionary/static/community_dictionary/practice.js:230
+msgid "Next clue"
+msgstr "Indice suivant"
+
+#: community_dictionary/static/community_dictionary/practice.js:232
+msgid "Choose a picture clue"
+msgstr "Choisir un indice en image"
+
+#: community_dictionary/static/community_dictionary/practice.js:234
+msgid "Puzzle complete"
+msgstr "Grille terminée"
+
+#: community_dictionary/static/community_dictionary/practice.js:234
+msgid "New puzzle"
+msgstr "Nouvelle grille"
+
+#: community_dictionary/static/community_dictionary/practice.js:237
+msgid "Now tap the last letter."
+msgstr "Touchez maintenant la dernière lettre."
+
+#: community_dictionary/static/community_dictionary/practice.js:239
+msgid "Choose a straight line of letters."
+msgstr "Choisissez une ligne droite de lettres."
+
+#: community_dictionary/static/community_dictionary/practice.js:245
+msgid "Not one of these words yet. Try again."
+msgstr "Ce n’est pas l’un de ces mots. Réessayez."
+
+#: community_dictionary/static/community_dictionary/practice.js:249
+msgid "Found it!"
+msgstr "Trouvé !"
+
+#: community_dictionary/static/community_dictionary/practice.js:255
+msgid "Preparing your activity…"
+msgstr "Préparation de votre activité…"
+
+#: community_dictionary/static/community_dictionary/practice.js:259
+msgid ""
+"No cards have both kinds of content yet. Choose another direction or add the"
+" missing pictures, words or recordings."
+msgstr ""
+"Aucune carte ne contient encore les deux types de contenu. Choisissez un "
+"autre sens ou ajoutez les images, mots ou enregistrements manquants."
+
+#: community_dictionary/static/community_dictionary/practice.js:263
+msgid "Flashcards"
+msgstr "Cartes mémoire"
+
+#: community_dictionary/static/community_dictionary/practice.js:263
+msgid "Picture crossword"
+msgstr "Mots croisés en images"
+
+#: community_dictionary/static/community_dictionary/practice.js:263
+msgid "Word scramble"
+msgstr "Mots mêlés"
+
+#: community_dictionary/static/community_dictionary/practice.js:266
+msgid "Unable to connect. Please try again."
+msgstr "Impossible de se connecter. Veuillez réessayer."
+
+#: community_dictionary/static/community_dictionary/practice.js:280
+msgid "Choose an activity to use the latest shared content."
+msgstr ""
+"Choisissez une activité pour utiliser le contenu partagé le plus récent."
+
+#: community_dictionary/static/community_dictionary/recorder.js:28
+msgid "■ Stop recording"
+msgstr "■ Arrêter l’enregistrement"
+
+#: community_dictionary/static/community_dictionary/recorder.js:28
+msgid "● Record"
+msgstr "● Enregistrer"
+
+#: community_dictionary/static/community_dictionary/recorder.js:31
+msgid "Stop microphone check"
+msgstr "Arrêter le test du microphone"
+
+#: community_dictionary/static/community_dictionary/recorder.js:31
+msgid "Check microphone"
+msgstr "Tester le microphone"
+
+#: community_dictionary/static/community_dictionary/recorder.js:39
+msgid "Browser default microphone"
+msgstr "Microphone par défaut du navigateur"
+
+#: community_dictionary/static/community_dictionary/recorder.js:41
+msgid "Microphone %(number)s"
+msgstr "Microphone %(number)s"
+
+#: community_dictionary/static/community_dictionary/recorder.js:49
+msgid "Use Check microphone to test this input."
+msgstr "Utilisez Tester le microphone pour vérifier cette entrée."
+
+#: community_dictionary/static/community_dictionary/recorder.js:52
+msgid ""
+"Microphone access was not allowed. Check microphone permissions in the "
+"browser site settings and on your device, then try again."
+msgstr ""
+"L’accès au microphone n’a pas été autorisé. Vérifiez les autorisations du "
+"microphone dans les paramètres du site et de votre appareil, puis réessayez."
+
+#: community_dictionary/static/community_dictionary/recorder.js:53
+msgid ""
+"The selected microphone is unavailable. Choose another input or reconnect "
+"it, then check again."
+msgstr ""
+"Le microphone choisi est indisponible. Choisissez une autre entrée ou "
+"reconnectez-le, puis refaites le test."
+
+#: community_dictionary/static/community_dictionary/recorder.js:54
+msgid ""
+"The microphone could not be opened. Close other recording or calling apps, "
+"then try again or choose another microphone."
+msgstr ""
+"Impossible d’accéder au microphone. Fermez les autres applications "
+"d’enregistrement ou d’appel, puis réessayez ou choisissez un autre "
+"microphone."
+
+#: community_dictionary/static/community_dictionary/recorder.js:55
+msgid ""
+"Recording could not start. Check the selected microphone, or choose an "
+"existing audio file."
+msgstr ""
+"L’enregistrement n’a pas pu démarrer. Vérifiez le microphone choisi ou "
+"sélectionnez un fichier audio existant."
+
+#: community_dictionary/static/community_dictionary/recorder.js:73
+msgid "Input meter unavailable; listen to the finished recording."
+msgstr "Indicateur de niveau indisponible ; écoutez l’enregistrement terminé."
+
+#: community_dictionary/static/community_dictionary/recorder.js:82
+msgid "Sound detected"
+msgstr "Son détecté"
+
+#: community_dictionary/static/community_dictionary/recorder.js:82
+msgid "No sound detected — speak into the microphone."
+msgstr "Aucun son détecté — parlez dans le microphone."
+
+#: community_dictionary/static/community_dictionary/recorder.js:88
+#: community_dictionary/static/community_dictionary/recorder.js:227
+msgid "Recording… %(seconds)s s"
+msgstr "Enregistrement… %(seconds)s s"
+
+#: community_dictionary/static/community_dictionary/recorder.js:103
+msgid "Using: %(microphone)s"
+msgstr "Microphone utilisé : %(microphone)s"
+
+#: community_dictionary/static/community_dictionary/recorder.js:103
+msgid "browser default microphone"
+msgstr "microphone par défaut du navigateur"
+
+#: community_dictionary/static/community_dictionary/recorder.js:107
+msgid "The microphone disconnected. Reconnect it or choose another input."
+msgstr ""
+"Le microphone a été déconnecté. Reconnectez-le ou choisissez une autre "
+"entrée."
+
+#: community_dictionary/static/community_dictionary/recorder.js:119
+msgid "Input meter unavailable; listen before sharing."
+msgstr "Indicateur de niveau indisponible ; écoutez avant de partager."
+
+#: community_dictionary/static/community_dictionary/recorder.js:127
+msgid ""
+"Recording needs a supported browser and HTTPS (or localhost). You can choose"
+" an existing audio file instead."
+msgstr ""
+"L’enregistrement nécessite un navigateur compatible et HTTPS (ou localhost)."
+" Vous pouvez choisir un fichier audio existant."
+
+#: community_dictionary/static/community_dictionary/recorder.js:136
+msgid "Microphone check finished"
+msgstr "Test du microphone terminé"
+
+#: community_dictionary/static/community_dictionary/recorder.js:137
+msgid "Sound reached the microphone. Choose Record when ready."
+msgstr ""
+"Le microphone a reçu du son. Choisissez Enregistrer quand vous êtes prêt."
+
+#: community_dictionary/static/community_dictionary/recorder.js:137
+msgid ""
+"No sound reached this input. Choose another microphone and check again. "
+"Check any mute switch and your device’s microphone settings."
+msgstr ""
+"Aucun son n’a atteint cette entrée. Choisissez un autre microphone et "
+"refaites le test. Vérifiez le bouton de coupure du son et les paramètres du "
+"microphone de votre appareil."
+
+#: community_dictionary/static/community_dictionary/recorder.js:143
+msgid "Waiting for microphone permission…"
+msgstr "En attente de l’autorisation du microphone…"
+
+#: community_dictionary/static/community_dictionary/recorder.js:147
+msgid "Microphone check — speak normally"
+msgstr "Test du microphone — parlez normalement"
+
+#: community_dictionary/static/community_dictionary/recorder.js:151
+msgid "Microphone check could not start"
+msgstr "Le test du microphone n’a pas pu démarrer"
+
+#: community_dictionary/static/community_dictionary/recorder.js:166
+msgid "Checking your recording…"
+msgstr "Vérification de votre enregistrement…"
+
+#: community_dictionary/static/community_dictionary/recorder.js:178
+msgid ""
+"The recorder produced no usable audio. Your previous recording, if any, is "
+"unchanged. Try another microphone or choose a file."
+msgstr ""
+"L’enregistreur n’a produit aucun audio utilisable. Votre enregistrement "
+"précédent, s’il existe, reste inchangé. Essayez un autre microphone ou "
+"choisissez un fichier."
+
+#: community_dictionary/static/community_dictionary/recorder.js:179
+msgid "Recording not saved"
+msgstr "Enregistrement non conservé"
+
+#: community_dictionary/static/community_dictionary/recorder.js:194
+msgid "Silent recording — not saved"
+msgstr "Enregistrement silencieux — non conservé"
+
+#: community_dictionary/static/community_dictionary/recorder.js:195
+msgid ""
+"No sound was detected. Choose another microphone and use Check microphone. "
+"This take has not replaced any earlier recording."
+msgstr ""
+"Aucun son n’a été détecté. Choisissez un autre microphone et utilisez Tester"
+" le microphone. Cette prise n’a remplacé aucun enregistrement précédent."
+
+#: community_dictionary/static/community_dictionary/recorder.js:200
+msgid "Recording ready — listen before sharing"
+msgstr "Enregistrement prêt — écoutez avant de partager"
+
+#: community_dictionary/static/community_dictionary/recorder.js:201
+msgid ""
+"This recording is very quiet. Listen and consider recording again with a "
+"higher microphone input level."
+msgstr ""
+"Cet enregistrement est très faible. Écoutez-le et envisagez de recommencer "
+"en augmentant le niveau d’entrée du microphone."
+
+#: community_dictionary/static/community_dictionary/recorder.js:202
+msgid ""
+"Sound could not be verified automatically. Listen to this recording before "
+"sharing."
+msgstr ""
+"Le son n’a pas pu être vérifié automatiquement. Écoutez cet enregistrement "
+"avant de le partager."
+
+#: community_dictionary/static/community_dictionary/recorder.js:204
+msgid "Recording could not be prepared"
+msgstr "L’enregistrement n’a pas pu être préparé"
+
+#: community_dictionary/static/community_dictionary/recorder.js:205
+msgid "Please try recording again, or choose an existing audio file."
+msgstr "Réessayez d’enregistrer ou choisissez un fichier audio existant."
+
+#: community_dictionary/static/community_dictionary/recorder.js:215
+msgid "Starting microphone…"
+msgstr "Démarrage du microphone…"
+
+#: community_dictionary/static/community_dictionary/recorder.js:231
+msgid "Recording could not start"
+msgstr "L’enregistrement n’a pas pu démarrer"
+
+#: community_dictionary/static/community_dictionary/saved_audio.js:11
+msgid "Creating your audio preview… Please keep this page open."
+msgstr "Création de l’aperçu audio… Veuillez garder cette page ouverte."
+
+#: community_dictionary/static/community_dictionary/saved_audio.js:22
+msgid ""
+"The connection was interrupted. Reopen Create spoken audio from the entry "
+"and check Your recent audio before starting another attempt."
+msgstr ""
+"La connexion a été interrompue. Rouvrez « Créer un enregistrement vocal » "
+"depuis l’entrée et consultez vos enregistrements récents avant de réessayer."
+
+msgid "Across"
+msgstr "Horizontal"
+
+msgid "Down"
+msgstr "Vertical"
+
+msgid "across"
+msgstr "horizontal"
+
+msgid "down"
+msgstr "vertical"

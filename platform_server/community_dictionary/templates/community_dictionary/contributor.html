@@ -1,4 +1,4 @@
-{% extends 'community_dictionary/base.html' %}{% block title %}{{ public_name }}{% endblock %}
-{% block content %}<p class="eyebrow">Community contributor · self-listed</p><h1>{{ public_name }}</h1>{% if introduction %}<p class="lead">{{ introduction|linebreaksbr }}</p>{% endif %}
-<h2>Discoverable dictionaries owned by {{ public_name }}</h2><div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p>No discoverable dictionaries to show.</p>{% endfor %}</div>
-{% include 'community_dictionary/public_pagination.html' %}<p><a href="{% url 'community_dictionary:about' %}#contributors">All listed contributors</a></p>{% endblock %}
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block title %}{{ public_name }}{% endblock %}
+{% block content %}<p class="eyebrow">{% translate "Community contributor · self-listed" %}</p><h1>{{ public_name }}</h1>{% if introduction %}<p class="lead">{{ introduction|linebreaksbr }}</p>{% endif %}
+<h2>{% blocktranslate with name=public_name %}Discoverable dictionaries owned by {{ name }}{% endblocktranslate %}</h2><div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p>{% translate "No discoverable dictionaries to show." %}</p>{% endfor %}</div>
+{% include 'community_dictionary/public_pagination.html' %}<p><a href="{% url 'community_dictionary:about' %}#contributors">{% translate "All listed contributors" %}</a></p>{% endblock %}

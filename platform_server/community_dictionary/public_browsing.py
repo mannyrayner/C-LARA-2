@@ -4,6 +4,7 @@ The member views deliberately include proposals, discussions and provenance.
 Keep their permission boundary intact; this module exposes a smaller projection
 whose text, links and media all pass the same live contribution checks.
 """
+from django.utils.translation import gettext
 from django.db.models import CharField, Exists, F, OuterRef, Prefetch, Q, Subquery, TextField, Value
 from django.db.models.functions import Coalesce
 
@@ -89,7 +90,7 @@ def row(entry, dictionary):
     return {'id': entry.pk, 'word': entry.public_word, 'meaning': entry.public_meaning,
             'automatic_unreviewed':entry.public_automatic and not entry.public_checked,
             'category': entry.public_category, 'kind': entry.entry_type,
-            'title': entry.public_word or ('Picture' if image else 'Recording'),
+            'title': entry.public_word or (gettext('Picture') if image else gettext('Recording')),
             'image': media_row(image) if image else None,
             'audio': media_row(recordings[0]) if recordings else None,
             'images': [media_row(c) for c in images],

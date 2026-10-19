@@ -1,7 +1,7 @@
-<article class="dictionary-card"><p class="eyebrow">{{ row.language }}</p><h3><a href="{% url 'community_dictionary:discover-dictionary' row.id %}">{{ row.name }}</a></h3>
-<p>{{ row.entry_count }} accepted entr{{ row.entry_count|pluralize:'y,ies' }} · {{ row.sentence_count }} sentence{{ row.sentence_count|pluralize }} · {{ row.word_count }} word{{ row.word_count|pluralize }}</p>
-{% if row.explanation_language %}<p class="help">Translations: {{ row.explanation_language }}</p>{% endif %}
-{% if row.owner_name %}<p>Owner: <a href="{% url 'community_dictionary:contributor' row.owner_id %}">{{ row.owner_name }}</a></p>{% endif %}
-<p><span class="badge">{% if row.public %}Public browsing{% else %}Contents for members only{% endif %}</span></p>
-<div class="actions">{% if row.public %}<a class="button secondary" href="{% url 'community_dictionary:public-dictionary' row.id %}">Browse</a>{% endif %}
-<a href="{% url 'community_dictionary:discover-dictionary' row.id %}">{% if row.state == 'pending' %}Request pending{% elif row.state == 'owner' or row.state == 'member' %}Dictionary details{% else %}Membership details / request to join{% endif %} →</a></div></article>
+{% load i18n %}{% load pronunciation_tags %}<article class="dictionary-card"><p class="eyebrow">{{ row.language|community_language_name }}</p><h3><a href="{% url 'community_dictionary:discover-dictionary' row.id %}">{{ row.name }}</a></h3>
+<p>{% blocktranslate count count=row.entry_count %}{{ count }} accepted entry{% plural %}{{ count }} accepted entries{% endblocktranslate %} · {% blocktranslate count count=row.sentence_count %}{{ count }} sentence{% plural %}{{ count }} sentences{% endblocktranslate %} · {% blocktranslate count count=row.word_count %}{{ count }} word{% plural %}{{ count }} words{% endblocktranslate %}</p>
+{% if row.explanation_language %}<p class="help">{% translate "Translations:" %} {{ row.explanation_language|community_language_name }}</p>{% endif %}
+{% if row.owner_name %}<p>{% translate "Owner:" %} <a href="{% url 'community_dictionary:contributor' row.owner_id %}">{{ row.owner_name }}</a></p>{% endif %}
+<p><span class="badge">{% if row.public %}{% translate "Public browsing" %}{% else %}{% translate "Contents for members only" %}{% endif %}</span></p>
+<div class="actions">{% if row.public %}<a class="button secondary" href="{% url 'community_dictionary:public-dictionary' row.id %}">{% translate "Browse" %}</a>{% endif %}
+<a href="{% url 'community_dictionary:discover-dictionary' row.id %}">{% if row.state == 'pending' %}{% translate "Request pending" %}{% elif row.state == 'owner' or row.state == 'member' %}{% translate "Dictionary details" %}{% else %}{% translate "Membership details / request to join" %}{% endif %} →</a></div></article>

@@ -49,3 +49,12 @@
 .capture-modes input[type=radio][name=input_mode] {width:20px;height:20px;min-height:0;padding:0;flex:none;margin:0;accent-color:var(--teal);}
 .capture-modes label:has(input:checked) {background:#edf5ef;border-color:#285744;}
 @media(max-width:600px) {.capture-modes > div {grid-template-columns:1fr;}}
+
+.interface-language-form {display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;}
+.interface-language-form label {font-size:.8rem;}
+.interface-language-form select {width:auto;min-height:2.5rem;padding:.35rem;}
+.interface-language-form button {min-height:2.5rem;}
+.learning-language-form {display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;}
+.learning-language-form select {width:auto;max-width:100%;}
+.learning-languages li {margin:.5rem 0;}
+@media(max-width:600px) {.site-header {align-items:flex-start;} .interface-language-form {width:100%;} .learning-language-form {align-items:flex-start;flex-direction:column;}}
