@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: C-LARA-2 Community Dictionaries\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-19 05:31+0000\n"
+"POT-Creation-Date: 2026-10-19 06:27+0000\n"
 "PO-Revision-Date: 2026-10-19 00:00+0000\n"
 "Last-Translator: C-LARA team\n"
 "Language-Team: French\n"
@@ -139,6 +139,22 @@ msgid "Current wording marked as linguistically checked."
 msgstr ""
 "La formulation actuelle a été marquée comme vérifiée sur le plan "
 "linguistique."
+
+#: community_dictionary/evaluation_views.py:89
+msgid ""
+"Only multi-word entries in English, French, Swedish, German, Italian or "
+"Icelandic"
+msgstr ""
+"Uniquement les expressions de plusieurs mots en anglais, français, suédois, "
+"allemand, italien ou islandais"
+
+#: community_dictionary/evaluation_views.py:90
+msgid ""
+"For word pages or word audio only. Japanese uses explicit selection on the "
+"expression-audio page."
+msgstr ""
+"Pour les pages de mots ou leur audio uniquement. En japonais, les entrées "
+"sont sélectionnées explicitement sur la page de synthèse des expressions."
 
 #: community_dictionary/forms.py:11
 msgid "Enable Picture descriptions (OpenAI)"
@@ -429,7 +445,6 @@ msgid "Choose a word to link or a link to remove."
 msgstr "Choisissez un mot à associer ou un lien à supprimer."
 
 #: community_dictionary/lexicon_views.py:59
-#| msgid "Words for this picture"
 msgid "Word linked to this picture."
 msgstr "Le mot a été associé à cette image."
 
@@ -3528,6 +3543,7 @@ msgid "Expression audio"
 msgstr "Audio des expressions"
 
 #: community_dictionary/templates/community_dictionary/mwe_audio_run.html:2
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:2
 #: community_dictionary/templates/community_dictionary/settings.html:30
 msgid "Regenerate AI expression audio"
 msgstr "Régénérer l’audio des expressions par IA"
@@ -3759,6 +3775,117 @@ msgstr ""
 #: community_dictionary/templates/community_dictionary/mwe_audio_run.html:23
 msgid "Cancel waiting work"
 msgstr "Annuler les tâches en attente"
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:1
+#: community_dictionary/templates/community_dictionary/settings.html:30
+msgid "Expression audio pilot"
+msgstr "Essai audio pour les expressions"
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:3
+#| msgid ""
+#| "Try carrier-based AI audio for French, Swedish, German, Italian and "
+#| "Icelandic multi-word entries, or explicitly selected Japanese entries. "
+#| "Earlier audio is retained; human recordings are protected."
+msgid ""
+"This optional pilot uses short spoken carrier phrases, then extracts the "
+"expression between two pauses. It supports English, French, Swedish, German,"
+" Italian and Icelandic multi-word entries, plus explicitly selected Japanese"
+" word entries. Boundary checks cannot guarantee correct pronunciation; "
+"please listen afterwards."
+msgstr ""
+"Ce test facultatif utilise de courtes phrases porteuses, puis extrait "
+"l’expression entre deux pauses. Il prend en charge les expressions "
+"anglaises, françaises, suédoises, allemandes, italiennes et islandaises, "
+"ainsi que les entrées japonaises sélectionnées explicitement. La "
+"vérification des limites ne garantit pas une bonne prononciation : écoutez "
+"les résultats."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:4
+msgid "Japanese experiment:"
+msgstr "Test en japonais :"
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:4
+msgid ""
+"Choose the entries below. No entries are selected automatically: Japanese "
+"compounds are not necessarily multi-word expressions, and there is no reason"
+" to replace audio you already find satisfactory. This language has not yet "
+"been evaluated with these carriers."
+msgstr ""
+"Choisissez les entrées ci-dessous. Aucune n’est sélectionnée automatiquement"
+" : les composés japonais ne sont pas nécessairement des expressions de "
+"plusieurs mots, et il est inutile de remplacer un enregistrement que vous "
+"jugez déjà satisfaisant. Ces phrases porteuses n’ont pas encore été évaluées"
+" dans cette langue."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:4
+msgid ""
+"Multi-word entries are identified by spaces. Single-word compounds and "
+"unspaced separable-verb lemmas are kept. English, German, Italian and "
+"Icelandic carriers are new and need listening tests."
+msgstr ""
+"Les expressions de plusieurs mots sont repérées grâce aux espaces. Les "
+"composés en un seul mot et les lemmes de verbes à particule sans espace sont"
+" conservés. Les phrases porteuses anglaises, allemandes, italiennes et "
+"islandaises sont nouvelles et doivent être évaluées à l’écoute."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:5
+msgid ""
+"Only accepted word entries with existing AI audio are eligible. Human "
+"recordings, sentences and successful replacements from this recipe are kept."
+" Each shared word page is processed once. New audio replaces the old only "
+"after extraction succeeds; earlier recordings are retained and can be "
+"restored."
+msgstr ""
+"Seules les entrées de mots validées possédant déjà un enregistrement de "
+"synthèse sont admissibles. Les enregistrements humains, les phrases et les "
+"remplacements déjà réussis avec cette méthode sont conservés. Chaque page de"
+" mot partagée n’est traitée qu’une fois. Le nouvel audio ne remplace "
+"l’ancien qu’après une extraction réussie ; les anciens enregistrements sont "
+"conservés et peuvent être restaurés."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:6
+msgid ""
+"New recordings use the voice of the latest existing AI recording (Marin if "
+"its voice is unavailable). Up to five completed recordings may be tried per "
+"expression. Network errors and timeouts are not automatically retried."
+msgstr ""
+"Les nouveaux enregistrements utilisent la voix du dernier enregistrement de "
+"synthèse existant (Marin si cette voix est indisponible). Jusqu’à cinq "
+"enregistrements complets peuvent être tentés par expression. Les erreurs "
+"réseau et les délais dépassés ne sont pas réessayés automatiquement."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:7
+msgid "For a comparison:"
+msgstr "Pour comparer :"
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:7
+msgid ""
+"First finish a word-audio evaluation under Evaluate. After regeneration, use"
+" “Repeat these word-audio items” on that closed evaluation set."
+msgstr ""
+"Terminez d’abord une évaluation de l’audio des mots dans Évaluer. Après la "
+"régénération, utilisez « Réévaluer l’audio de ces mots » dans cette "
+"évaluation close."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:8
+msgid "Show estimate — no AI calls yet"
+msgstr "Afficher l’estimation — aucun appel à l’IA à ce stade"
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:8
+msgid ""
+"Enable saved TTS in English, French, Swedish, German, Italian, Icelandic or "
+"Japanese to use this pilot."
+msgstr ""
+"Activez l’enregistrement de la voix de synthèse en anglais, français, "
+"suédois, allemand, italien, islandais ou japonais pour utiliser ce test."
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:9
+msgid "Recent jobs"
+msgstr "Traitements récents"
+
+#: community_dictionary/templates/community_dictionary/mwe_audio_start.html:9
+msgid "No jobs yet."
+msgstr "Aucun traitement pour le moment."
 
 #: community_dictionary/templates/community_dictionary/my_content.html:2
 msgid "My saved content"
@@ -4309,7 +4436,6 @@ msgid "Ask a partner by adding it without AI"
 msgstr "Demander à un partenaire en l’ajoutant sans IA"
 
 #: community_dictionary/templates/community_dictionary/picture_word_editor.html:3
-#| msgid "Listen to %(word)s"
 msgid "Link more words"
 msgstr "Associer d’autres mots"
 
@@ -4330,18 +4456,15 @@ msgstr ""
 "ou supprimer ci-dessous d’autres mots associés à l’image."
 
 #: community_dictionary/templates/community_dictionary/picture_word_editor.html:9
-#| msgid "Link to share"
 msgid "Link word"
 msgstr "Associer le mot"
 
 #: community_dictionary/templates/community_dictionary/picture_word_editor.html:13
 #, python-format
-#| msgid "Recording of %(word)s"
 msgid "Remove link to %(word)s"
 msgstr "Supprimer le lien avec %(word)s"
 
 #: community_dictionary/templates/community_dictionary/picture_word_editor.html:16
-#| msgid "Saving also accepts this picture in this dictionary."
 msgid "Accept this picture before linking additional words."
 msgstr "Validez cette image avant d’y associer d’autres mots."
 
@@ -5020,19 +5143,19 @@ msgid "Save name"
 msgstr "Enregistrer le nom"
 
 #: community_dictionary/templates/community_dictionary/settings.html:30
-msgid "Expression audio pilot"
-msgstr "Essai audio pour les expressions"
-
-#: community_dictionary/templates/community_dictionary/settings.html:30
+#| msgid ""
+#| "Try carrier-based AI audio for French, Swedish, German, Italian and "
+#| "Icelandic multi-word entries, or explicitly selected Japanese entries. "
+#| "Earlier audio is retained; human recordings are protected."
 msgid ""
-"Try carrier-based AI audio for French, Swedish, German, Italian and "
-"Icelandic multi-word entries, or explicitly selected Japanese entries. "
+"Try carrier-based AI audio for English, French, Swedish, German, Italian and"
+" Icelandic multi-word entries, or explicitly selected Japanese entries. "
 "Earlier audio is retained; human recordings are protected."
 msgstr ""
-"Essayer la génération audio par IA à partir de phrases porteuses pour les "
-"expressions françaises, suédoises, allemandes, italiennes et islandaises, ou"
-" pour les entrées japonaises explicitement sélectionnées. Les anciens "
-"fichiers audio sont conservés ; les enregistrements humains sont protégés."
+"Essayez la synthèse vocale avec phrases porteuses pour les expressions "
+"anglaises, françaises, suédoises, allemandes, italiennes et islandaises, ou "
+"les entrées japonaises sélectionnées explicitement. Les anciens "
+"enregistrements sont conservés ; les enregistrements humains sont protégés."
 
 #: community_dictionary/templates/community_dictionary/settings.html:31
 #: community_dictionary/templates/community_dictionary/settings.html:33
@@ -5483,6 +5606,17 @@ msgstr ""
 msgid "Approve and update %(dictionary)s"
 msgstr "Approuver et mettre à jour %(dictionary)s"
 
+#: community_dictionary/templates/community_dictionary/settings.html:30
+msgid ""
+"Try carrier-based AI audio for French, Swedish, German, Italian and "
+"Icelandic multi-word entries, or explicitly selected Japanese entries. "
+"Earlier audio is retained; human recordings are protected."
+msgstr ""
+"Essayer la génération audio par IA à partir de phrases porteuses pour les "
+"expressions françaises, suédoises, allemandes, italiennes et islandaises, ou"
+" pour les entrées japonaises explicitement sélectionnées. Les anciens "
+"fichiers audio sont conservés ; les enregistrements humains sont protégés."
+
 msgid ""
 "started. Results remain hidden so they cannot influence anyone's judgements,"
 " including yours."
@@ -5542,7 +5676,7 @@ msgid "applied"
 msgstr "appliqué"
 
 msgid "cancelled"
-msgstr "annulé"
+msgstr "Annulé"
 
 msgid "Automatic"
 msgstr "Automatique"
@@ -5676,3 +5810,18 @@ msgid ""
 msgstr ""
 "Activez d’abord Description d’images, Apprendre à partir d’une photo et une "
 "langue audio prise en charge dans les Paramètres."
+
+msgid "estimate"
+msgstr "Estimation"
+
+msgid "running"
+msgstr "En cours"
+
+msgid "complete"
+msgstr "Terminé"
+
+msgid "completed"
+msgstr "Terminé"
+
+msgid "failed"
+msgstr "Échec"

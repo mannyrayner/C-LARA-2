@@ -27,7 +27,7 @@
 </section>
 <section class="panel" id="dictionary-name"><h2>{% translate "Rename dictionary" %}</h2>
 <form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">{% translate "Save name" %}</button></form></section>
-<section class="panel"><h2>{% translate "Expression audio pilot" %}</h2><p>{% translate "Try carrier-based AI audio for French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected." %}</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">{% translate "Regenerate AI expression audio" %}</a></section>
+<section class="panel"><h2>{% translate "Expression audio pilot" %}</h2><p>{% translate "Try carrier-based AI audio for English, French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected." %}</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">{% translate "Regenerate AI expression audio" %}</a></section>
 <section class="panel"><h2>{% translate "Add missing sentences" %}</h2>
 <p>{% translate "Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions." %}</p>
 <a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">{% translate "Add missing sentences" %}</a>

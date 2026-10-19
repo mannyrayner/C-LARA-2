@@ -52,6 +52,68 @@ class CarrierTests(SimpleTestCase):
         self.assertEqual(carrier.request('se dresser','fr')[0], 'On commence. se dresser. C’est fini.')
         self.assertEqual(carrier.request('ha på sig','sv')[0], 'Vi börjar. ha på sig. Vi avslutar.')
 
+    def test_english_aliases_select_lexical_expressions_conservatively(self):
+        for language in ['English', 'en', ' ENGLISH ', 'EN']:
+            for word in ['look after', 'in front of', "can't wait", 'make up your mind']:
+                with self.subTest(language=language, word=word):
+                    self.assertTrue(carrier.eligible(word, language))
+            for word in ['', 'cat', "can't", 'look-after', 'Look after the cat.',
+                         'Are you ready?', 'a ; b', 'look\nafter', '1 2',
+                         ' '.join(['word'] * 13), 'a' * 119 + ' b']:
+                with self.subTest(language=language, word=word):
+                    self.assertFalse(carrier.eligible(word, language))
+
+    def test_english_default_tts_keeps_raw_text_and_homograph_guidance(self):
+        # The opt-in carrier batch must not redirect ordinary generation.
+        for word, language, needs_coach in [('look after', 'en', False), ('chat', 'fr', True)]:
+            with self.subTest(word=word, language=language), provider() as (coach, calls, _):
+                report = {}
+                carrier.tts.synthesize(word, language=language, model=carrier.tts.MODEL,
+                    voice='marin', api_key='fixture-only', meaning='cat', meaning_language='English',
+                    report=report, guidance_model='gpt-6-sol',
+                    guidance_prices={'input':'2', 'output':'10'})
+                self.assertEqual(calls.call_args.kwargs['input'], word)
+                self.assertEqual(coach.call_count, int(needs_coach))
+                self.assertEqual(report['instructions_version'], carrier.tts.INSTRUCTIONS_VERSION)
+                self.assertNotIn('strategy', report)
+                self.assertNotIn('extraction_algorithm', report)
+
+    def test_english_carrier_request_and_exact_pcm_extraction(self):
+        spoken, instructions = carrier.request('look after', 'English')
+        self.assertEqual(spoken, 'We begin. look after. We are finished.')
+        self.assertIn('600 milliseconds', instructions)
+        self.assertIn('neutral', instructions)
+        self.assertIn('natural stress', instructions)
+        self.assertIn('linking', instructions)
+        self.assertIn('artificial pauses', instructions)
+        self.assertIn('equal stress', instructions)
+        self.assertGreater(carrier.estimate('look after', 'English'), 0)
+        self.assertGreater(carrier.estimate('look after', 'English', allowance=True),
+                           carrier.estimate('look after', 'English'))
+        full = carrier_wave()
+        report = {}
+        gate = Mock()
+        with provider([full]) as (coach, calls, factory):
+            prepared, duration = carrier.synthesize('look after', language='en',
+                model=carrier.tts.MODEL, voice='marin', api_key='fixture-only',
+                report=report, before_request=gate)
+        coach.assert_not_called()
+        gate.assert_called_once()
+        self.assertEqual(calls.call_count, 1)
+        self.assertEqual(calls.call_args.kwargs['input'], spoken)
+        self.assertEqual(calls.call_args.kwargs['instructions'], instructions)
+        self.assertEqual(factory.call_args.kwargs['max_retries'], 0)
+        self.assertEqual(report['instructions_version'], 'carrier-mwe-v1')
+        self.assertEqual(report['carrier_language'], 'en')
+        self.assertEqual(report['strategy'], 'mwe_carrier')
+        self.assertFalse(report['explicit_selection'])
+        self.assertEqual(report['attempts'][0]['outcome'], 'candidate')
+        cut = report['attempts'][0]['extraction']['cut']
+        expected = carrier_audio.segment(carrier_audio.load(full), cut['start'], cut['end'], 200)
+        self.assertEqual(prepared[0], expected)
+        self.assertAlmostEqual(duration, 1.64, places=2)
+        self.assertGreater(Decimal(report['speech_cost_usd']), 0)
+
     def test_new_language_requests_and_explicit_japanese_selection(self):
         cases = [
             ('German', 'sich befinden', 'Wir beginnen. sich befinden. Wir sind fertig.'),
@@ -375,6 +437,86 @@ class BatchTests(TestCase):
                 self.assertFalse(self.quote().items.exists())
                 self.assertEqual(mwe_audio.restore(self.owner, run), (1, 0))
                 Entry.objects.filter(dictionary=self.dictionary).update(archived=True)
+
+    def test_english_batch_replaces_only_unprocessed_synthetic_mwes(self):
+        self.dictionary.language = 'English'
+        self.dictionary.explanation_language = 'French'
+        self.dictionary.save(update_fields=['language', 'explanation_language'])
+        target, old = self.seed('look after')
+        protected = [self.seed('cat'), self.seed('get up', human=True),
+                     self.seed('I look after the cat', kind='sentence')]
+        done, done_audio = self.seed('in front of')
+        done_audio.provenance['instructions_version'] = 'carrier-mwe-v1'
+        done_audio.save(update_fields=['provenance'])
+        protected.append((done, done_audio))
+        with patch.object(carrier.tts, '_openai_client') as provider_factory:
+            run = self.quote()
+        provider_factory.assert_not_called()
+        self.assertEqual(list(run.items.values_list('source_entry_id', flat=True)), [target.pk])
+        self.assertFalse(run.options['carrier_explicit_selection'])
+        self.assertGreater(run.estimated_usd, 0)
+        self.assertGreater(run.allowance_usd, run.estimated_usd)
+        self.assertFalse(CreditLedgerEntry.objects.exists())
+        self.approve(run)
+        with provider([carrier_wave()]) as (coach, calls, _), patch.object(jobs, 'send_speech'):
+            jobs.speak(run.speech.get().pk)
+        run.refresh_from_db()
+        coach.assert_not_called()
+        self.assertEqual(calls.call_count, 1)
+        self.assertTrue(run.settled)
+        self.assertEqual(run.status, 'complete')
+        replacement = recordings(target, self.dictionary)[0]
+        self.assertEqual(replacement.previous_revision_id, old.pk)
+        self.assertEqual(replacement.provenance['synthesis']['carrier_language'], 'en')
+        self.assertEqual(replacement.provenance['synthesis']['strategy'], 'mwe_carrier')
+        self.assertEqual(replacement.provenance['instructions_version'], 'carrier-mwe-v1')
+        for entry, audio in protected:
+            self.assertEqual(recordings(entry, self.dictionary)[0].pk, audio.pk)
+        old.refresh_from_db()
+        self.assertEqual(old.status, 'superseded')
+        self.assertTrue(path_for(old.file_path).exists())
+        self.assertFalse(self.quote().items.exists())
+        self.assertEqual(mwe_audio.restore(self.owner, run), (1, 0))
+        self.assertEqual(recordings(target, self.dictionary)[0].pk, old.pk)
+
+    def test_english_mwe_evaluation_and_paired_baseline_keep_exact_entries(self):
+        self.dictionary.language = 'English'
+        self.dictionary.explanation_language = 'French'
+        self.dictionary.save(update_fields=['language', 'explanation_language'])
+        first, first_old = self.seed('look after')
+        second, second_old = self.seed('make up your mind')
+        human, _ = self.seed('get up', human=True)
+        single, _ = self.seed('cat')
+        sentence, _ = self.seed('I look after the cat', kind='sentence')
+        data = {'token':uuid.uuid4(), 'name':'English expressions', 'scope':'word_audio',
+                'sampling':'all', 'size':30, 'allow_visitors':False, 'mwe_only':True}
+        collection = ev.create_set(self.owner, self.dictionary, data)
+        self.assertEqual(set(collection.population_ids), {first.pk, second.pk, human.pk})
+        self.assertNotIn(single.pk, collection.population_ids)
+        self.assertNotIn(sentence.pk, collection.population_ids)
+        run = self.quote()
+        before = mwe_audio.baseline(self.owner, run)
+        wanted = {first.pk, second.pk}
+        original_audio = {first.pk:first_old.pk, second.pk:second_old.pk}
+        self.assertEqual(set(before.population_ids), wanted)
+        self.assertEqual(set(before.items.values_list('entry_id', flat=True)), wanted)
+        self.assertEqual({item.entry_id:item.snapshot['entry']['audio']['id']
+                          for item in before.items.all()}, original_audio)
+        before.closed_at = timezone.now()
+        before.save(update_fields=['closed_at'])
+        self.approve(run)
+        self.finish(run)
+        later, _ = self.seed('get along')
+        after = ev.create_set(self.owner, self.dictionary,
+            {**data, 'token':uuid.uuid4(), 'name':'After carrier', 'based_on':before})
+        self.assertEqual(after.based_on, before)
+        self.assertEqual(set(after.population_ids), wanted)
+        self.assertEqual(set(after.items.values_list('entry_id', flat=True)), wanted)
+        self.assertNotIn(later.pk, after.population_ids)
+        self.assertEqual({item.entry_id:item.snapshot['entry']['audio']['id']
+                          for item in before.items.all()}, original_audio)
+        for item in after.items.all():
+            self.assertNotEqual(item.snapshot['entry']['audio']['id'], original_audio[item.entry_id])
 
     def test_japanese_quote_requires_explicit_valid_ids_and_protects_other_audio(self):
         from community_dictionary.models import Dictionary

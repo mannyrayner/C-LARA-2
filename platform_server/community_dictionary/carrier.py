@@ -8,9 +8,9 @@ from . import tts, carrier_audio
 
 VERSION = 'carrier-mwe-v1'
 MAX_ATTEMPTS = 5
-AUTOMATIC_LANGUAGES = frozenset({'fr', 'sv', 'de', 'it', 'is'})
+AUTOMATIC_LANGUAGES = frozenset({'en', 'fr', 'sv', 'de', 'it', 'is'})
 SUPPORTED_LANGUAGES = AUTOMATIC_LANGUAGES | {'ja'}
-LANGUAGE_LABEL = 'French, Swedish, German, Italian, Icelandic or Japanese'
+LANGUAGE_LABEL = 'English, French, Swedish, German, Italian, Icelandic or Japanese'
 
 
 def eligible(text, language, *, explicit_selection=False):
@@ -37,7 +37,18 @@ def request(text, language):
     if code not in SUPPORTED_LANGUAGES:
         raise ValueError('unsupported_carrier_language')
     item = {"language": code}
-    if item['language'] == 'fr':
+    if code == 'en':
+        prefix, suffix = 'We begin.', 'We are finished.'
+        instructions = (
+            'Read all three parts of the text exactly once, in order, in natural native English. '
+            'Also say "We begin" and "We are finished": these phrases are part of the text to read. '
+            f'Leave about {pause} milliseconds of silence between the three parts, '
+            'with no pause inside the first or last part. '
+            'Pronounce the expression in the middle naturally as one coherent phrase, '
+            'with neutral intonation, natural stress and linking. '
+            'Do not separate its words with artificial pauses or give every word equal stress. '
+            'Do not read punctuation aloud.')
+    elif item['language'] == 'fr':
         prefix, suffix = 'On commence.', 'C’est fini.'
         instructions = (
             'Lis à voix haute les trois parties du texte, dans l’ordre et une seule fois, '

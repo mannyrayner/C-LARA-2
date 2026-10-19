@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 86,
+  "workspace_revision": 87,
   "as_of": "2026-10-19",
-  "assessed_commit_sha": "cae762876b8060592e4d8327d4d107c981cdc2b6",
+  "assessed_commit_sha": "7e7e6d58d33fbf3460a43d6206e59d2e143f7624",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports the previous French-interface screenshot fixes working on the laptop and identifies one remaining Link more words panel. A final incremental label/provenance fix is prepared and verified; 680 application tests pass, along with 68 existing focused tests and English/French link/unlink and provenance render checks. The accepted combined localisation changes are ready for AWS preparation after this small fix is checked; AWS deployment and phone acceptance are not yet established. Manny plans an English/French version of the existing French/English dictionary using the normal language-version workflow. Some advanced interface coverage remains incomplete. The carrier-audio work remains active: The optional carrier-audio batch is accepted on laptop/AWS for French and Swedish. Paired whole-eligible-collection ratings improved from 21/58 to 54/58 acceptable in French and 1/8 to 5/8 in Swedish, with no rating regressions. The authorized extension adds German, Italian and Icelandic expression batches and explicit Japanese entry selection with exact-entry baselines. New-language listening remains pending; ordinary generation, single-word defaults and existing successful replacements are preserved.",
+  "current_focus_summary": "Manny reports that the localisation follow-ups worked as expected and that the English/French dictionary “L'anglais de Finley” is now installed on AWS. This establishes the intended deployed francophone English-learning path for this trial; phone and independent learner acceptance remain unconfirmed. He reports English MWE prosody problems. The optional carrier batch previously excluded English; an English extension using the existing extraction, approval, baseline and preservation mechanisms is now prepared and tested. Final verification is 685 passing Community Dictionaries tests, including 31 carrier/batch tests and five new English regressions; French/English estimate and evaluation page smoke checks, unchanged existing-language prompts, system checks and migration consistency checks also pass. English listening improvement remains to be established through paired review. Prior paired French/Swedish gains remain useful evidence; German/Italian/Icelandic/Japanese outcomes are still pending.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1404,6 +1404,19 @@
         "platform_server/community_dictionary/tests/test_localisation_followup.py",
         "docs/howto/community-localisation-link-words-install.md"
       ]
+    },
+    {
+      "id": "OBS-0126",
+      "summary": "Manny reports that the final localisation changes worked as expected and that the English/French version “L'anglais de Finley” is installed on AWS. This supplies the previously missing deployment and content-version evidence. On reviewing English word audio he finds recurring prosody issues with multi-word expressions and requests the carrier/extraction approach if it is not yet enabled. Repository inspection confirms English was excluded from the optional carrier language set. The prepared extension adds English spaced-expression selection with the native carrier “We begin. X. We are finished.”, the same approximately 600 ms pauses, extraction recipe/version and bounded attempts, and English MWE evaluation filtering with French interface coverage. Ordinary TTS and single-word defaults remain unchanged; existing human/earlier audio, approval, budget and withdrawal protections remain in place. Final verification is 685 passing Community Dictionaries tests, including 31 carrier/batch tests and five new English regressions; French/English estimate and evaluation page smoke checks, unchanged existing-language prompts, system checks and migration consistency checks also pass. No paid English generation or measured listening improvement is claimed; the new extension has not been deployed in this session.",
+      "observed_at": "2026-10-19",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/community_dictionary/carrier.py",
+        "platform_server/community_dictionary/mwe_audio.py",
+        "platform_server/community_dictionary/evaluation.py",
+        "platform_server/community_dictionary/tests/test_mwe_audio.py",
+        "docs/howto/community-english-mwe-audio-install.md"
+      ]
     }
   ],
   "assessments": [
@@ -1580,7 +1593,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Paired deployed French/Swedish results now support the carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. Support the authorized reversible extension to German, Italian and Icelandic; Japanese requires explicit experimental entry choice because neither kanji count nor whitespace defines its MWEs. Keep new-language listening evidence separate from implementation tests. Preserve ordinary single-word generation, old recordings and paired baselines. Isolated-word quality, Swedish residual prosody and independent/classroom outcomes remain unresolved. The English/French interface first cut now removes the fixed-English navigation assumption and prepares a concrete route for francophones learning English through suitably configured dictionaries. This broadens potential access, but dictionary availability, untranslated secondary pages and deployment/usability acceptance remain distinct from automated regression evidence. Keep language recommendation separate from content conversion and permission changes. Manny's positive laptop report is the first human interface evidence for the francophone path. Manny subsequently reports the screenshot corrections working on the laptop; that removes their prior human-review blocker. A remaining picture-word-linking label gap is a bounded final follow-up before the requested AWS rollout. Continued coverage, deployment and phone acceptance remain separate from laptop success; the planned English/French content version requires its existing reviewed workflow.",
+      "summary": "Paired deployed French/Swedish results support the optional carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. These results are one involved evaluator’s unblinded ratings and do not establish language-general improvement or single-word quality. Retain the authorized German/Italian/Icelandic extension and explicit experimental Japanese selection; Japanese kanji count or whitespace does not define MWEs. Manny’s new English prosody report makes a bounded English carrier trial the immediate useful next experiment. The native English carrier is prepared with unchanged extraction and safeguards, but requires paired listening before quality or default changes can be justified. Preserve ordinary generation, old recordings and baseline evidence. Separately, Manny now reports the English/French interface follow-ups working and “L'anglais de Finley” installed on AWS. This removes the earlier deployment and content-availability blockers for the francophone path. Remaining interface coverage, phone usability and independent learner outcomes remain open; interface selection must stay separate from content mutation and permissions.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1691,11 +1704,12 @@
         "OBS-0122",
         "OBS-0123",
         "OBS-0124",
-        "OBS-0125"
+        "OBS-0125",
+        "OBS-0126"
       ],
-      "urgency": "finish_link_words_fix_then_aws_trial_and_next_language_listening",
+      "urgency": "english_mwe_paired_listening_trial",
       "risk": "medium",
-      "progress": "previous_screenshot_followup_laptop_accepted_link_words_fix_prepared_aws_pending",
+      "progress": "localisation_aws_accepted_english_carrier_extension_prepared_listening_pending",
       "confidence": "medium"
     },
     {
@@ -1803,7 +1817,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "French and Swedish paired exports show practical gains, but are unblinded ratings by one involved evaluator without a concurrent direct-regeneration control. One French audio remained unchanged for an unknown reason; three changed Swedish expressions retain poor-prosody ratings. New language prompts have no listening outcomes yet, and Japanese compounds must not automatically be classed as MWEs. The whitespace selector leaves European single-word compounds untreated. Quality claims, future defaults and classroom readiness require further evidence.",
+      "summary": "French and Swedish paired exports show practical gains, but are unblinded ratings by one involved evaluator without a concurrent direct-regeneration control. One French recording remained unchanged for an unknown reason; three changed Swedish expressions retain poor-prosody ratings. Manny now reports English MWE prosody problems without quantitative ratings. The prepared English carrier has no live listening result, as is also true of the other newly added languages. Japanese compounds must not automatically be classed as MWEs; the whitespace selector leaves European single-word compounds untreated. Quality claims, future defaults and classroom readiness require language-specific evidence.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1817,7 +1831,7 @@
     },
     {
       "id": "UNC-0010",
-      "summary": "The English/French interface remains a first cut, with some advanced AI/porting, group-management and private-content pages still in English. Stored user text and dictionary content are not automatically translated. Suitable English dictionaries with French explanations must exist and be accessible for the French-interface default to offer them. Manny now reports both the initial first cut and its previous screenshot follow-up working on the laptop. That evidence improves readiness, but the newly reported linking-label follow-up, AWS deployment, mobile usability and francophone-learner acceptance remain unverified. His planned English/French language version has not yet been created in this session.",
+      "summary": "Manny now reports the localisation follow-ups working and the English/French dictionary “L'anglais de Finley” installed on AWS; deployment and matching-content availability are established human evidence for this trial. The interface remains a first cut with some advanced AI/porting, group-management and private-content pages still in English. Stored user text and dictionary content are not automatically translated by the interface selector. Physical-phone usability and independent francophone-learner acceptance remain unconfirmed. The new English carrier extension is a separate prepared increment, with no deployment or listening acceptance yet.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1923,7 +1937,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Install the additional-language extension after local checks. Prioritise Italian and German paired listening using a closed baseline and identical-word follow-up. Keep Icelandic/Japanese clearly experimental; Japanese requires explicit entry selection and can create its baseline from the free estimate. Retain failed/unchanged entries in overall reporting, preserve old audio, and keep the new batch optional until language-specific results justify broader defaults.",
+      "summary": "After local checks, install the optional English carrier extension and use its free estimate to capture an exact-entry word-audio baseline before approval. Run the approved batch in “L'anglais de Finley”, then compare identical English expressions by paired listening, retaining failed or unchanged entries in overall reporting and preserving old recordings. Keep the new route optional until English-specific results justify broader defaults. Continue Italian/German paired trials when practical; Icelandic/Japanese remain experimental and Japanese requires explicit entry selection.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1937,7 +1951,7 @@
     },
     {
       "id": "ACT-0012",
-      "summary": "Complete and verify the small picture-word-linking localisation patch, then let Manny install the accepted combined changes on AWS using the existing service account/environment helper and collectstatic for the original localisation static files. Recheck the English/Français choice and persistence, matching learning defaults, dictionary selection and picture-word panel on AWS and a phone. Support the planned English/French dictionary version through the existing owner-approved reviewed language-version workflow; preserve source content, provenance, permissions and the unrelated C-LARA interface.",
+      "summary": "Preserve the accepted AWS English/French interface and content-version outcome, and test the francophone English-learning path on a phone and with an independent learner when available. Check remembered language choice, matching recommendations, existing dictionary selection and picture-word linking; address remaining interface gaps found in use. Keep the English carrier experiment and its quality evidence separate from interface acceptance, while preserving content provenance, permissions and the unrelated C-LARA interface.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -2031,17 +2045,19 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-19",
-    "authorization_basis": "Manny supplies positive laptop acceptance of the previous screenshot follow-up, reports one remaining localisation gap and plans AWS installation and an English/French content version; AGENTS.md requires reflection of changed acceptance evidence and next steps.",
-    "comments": "Verified final incremental label/provenance patch with the 680-test application suite, existing 68-test focused coverage, real-page render checks, template/catalog validation and clean-base patch application. No AWS deployment, paid request, content conversion or dictionary rename is claimed. Human intentions and immutable archived states remain unchanged."
+    "authorization_basis": "Manny confirms the localisation and English/French dictionary installed on AWS, reports English MWE prosody issues and requests the existing optional carrier approach be extended if absent. AGENTS.md requires reflection of changed deployment evidence and the concrete next trial.",
+    "comments": "Prepared and verified optional English carrier increment with 685 passing tests, controlled French/English owner-page smoke checks and installation/listening instructions; no paid provider request, deployment of the new extension, remote write or external message. Existing AWS localisation acceptance is Manny’s report. Human intentions and immutable archived states remain unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded laptop acceptance of the previous screenshot fixes, a remaining picture-word-linking localisation follow-up and the next combined AWS deployment/content-version trial.",
+    "summary": "Recorded AWS acceptance of the English/French interface and dictionary, plus an authorized optional English MWE carrier extension with listening quality still unmeasured.",
     "added_item_ids": [
-      "OBS-0125"
+      "OBS-0126"
     ],
     "revised_item_ids": [
       "ASM-0011",
+      "UNC-0008",
       "UNC-0010",
+      "ACT-0010",
       "ACT-0012"
     ],
     "retained_item_ids": [
@@ -2169,6 +2185,7 @@
       "OBS-0122",
       "OBS-0123",
       "OBS-0124",
+      "OBS-0125",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -2187,7 +2204,6 @@
       "UNC-0005",
       "UNC-0006",
       "UNC-0007",
-      "UNC-0008",
       "UNC-0009",
       "REQ-0005",
       "REQ-0007",
@@ -2201,7 +2217,6 @@
       "ACT-0007",
       "ACT-0008",
       "ACT-0009",
-      "ACT-0010",
       "ACT-0011",
       "PRED-0001",
       "PRED-0002",
