@@ -1,0 +1,1 @@
+Yes, this all sounds like common sense. And once we've got it nailed down, I think the following step should be to see if we can find a group (maybe a school class, or an adult language learning class) who want to try building a first communal dictionary. I was wondering about visiting our local branch of the Alliance Française next Wednesday, they're just down the road.

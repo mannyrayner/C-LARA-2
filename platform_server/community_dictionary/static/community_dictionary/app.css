@@ -58,3 +58,5 @@
 .learning-language-form select {width:auto;max-width:100%;}
 .learning-languages li {margin:.5rem 0;}
 @media(max-width:600px) {.site-header {align-items:flex-start;} .interface-language-form {width:100%;} .learning-language-form {align-items:flex-start;flex-direction:column;}}
+
+.image-ladder{width:100%;border-collapse:collapse;table-layout:fixed}.image-ladder th,.image-ladder td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:anywhere}.image-ladder th:first-child,.image-ladder td:first-child{width:4em}.image-ladder th:last-child,.image-ladder td:last-child{width:5em;text-align:right;font-variant-numeric:tabular-nums}.image-ladder tbody th{font-weight:600}

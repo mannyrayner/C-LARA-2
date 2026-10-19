@@ -1,7 +1,7 @@
 {% load static i18n %}<!doctype html>
 <html lang="{{ community_ui_language|default:'en' }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}{% translate "Community dictionaries" %}{% endblock %} · C-LARA</title>
-<link rel="stylesheet" href="{% static 'community_dictionary/app.css' %}?v=14">
+<link rel="stylesheet" href="{% static 'community_dictionary/app.css' %}?v=15">
 <script src="{% url 'community_dictionary:javascript-catalog' %}?language={{ community_ui_language }}" defer></script>
 {% if not public_browsing %}<script src="{% static 'community_dictionary/recorder.js' %}?v=3" defer></script>
 <script src="{% static 'community_dictionary/app.js' %}?v=8" defer></script>{% endif %}

@@ -21,6 +21,7 @@ from .lexicon import linked_words, outdated_tts, valid_links, vocabulary, word_r
 from .permissions import entitled_dictionaries, dictionaries_for, get_dictionary, is_editor, is_coordinator, require_editor, require_owner
 from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
+from .contribution_ladder import image_ladder
 
 
 def context(request, dictionary=None, **extra):
@@ -586,7 +587,7 @@ def people(request, pk):
     withdrawn_users = set(Participation.objects.filter(dictionary=dictionary, withdrawn=True).values_list('user_id', flat=True))
     for member in memberships:
         member.content_withdrawn = member.user_id in withdrawn_users
-    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
+    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, image_ladder_rows=image_ladder(request.user), decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
 
 
 @login_required

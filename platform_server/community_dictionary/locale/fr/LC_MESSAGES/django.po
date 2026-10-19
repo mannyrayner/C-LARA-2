@@ -5825,3 +5825,39 @@ msgstr "Terminé"
 
 msgid "failed"
 msgstr "Échec"
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid "Images contributed"
+msgstr "Images apportées"
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid ""
+"Across your non-hidden shared dictionaries. Each accepted image counts once "
+"for its original contributor, even when reused in several dictionaries. AI-"
+"generated images and personal collections are excluded."
+msgstr ""
+"Dans vos dictionnaires partagés non masqués. Chaque image validée compte une"
+" seule fois pour la personne qui l’a apportée à l’origine, même si elle est "
+"réutilisée dans plusieurs dictionnaires. Les images générées par IA et les "
+"collections personnelles sont exclues."
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid "Image contribution ladder"
+msgstr "Classement des contributions d’images"
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid "Rank"
+msgstr "Rang"
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid "Images"
+msgstr "Images"
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid "Tied totals share a rank."
+msgstr "Les personnes ayant le même total sont ex æquo."
+
+#: community_dictionary/templates/community_dictionary/_image_ladder.html
+msgid "No accepted human-uploaded images to count yet."
+msgstr ""
+"Aucune image apportée par une personne et validée à compter pour le moment."
