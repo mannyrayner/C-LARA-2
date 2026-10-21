@@ -59,8 +59,8 @@ def summary(entry, dictionary):
 
 @login_required
 def home(request):
-    from .localisation import interface_language, learning_options
-    explanation = 'French' if interface_language(request) == 'fr' else 'English'
+    from .localisation import interface_explanation_language, learning_options
+    explanation = interface_explanation_language(request)
     form = DictionaryForm(request.POST or None, initial={'explanation_language': explanation})
     if request.method == 'POST' and form.is_valid():
         dictionary = form.save(commit=False)

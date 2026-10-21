@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 88,
-  "as_of": "2026-10-19",
-  "assessed_commit_sha": "8053bd128a22f87f2f75cbd5e30fad1d3890b1e6",
+  "workspace_revision": 89,
+  "as_of": "2026-10-21",
+  "assessed_commit_sha": "19fd910157326df7c6977dd5ee5f5984fcb64a4d",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports that the optional English carrier increment worked fine; this is implementation acceptance without quantitative English prosody evidence. After an initial mobile rendering concern, the sample English/French entry renders normally in Chrome and, on Cathy’s device, Firefox. AdBlock is a suspected cause, not an established diagnosis; Safari and broader phone workflows remain unchecked. Manny now prioritises workflow tidying followed by a proper evaluation with inter-rater figures, with a tentative Zoom on 26 October. A subsequent communal-dictionary class pilot and a possible local Alliance Française visit are exploratory, with no group recruited or appointment established. At Cathy’s suggestion, a first image-contribution ladder under People is prepared and tested for her review. It credits accepted human images once through recorded copies and ports, excludes AI material and hidden/personal/archived dictionaries, and respects the viewer’s existing membership access. The 701-test Community Dictionaries suite passes, including 16 new ladder regressions. All 95 templates compile; French catalog, system, migration and installation-shell checks pass. Existing French translations are preserved. Local browser preview connectivity was unavailable, so actual new phone presentation remains for Cathy to assess. Participation benefits, classroom usefulness and independent learner outcomes are unmeasured; prior French/Swedish carrier results remain limited but useful evidence.",
+  "current_focus_summary": "Manny reports that the image-ladder increment worked fine. This supplies his implementation acceptance without a separate verdict from Cathy, a specified deployment environment or evidence of a participation effect. He requests Slovak localisation because Ivana is interested in experimenting, and reports already creating a Slovak/English dictionary by converting French/English. An English/Slovak content version is desired but not yet reported available. The prepared third interface locale reuses the shared gettext framework, persistent selection and matching-explanation recommendations, with canonical Slovak defaults and language aliases. All 713 Community Dictionaries tests pass, including 12 new Slovak regressions and the 15 existing localisation tests. All 95 templates compile. Catalog format/source-key/placeholder audits, four Slovak plural branches, twelve member/visitor route smoke checks plus JavaScript, and two mocked-provider conversion checks pass; all existing French translations are preserved. Native Slovak review, Ivana’s actual trial and English/Slovak conversion remain next steps. Interface selection does not translate stored dictionary content. The workflow-tidying and independent inter-rater evaluation direction, tentative 26 October Zoom and prospective communal class pilot remain in place; no new meeting or class outcome is supplied. Existing Chrome/Firefox sample rendering and English carrier implementation acceptance remain distinct from complete phone acceptance and quantified linguistic/audio improvement.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1447,6 +1447,29 @@
         "platform_server/community_dictionary/contribution_ladder.py",
         "platform_server/community_dictionary/tests/test_contribution_ladder.py"
       ]
+    },
+    {
+      "id": "OBS-0130",
+      "observed_at": "2026-10-21",
+      "confidence": "high",
+      "summary": "Manny says the preceding image-contribution ladder worked fine, then requests Slovak as another interface language because Ivana is interested in experimenting. He reports already creating a Slovak/English dictionary by converting from French/English and would also like an English/Slovak dictionary. This is acceptance of the preceding increment and reported availability of one content direction; he does not specify a new AWS deployment, supply a separate Cathy verdict, report Ivana’s use, or establish an English/Slovak version. No new browser, inter-rater, classroom or quantitative English-audio result is supplied.",
+      "evidence": [
+        "docs/howto/community-slovak-localisation-install.md",
+        "docs/howto/community-image-ladder-install.md"
+      ]
+    },
+    {
+      "id": "OBS-0131",
+      "observed_at": "2026-10-21",
+      "confidence": "high",
+      "summary": "The prepared Slovak extension adds Slovenčina to the shared interface-language configuration, Slovak server/JavaScript catalogs with the existing French translation surface, persistent browser preference, recognised Slovak language names and matching-explanation recommendations. The small English/French-specific default assumptions are generalised so Slovak mode prefers available English-learning dictionaries with Slovak explanations and new dictionary forms use the canonical Slovak explanation-language name. Existing explicit learning choices, dictionary selection, content and permission boundaries remain intact. Installation instructions describe creating English/Slovak through the existing owner-approved language conversion flow; the assistant does not make paid conversion calls or create production content. All 713 Community Dictionaries tests pass, including 12 new Slovak regressions and the 15 existing localisation tests. All 95 templates compile. Catalog format/source-key/placeholder audits, four Slovak plural branches, twelve member/visitor route smoke checks plus JavaScript, and two mocked-provider conversion checks pass; all existing French translations are preserved. No new migration, provider configuration or Slovak MWE carrier is part of this interface increment. Native Slovak quality and human acceptance of the new locale remain unverified.",
+      "evidence": [
+        "docs/howto/community-slovak-localisation-install.md",
+        "platform_server/community_dictionary/localisation.py",
+        "platform_server/community_dictionary/tests/test_slovak_localisation.py",
+        "platform_server/community_dictionary/locale/sk/LC_MESSAGES/django.po",
+        "platform_server/community_dictionary/locale/sk/LC_MESSAGES/djangojs.po"
+      ]
     }
   ],
   "assessments": [
@@ -1623,7 +1646,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Paired deployed French/Swedish results support the optional carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. These are one involved evaluator’s unblinded ratings and do not establish language-general improvement or single-word quality. Manny now reports the English carrier increment working, removing its earlier implementation-acceptance uncertainty; English-specific paired listening evidence is still needed before asserting prosody gains or changing defaults. German/Italian/Icelandic outcomes remain pending, and Japanese remains explicit and experimental. Preserve ordinary generation, old recordings and baseline evidence. The deployed English/French interface and content path is accepted by Manny. The sample public entry also renders normally in Chrome and Firefox on Cathy’s mobile, so the reported rendering concern is not currently a demonstrated mainstream-browser blocker. Safari, remaining phone workflows, interface coverage and independent learner outcomes remain open. The suspected AdBlock explanation should not be treated as a diagnosis.",
+      "summary": "Paired deployed French/Swedish results support the optional carrier batch as a useful practical MWE intervention, with substantial French improvement and partial Swedish improvement. These are one involved evaluator’s unblinded ratings and do not establish language-general improvement or single-word quality. Manny now reports the English carrier increment working, removing its earlier implementation-acceptance uncertainty; English-specific paired listening evidence is still needed before asserting prosody gains or changing defaults. German/Italian/Icelandic outcomes remain pending, and Japanese remains explicit and experimental. Preserve ordinary generation, old recordings and baseline evidence. The deployed English/French interface and content path is accepted by Manny. The sample public entry also renders normally in Chrome and Firefox on Cathy’s mobile, so the reported rendering concern is not currently a demonstrated mainstream-browser blocker. Safari, remaining phone workflows, interface coverage and independent learner outcomes remain open. The suspected AdBlock explanation should not be treated as a diagnosis. Manny’s new request makes a third interface locale a bounded, collaborator-driven extension of the accepted English/French framework. The reported Slovak/English content and Ivana’s interest create a concrete next trial, while English/Slovak content, native Slovak review and actual learner acceptance remain to be established. Keep shared interface configuration, stored content conversion and spoken-audio quality as separate claims.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1736,11 +1759,13 @@
         "OBS-0124",
         "OBS-0125",
         "OBS-0126",
-        "OBS-0127"
+        "OBS-0127",
+        "OBS-0130",
+        "OBS-0131"
       ],
       "urgency": "workflow_tidy_and_evaluation_preparation",
       "risk": "medium",
-      "progress": "english_carrier_increment_accepted_sample_mobile_rendering_confirmed_quality_evidence_pending",
+      "progress": "english_french_path_accepted_slovak_locale_prepared_native_review_and_quality_evidence_pending",
       "confidence": "medium"
     },
     {
@@ -1790,7 +1815,7 @@
     },
     {
       "id": "ASM-0013",
-      "summary": "The near-term opportunity has shifted from adding language coverage toward making the workflow clear enough to evaluate and use collaboratively. The tentative evaluation discussion and prospective class pilot connect usability work to GOAL-1, GOAL-3 and GOAL-5, but do not yet constitute a trial protocol or recruited group. The small image ladder is a concrete collaborator-requested experiment in recognition and participation. Counting only accepted human contributions once, and deriving counts from existing membership-visible non-hidden dictionaries, avoids obvious inflation and private-content disclosure. Its motivational and classroom value should be judged through Cathy’s review and later group use, rather than inferred from implementation. Keep the first version small and record where users need coaching; separate content-quality agreement from task usability and sustained participation.",
+      "summary": "The near-term opportunity remains making the workflow clear enough to evaluate and use collaboratively. The tentative evaluation discussion and prospective class pilot connect usability work to GOAL-1, GOAL-3 and GOAL-5, but do not yet constitute a trial protocol or recruited group. Manny now reports the collaborator-requested image ladder working, removing its implementation-acceptance uncertainty. Its motivational and classroom value, and Cathy’s separate presentation verdict, remain unmeasured. Counting accepted human contributions once within existing membership-visible non-hidden dictionaries preserves the intended scope. The Slovak request is another concrete collaborator-driven opportunity: Ivana’s interest and Manny’s reported Slovak/English dictionary justify a small shared-framework locale extension without inferring that a user trial or English/Slovak conversion has already occurred. Keep the workflow and evaluation plan small and record where users need coaching; separate content-quality agreement from task usability and sustained participation.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-3",
@@ -1799,11 +1824,13 @@
       "observation_ids": [
         "OBS-0127",
         "OBS-0128",
-        "OBS-0129"
+        "OBS-0129",
+        "OBS-0130",
+        "OBS-0131"
       ],
       "urgency": "prepare_reviewable_workflow_before_tentative_evaluation_discussion",
       "risk": "medium",
-      "progress": "image_ladder_prepared_workflow_evaluation_and_class_pilot_proposed",
+      "progress": "image_ladder_accepted_slovak_collaborator_trial_prepared_evaluation_and_class_pilot_proposed",
       "confidence": "medium"
     }
   ],
@@ -1880,7 +1907,7 @@
     },
     {
       "id": "UNC-0010",
-      "summary": "Manny reports the localisation follow-ups and English/French dictionary working on AWS, and the carrier increment working. The public sample page now appears normal in Chrome and Firefox on Cathy’s mobile; the suspected AdBlock cause of the earlier discrepancy remains unconfirmed. This is sample rendering evidence, not complete phone acceptance. Safari, recording/uploading and practice across phones, remaining interface coverage and independent francophone-learner acceptance remain unverified. Interface selection does not translate stored user text or dictionary content automatically. English carrier implementation acceptance remains separate from measured audio-quality improvement.",
+      "summary": "Manny reports the localisation follow-ups and English/French dictionary working on AWS, and the carrier increment working. The public sample page now appears normal in Chrome and Firefox on Cathy’s mobile; the suspected AdBlock cause of the earlier discrepancy remains unconfirmed. This is sample rendering evidence, not complete phone acceptance. Safari, recording/uploading and practice across phones, remaining interface coverage and independent francophone-learner acceptance remain unverified. Interface selection does not translate stored user text or dictionary content automatically. English carrier implementation acceptance remains separate from measured audio-quality improvement. The new Slovak locale is prepared separately, with native-speaker review, deployment environment and end-to-end Slovak use still unverified. The user-reported Slovak/English conversion does not establish English/Slovak content availability.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1894,8 +1921,16 @@
     },
     {
       "id": "UNC-0012",
-      "summary": "The image ladder has not been reviewed by Cathy or used in a class. The chosen visibility scope is membership-accessible active non-hidden, non-personal dictionaries; counts can therefore differ between viewers and are not a public total of every contribution. Recorded shared-copy/port provenance supports deduplication, while separate reuploads are counted separately, but participation or motivational benefits cannot be inferred from counts. Other human-contribution ladders remain later possibilities rather than part of this increment.",
+      "summary": "Manny reports that the image ladder worked fine, resolving its implementation-acceptance uncertainty. The message does not separately establish Cathy’s judgment, a specific deployment environment, class use or a motivational benefit. The scope remains membership-accessible active non-hidden, non-personal dictionaries; totals can differ between viewers. Recorded copy/port provenance supports deduplication while separate reuploads count separately. Counts alone cannot establish participation or learning benefits. Other human-contribution ladders remain later possibilities.",
       "assessment_ids": [
+        "ASM-0013"
+      ]
+    },
+    {
+      "id": "UNC-0013",
+      "summary": "Slovak catalog and configuration checks can establish coverage, valid placeholders/plurals and selection behaviour, but Ivana or another proficient speaker still needs to review wording and real use. The new locale initially covers the same marked interface surface as French; unmarked advanced strings may remain English. Manny reports a Slovak/English dictionary, whereas English/Slovak content has not yet been created or inspected in this session. Actual conversion needs the existing cost/permission approval and linguistic/audio review. No paid request or new Slovak carrier listening result is implied by interface localisation.",
+      "assessment_ids": [
+        "ASM-0011",
         "ASM-0013"
       ]
     }
@@ -2014,14 +2049,14 @@
     },
     {
       "id": "ACT-0012",
-      "summary": "Preserve the accepted AWS English/French interface and sample-page Chrome/Firefox rendering outcome. Treat the suspected AdBlock cause provisionally and obtain a Safari check when a suitable device is available. Tidy the real workflow friction Manny and Cathy identify, then test a short end-to-end phone path and an independent francophone learner when practical. Keep remembered interface choice, content selection, provenance, permissions and English audio-quality evidence distinct.",
+      "summary": "Preserve the accepted English/French interface and sample-page Chrome/Firefox outcome while adding the authorised Slovak locale through the same shared configuration and catalogs. Keep the suspected AdBlock explanation provisional, obtain Safari and short end-to-end phone checks when suitable devices are available, and tidy the real friction Manny and Cathy identify. Test remembered interface choice and content-language recommendations independently of content conversion, provenance, permissions and audio quality. Obtain an independent francophone learner check when practical.",
       "assessment_ids": [
         "ASM-0011"
       ]
     },
     {
       "id": "ACT-0013",
-      "summary": "Install the prepared and tested People image ladder using its supplied instructions, and have Cathy judge whether its explanation, names, counts and mobile presentation are useful. The 701-test suite covers accepted human provenance, reuse/port deduplication, exclusion of AI and hidden/personal/archived dictionaries, privacy and English/French rendering. Keep other contribution types outside this first version; revisit scope or competition mechanics based on actual feedback.",
+      "summary": "Retain the image ladder Manny reports working and gather Cathy’s separate judgment of its explanation, names, totals and phone presentation when practical. Keep accepted human provenance, reuse/port deduplication, exclusion of AI and hidden/personal/archived dictionaries, privacy and translated rendering under regression coverage. Revisit other contribution types or competition mechanics based on actual group feedback; do not infer motivational effects from implementation acceptance.",
       "assessment_ids": [
         "ASM-0013"
       ]
@@ -2030,6 +2065,14 @@
       "id": "ACT-0014",
       "summary": "Use the tentative 26 October Zoom to identify the short workflows to tidy and agree an evaluation protocol with overlapping independent ratings of a shared frozen sample. Keep usability, linguistic/audio quality and participation outcomes separate. After that protocol is settled, explore whether a teacher and class want to build a small communal dictionary; treat the possible Alliance Française visit as an exploratory contact rather than a booked commitment or authorised outreach action.",
       "assessment_ids": [
+        "ASM-0013"
+      ]
+    },
+    {
+      "id": "ACT-0015",
+      "summary": "Finish verification and deliver the Slovak locale patch with installation and English/Slovak conversion instructions. Have Ivana or another proficient Slovak speaker review wording, remembered interface preference and the English-learning path. Use the existing owner-approved conversion workflow to create or update an English/Slovak dictionary, checking its estimate and results before accepting content. Record actual trial, linguistic/audio issues and deployment separately; preserve the existing Slovak/English dictionary and all unrelated content.",
+      "assessment_ids": [
+        "ASM-0011",
         "ASM-0013"
       ]
     }
@@ -2121,28 +2164,25 @@
   "approval": {
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
-    "authorized_at": "2026-10-19",
-    "authorization_basis": "Manny reports the English carrier increment working, supplies corrected mobile browser evidence, states the workflow/evaluation/class-pilot sequence and authorises Cathy’s proposed image ladder. AGENTS.md calls for reflection of material changed acceptance evidence and next steps without rewriting human-owned intentions.",
-    "comments": "Prepared and verified image ladder with 701 passing tests, 16 new regressions, French/English rendered-page coverage, 95 compiled templates and installation instructions. Local browser preview connectivity was unavailable; Cathy’s phone presentation/acceptance remains pending. English audio improvement, independent learner success, inter-rater results and classroom participation are not claimed. No paid AI call, deployment, external message, new canonical commitment or human-intention change was performed. Existing historical observations and archives remain unchanged."
+    "authorized_at": "2026-10-21",
+    "authorization_basis": "Manny accepts the image-ladder increment, reports an existing Slovak/English conversion and Ivana’s interest, and requests Slovak localisation with an English/Slovak path. AGENTS.md requires reflection of this material acceptance evidence and next collaborator trial while preserving human-owned intentions.",
+    "comments": "Prepared and verified Slovak extension with 713 passing tests, all 27 localisation tests, 95 compiled templates, 1,085 main and 166 JavaScript translations, four-form Slovak plurals, independent member/visitor route and conversion smoke checks, and installation/conversion instructions. Native Slovak review, Ivana’s use, deployment and English/Slovak content availability remain unconfirmed. No paid provider call, production content change, new external commitment, message to Ivana or human-intention edit was performed. Existing historical observations and archives remain unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded acceptance of the English carrier increment, narrowed the mobile rendering concern using Chrome/Firefox evidence, and shifted the near-term assessment toward workflow preparation and inter-rater evaluation with a first human-image contribution ladder for Cathy’s review.",
+    "summary": "Recorded Manny’s acceptance of the image ladder, his reported Slovak/English content and Ivana’s interest, and prepared a shared-framework Slovak locale with an explicitly separate English/Slovak conversion and native-review next step.",
     "added_item_ids": [
-      "OBS-0127",
-      "OBS-0128",
-      "OBS-0129",
-      "ASM-0013",
-      "UNC-0011",
-      "UNC-0012",
-      "ACT-0013",
-      "ACT-0014"
+      "OBS-0130",
+      "OBS-0131",
+      "UNC-0013",
+      "ACT-0015"
     ],
     "revised_item_ids": [
       "ASM-0011",
-      "UNC-0008",
+      "ASM-0013",
       "UNC-0010",
-      "ACT-0010",
-      "ACT-0012"
+      "UNC-0012",
+      "ACT-0012",
+      "ACT-0013"
     ],
     "retained_item_ids": [
       "OBS-0001",
@@ -2271,6 +2311,9 @@
       "OBS-0124",
       "OBS-0125",
       "OBS-0126",
+      "OBS-0127",
+      "OBS-0128",
+      "OBS-0129",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -2289,7 +2332,9 @@
       "UNC-0005",
       "UNC-0006",
       "UNC-0007",
+      "UNC-0008",
       "UNC-0009",
+      "UNC-0011",
       "REQ-0005",
       "REQ-0007",
       "REQ-0008",
@@ -2302,7 +2347,9 @@
       "ACT-0007",
       "ACT-0008",
       "ACT-0009",
+      "ACT-0010",
       "ACT-0011",
+      "ACT-0014",
       "PRED-0001",
       "PRED-0002",
       "PRED-0003",

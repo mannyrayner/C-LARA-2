@@ -14,10 +14,19 @@ from django.views.decorators.http import require_POST
 
 
 UI_COOKIE = 'community_ui_language'
-UI_LANGUAGES = (('en', 'English'), ('fr', 'Français'))
+# Add an interface here and supply its django/djangojs translation catalogs.
+# Canonical language names also initialise dictionary explanation fields; labels
+# stay in each language so the selector remains recognisable in every locale.
+UI_LANGUAGE_CONFIG = {
+    'en': {'label': 'English', 'language': N_('English'), 'learning_default': 'fr'},
+    'fr': {'label': 'Français', 'language': N_('French'), 'learning_default': 'en'},
+    'sk': {'label': 'Slovenčina', 'language': N_('Slovak'), 'learning_default': 'en'},
+}
+UI_LANGUAGES = tuple((code, config['label']) for code, config in UI_LANGUAGE_CONFIG.items())
 PREFIX = '/community-dictionaries/'
 LANGUAGE_NAMES = {
-    'en': N_('English'), 'fr': N_('French'), 'de': N_('German'), 'it': N_('Italian'),
+    **{code: config['language'] for code, config in UI_LANGUAGE_CONFIG.items()},
+    'de': N_('German'), 'it': N_('Italian'),
     'es': N_('Spanish'), 'sv': N_('Swedish'), 'is': N_('Icelandic'), 'ja': N_('Japanese'),
     'zh': N_('Chinese'), 'pt': N_('Portuguese'), 'nl': N_('Dutch'), 'ar': N_('Arabic'),
     'hi': N_('Hindi'),
@@ -34,6 +43,8 @@ ALIASES = {
     'portuguese': 'pt', 'portugais': 'pt', 'português': 'pt',
     'dutch': 'nl', 'néerlandais': 'nl', 'nederlands': 'nl',
     'arabic': 'ar', 'arabe': 'ar', 'العربية': 'ar', 'hindi': 'hi', 'हिन्दी': 'hi',
+    'slovak': 'sk', 'slovaque': 'sk', 'slovenčina': 'sk', 'slovencina': 'sk',
+    'angličtina': 'en', 'anglictina': 'en', 'francúzština': 'fr', 'francuzstina': 'fr',
 }
 
 
@@ -54,6 +65,11 @@ def interface_language(request):
     return value if value in dict(UI_LANGUAGES) else 'en'
 
 
+def interface_explanation_language(request):
+    """Canonical stored-language default, independent of translated UI labels."""
+    return UI_LANGUAGE_CONFIG[interface_language(request)]['language']
+
+
 def context(request):
     if not request.path.startswith(PREFIX):
         return {}
@@ -65,7 +81,7 @@ def context(request):
 def set_language(request):
     language = request.POST.get('language')
     if language not in dict(UI_LANGUAGES):
-        return HttpResponseBadRequest(_('Choose English or Français.'))
+        return HttpResponseBadRequest(_('Choose an interface language.'))
     destination = request.POST.get('next', '')
     # Keep this preference confined to the dictionary app; reject external,
     # protocol-relative and malformed redirects, even on the current host.
@@ -102,7 +118,7 @@ def learning_options(request, *, member=False):
     if not isinstance(saved, dict):
         saved = {}
     requested = request.GET.get('learning', saved.get(ui, ''))
-    default = 'en' if ui == 'fr' else 'fr'
+    default = UI_LANGUAGE_CONFIG[ui]['learning_default']
     if requested in names or requested == 'all':
         selected = requested
     elif default in names:

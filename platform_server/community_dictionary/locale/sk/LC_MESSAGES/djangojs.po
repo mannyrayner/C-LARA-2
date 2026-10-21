@@ -1,0 +1,842 @@
+# Slovak interface translation for C-LARA-2 Community Dictionaries.
+# AI-assisted first version for native-speaker review.
+msgid ""
+msgstr ""
+"Project-Id-Version: C-LARA-2 Community Dictionaries\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-18 23:56+0000\n"
+"PO-Revision-Date: 2026-10-21 00:00+0000\n"
+"Last-Translator: C-LARA team (AI-assisted draft)\n"
+"Language-Team: Slovak\n"
+"Language: sk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n == 1 ? 0 : n % 1 == 0 && n >= 2 && n <= 4 ? 1 : n % 1 != 0 ? 2 : 3);\n"
+
+#: community_dictionary/static/community_dictionary/app.js:8
+msgid "Local storage unavailable"
+msgstr "Miestne úložisko nie je dostupné"
+
+#: community_dictionary/static/community_dictionary/app.js:13
+msgid "Close another open dictionary tab and reload."
+msgstr "Zatvorte ďalšiu otvorenú kartu slovníka a obnovte stránku."
+
+#: community_dictionary/static/community_dictionary/app.js:58
+msgid ""
+"Not saved to the dictionary yet. A recovery draft is stored on this device. "
+"Choose Save when ready."
+msgstr ""
+"Zatiaľ neuložené do slovníka. V tomto zariadení je uložený koncept na "
+"obnovenie. Keď budete pripravení, zvoľte Uložiť."
+
+#: community_dictionary/static/community_dictionary/app.js:60
+msgid ""
+"Not saved. Draft recovery is unavailable on this device. Keep this page open"
+" and choose Save."
+msgstr ""
+"Neuložené. Obnovenie konceptu nie je v tomto zariadení dostupné. Nechajte "
+"stránku otvorenú a zvoľte Uložiť."
+
+#: community_dictionary/static/community_dictionary/app.js:65
+msgid "Not saved to the dictionary. Preparing a recovery draft…"
+msgstr "Neuložené do slovníka. Pripravuje sa koncept na obnovenie…"
+
+#: community_dictionary/static/community_dictionary/app.js:121
+msgid ""
+"This file is larger than 15 MB. Choose a shorter recording or a smaller "
+"picture."
+msgstr ""
+"Tento súbor je väčší ako 15 MB. Vyberte kratšiu nahrávku alebo menší "
+"obrázok."
+
+#: community_dictionary/static/community_dictionary/app.js:146
+msgid ""
+"Draft restored on this device. Not confirmed as saved to the dictionary. "
+"Choose Save when ready."
+msgstr ""
+"Koncept bol obnovený v tomto zariadení. Uloženie do slovníka nie je "
+"potvrdené. Keď budete pripravení, zvoľte Uložiť."
+
+#: community_dictionary/static/community_dictionary/app.js:148
+msgid ""
+"Draft recovery is unavailable on this device. Keep this page open until you "
+"save."
+msgstr ""
+"Obnovenie konceptu nie je v tomto zariadení dostupné. Nechajte stránku "
+"otvorenú, kým údaje neuložíte."
+
+#: community_dictionary/static/community_dictionary/app.js:164
+msgid "Finish recording or stop the microphone check first."
+msgstr "Najprv dokončite nahrávanie alebo zastavte kontrolu mikrofónu."
+
+#: community_dictionary/static/community_dictionary/app.js:165
+msgid ""
+"Discard the draft stored on this device? This does not remove anything "
+"already saved to the dictionary."
+msgstr ""
+"Zahodiť koncept uložený v tomto zariadení? Nič, čo už bolo uložené do "
+"slovníka, sa neodstráni."
+
+#: community_dictionary/static/community_dictionary/app.js:169
+msgid "Could not remove the recovery draft. Keep editing or try again."
+msgstr ""
+"Koncept na obnovenie sa nepodarilo odstrániť. Pokračujte v úpravách alebo to"
+" skúste znova."
+
+#: community_dictionary/static/community_dictionary/app.js:175
+msgid "Finish recording or stop the microphone check before saving."
+msgstr "Pred uložením dokončite nahrávanie alebo zastavte kontrolu mikrofónu."
+
+#: community_dictionary/static/community_dictionary/app.js:186
+msgid "Saving to the dictionary… waiting for confirmation."
+msgstr "Ukladá sa do slovníka… čaká sa na potvrdenie."
+
+#: community_dictionary/static/community_dictionary/app.js:203
+msgid ""
+"The upload is too large for this server. Try a smaller picture or recording."
+msgstr ""
+"Nahrávaný súbor je pre tento server príliš veľký. Skúste menší obrázok alebo"
+" kratšiu nahrávku."
+
+#: community_dictionary/static/community_dictionary/app.js:203
+msgid ""
+"Your session may have expired, or the server could not respond. Your draft "
+"remains here. Reload or sign in, then retry."
+msgstr ""
+"Vaše prihlásenie mohlo vypršať alebo server neodpovedal. Koncept zostáva tu."
+" Obnovte stránku alebo sa prihláste a skúste to znova."
+
+#: community_dictionary/static/community_dictionary/app.js:205
+msgid "The server could not save this yet."
+msgstr "Server to zatiaľ nedokázal uložiť."
+
+#: community_dictionary/static/community_dictionary/app.js:208
+msgid "Saved to the dictionary."
+msgstr "Uložené do slovníka."
+
+#: community_dictionary/static/community_dictionary/app.js:212
+msgid ""
+"Confirmation took too long. You can retry safely: the same submission will "
+"not be added twice."
+msgstr ""
+"Potvrdenie trvalo príliš dlho. Môžete to bezpečne skúsiť znova: ten istý "
+"príspevok sa nepridá dvakrát."
+
+#: community_dictionary/static/community_dictionary/app.js:212
+msgid "Connection lost. Keep this page open or restore the draft and retry."
+msgstr ""
+"Spojenie sa prerušilo. Nechajte stránku otvorenú alebo obnovte koncept a "
+"skúste to znova."
+
+#: community_dictionary/static/community_dictionary/app.js:213
+msgid ""
+"Not confirmed as saved. Your contribution is still here; choose Save to "
+"retry when connected."
+msgstr ""
+"Uloženie nie je potvrdené. Váš príspevok je stále tu; po pripojení zvoľte "
+"Uložiť a skúste to znova."
+
+#: community_dictionary/static/community_dictionary/app.js:225
+msgid "Saving is in progress. Please wait for confirmation."
+msgstr "Prebieha ukladanie. Počkajte na potvrdenie."
+
+#: community_dictionary/static/community_dictionary/app.js:226
+msgid "Finish recording or stop the microphone check before leaving."
+msgstr "Pred odchodom dokončite nahrávanie alebo zastavte kontrolu mikrofónu."
+
+#: community_dictionary/static/community_dictionary/capture.js:31
+msgid "Language for feedback"
+msgstr "Jazyk spätnej väzby"
+
+#: community_dictionary/static/community_dictionary/capture.js:31
+msgid "Language I am using"
+msgstr "Jazyk, ktorý používam"
+
+#: community_dictionary/static/community_dictionary/capture.js:71
+msgid "Keep up to 12 words or expressions for this picture."
+msgstr "Ponechajte pre tento obrázok najviac 12 slov alebo výrazov."
+
+#: community_dictionary/static/community_dictionary/capture.js:91
+msgid ""
+"Audio is still pending. You can continue to another picture, refresh its "
+"status later, or use Continue creating audio."
+msgstr ""
+"Zvuk sa ešte pripravuje. Môžete prejsť na ďalší obrázok, neskôr obnoviť stav"
+" alebo použiť Pokračovať vo vytváraní zvuku."
+
+#: community_dictionary/static/community_dictionary/capture.js:95
+msgid ""
+"Could not refresh the audio status. Your saved picture is safe. Reload to "
+"check progress."
+msgstr ""
+"Stav zvuku sa nepodarilo obnoviť. Váš uložený obrázok je v bezpečí. Obnovte "
+"stránku a skontrolujte priebeh."
+
+#: community_dictionary/static/community_dictionary/capture.js:107
+msgid "Could not refresh the audio status."
+msgstr "Stav zvuku sa nepodarilo obnoviť."
+
+#: community_dictionary/static/community_dictionary/capture.js:109
+msgid "This preview is no longer available. Reload to view the current entry."
+msgstr ""
+"Tento náhľad už nie je dostupný. Obnovte stránku a zobrazte aktuálnu "
+"položku."
+
+#: community_dictionary/static/community_dictionary/capture.js:126
+msgid ""
+"Audio is being prepared in the background. You can continue using this page "
+"or go to the next picture."
+msgstr ""
+"Zvuk sa pripravuje na pozadí. Môžete ďalej používať túto stránku alebo "
+"prejsť na ďalší obrázok."
+
+#: community_dictionary/static/community_dictionary/capture.js:142
+msgid ""
+"Working… Your saved picture is safe. Audio continues in the background when "
+"the worker is running."
+msgstr ""
+"Prebieha spracovanie… Váš uložený obrázok je v bezpečí. Vytváranie zvuku "
+"pokračuje na pozadí, keď je spustený proces na spracovanie úloh."
+
+#: community_dictionary/static/community_dictionary/capture.js:146
+msgid "The request could not finish."
+msgstr "Požiadavku sa nepodarilo dokončiť."
+
+#: community_dictionary/static/community_dictionary/capture.js:149
+msgid "Connection interrupted."
+msgstr "Spojenie sa prerušilo."
+
+#: community_dictionary/static/community_dictionary/capture.js:149
+msgid ""
+"Reload to check the result; an in-flight request will not be repeated "
+"automatically."
+msgstr ""
+"Obnovte stránku a skontrolujte výsledok; prebiehajúca požiadavka sa "
+"automaticky nezopakuje."
+
+#: community_dictionary/static/community_dictionary/capture.js:156
+msgid ""
+"Audio is being prepared in the background. You can go to the next picture."
+msgstr "Zvuk sa pripravuje na pozadí. Môžete prejsť na ďalší obrázok."
+
+#: community_dictionary/static/community_dictionary/evaluation.js:10
+msgid "Unsaved judgements. Choose Save and next before leaving."
+msgstr "Neuložené hodnotenia. Pred odchodom zvoľte Uložiť a ďalej."
+
+#: community_dictionary/static/community_dictionary/lexicon.js:25
+msgid "Pause"
+msgstr "Pozastaviť"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:25
+msgid "Listen"
+msgstr "Počúvať"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:26
+msgid "Pause %(word)s"
+msgstr "Pozastaviť %(word)s"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:26
+msgid "Listen to %(word)s"
+msgstr "Počúvať %(word)s"
+
+#: community_dictionary/static/community_dictionary/lexicon.js:30
+msgid ""
+"This recording could not play. Try again, or open the word page for other "
+"recordings."
+msgstr ""
+"Túto nahrávku sa nepodarilo prehrať. Skúste to znova alebo otvorte stránku "
+"slova a pozrite si ďalšie nahrávky."
+
+#: community_dictionary/static/community_dictionary/lexicon.js:98
+msgid ""
+"Could not refresh recordings. Reload this page to check for saved audio."
+msgstr ""
+"Nahrávky sa nepodarilo obnoviť. Obnovte túto stránku a skontrolujte uložený "
+"zvuk."
+
+#: community_dictionary/static/community_dictionary/photo.js:21
+msgid "Uploading and identifying… Please keep this page open."
+msgstr "Nahráva sa a rozpoznáva… Nechajte túto stránku otvorenú."
+
+#: community_dictionary/static/community_dictionary/photo.js:49
+msgid ""
+"The connection was interrupted. Open “Learn from a photo” again and check "
+"Your recent photos before starting another attempt."
+msgstr ""
+"Spojenie sa prerušilo. Znova otvorte Učiť sa z fotografie a pred ďalším "
+"pokusom skontrolujte Vaše nedávne fotografie."
+
+#: community_dictionary/static/community_dictionary/photo.js:64
+msgid ""
+"Synthetic preview using an available device voice. No recording is saved. "
+"Your device’s speech service may process the word."
+msgstr ""
+"Ukážka syntetického hlasu dostupného v zariadení. Žiadna nahrávka sa "
+"neuloží. Hlasová služba vášho zariadenia môže slovo spracovať."
+
+#: community_dictionary/static/community_dictionary/photo.js:64
+msgid ""
+"No matching device voice is available. You can add a human recording after "
+"saving."
+msgstr ""
+"V zariadení nie je dostupný zodpovedajúci hlas. Po uložení môžete pridať "
+"ľudskú nahrávku."
+
+#: community_dictionary/static/community_dictionary/photo.js:73
+msgid "The device voice could not play. You can add a recording after saving."
+msgstr ""
+"Hlas zariadenia sa nepodarilo prehrať. Po uložení môžete pridať nahrávku."
+
+#: community_dictionary/static/community_dictionary/practice.js:39
+msgid "The connection is taking too long. Please try again."
+msgstr "Spojenie trvá príliš dlho. Skúste to znova."
+
+#: community_dictionary/static/community_dictionary/practice.js:39
+msgid "Unable to reach the dictionary. Reconnect and start a new activity."
+msgstr ""
+"So slovníkom sa nedá spojiť. Obnovte pripojenie a začnite novú aktivitu."
+
+#: community_dictionary/static/community_dictionary/practice.js:41
+msgid "This dictionary is no longer available. Return to the dictionary list."
+msgstr "Tento slovník už nie je dostupný. Vráťte sa na zoznam slovníkov."
+
+#: community_dictionary/static/community_dictionary/practice.js:42
+msgid "Unable to check the dictionary. Please try again when connected."
+msgstr "Slovník sa nedá skontrolovať. Po obnovení pripojenia to skúste znova."
+
+#: community_dictionary/static/community_dictionary/practice.js:44
+msgid "Unable to start this activity. Please try again."
+msgstr "Túto aktivitu sa nepodarilo spustiť. Skúste to znova."
+
+#: community_dictionary/static/community_dictionary/practice.js:53
+msgid ""
+"The dictionary changed. Choose an activity to practise with the current "
+"shared content."
+msgstr ""
+"Slovník sa zmenil. Vyberte aktivitu na precvičovanie aktuálneho zdieľaného "
+"obsahu."
+
+#: community_dictionary/static/community_dictionary/practice.js:57
+msgid "The connection is taking too long. Reconnect and start a new activity."
+msgstr ""
+"Spojenie trvá príliš dlho. Obnovte pripojenie a začnite novú aktivitu."
+
+#: community_dictionary/static/community_dictionary/practice.js:57
+msgid "Connection lost. Reconnect and start a new activity."
+msgstr "Spojenie sa prerušilo. Obnovte pripojenie a začnite novú aktivitu."
+
+#: community_dictionary/static/community_dictionary/practice.js:70
+msgid "Dictionary picture"
+msgstr "Obrázok zo slovníka"
+
+#: community_dictionary/static/community_dictionary/practice.js:71
+msgid "AI-generated picture"
+msgstr "Obrázok vygenerovaný umelou inteligenciou"
+
+#: community_dictionary/static/community_dictionary/practice.js:72
+msgid ""
+"This picture could not be loaded. You can skip it or start another activity."
+msgstr ""
+"Tento obrázok sa nepodarilo načítať. Môžete ho preskočiť alebo začať inú "
+"aktivitu."
+
+#: community_dictionary/static/community_dictionary/practice.js:75
+msgid "Dictionary recording"
+msgstr "Nahrávka zo slovníka"
+
+#: community_dictionary/static/community_dictionary/practice.js:77
+msgid ""
+"This recording could not be played. You can skip it or try another browser."
+msgstr ""
+"Túto nahrávku sa nepodarilo prehrať. Môžete ju preskočiť alebo skúsiť iný "
+"prehliadač."
+
+#: community_dictionary/static/community_dictionary/practice.js:78
+msgid "Synthetic voice"
+msgstr "Syntetický hlas"
+
+#: community_dictionary/static/community_dictionary/practice.js:83
+msgid "Translation"
+msgstr "Preklad"
+
+#: community_dictionary/static/community_dictionary/practice.js:86
+msgid "Visit word page"
+msgstr "Otvoriť stránku slova"
+
+#: community_dictionary/static/community_dictionary/practice.js:86
+msgid "Visit entry"
+msgstr "Otvoriť položku"
+
+#: community_dictionary/static/community_dictionary/practice.js:91
+msgid "%(learned)s of %(total)s remembered · %(remaining)s left"
+msgstr "Zapamätané: %(learned)s z %(total)s · zostáva %(remaining)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:93
+msgid "Well done!"
+msgstr "Výborne!"
+
+#: community_dictionary/static/community_dictionary/practice.js:93
+msgid "You recalled %(total)s cards."
+msgstr "Spomenuli ste si na %(total)s kartičiek."
+
+#: community_dictionary/static/community_dictionary/practice.js:93
+#: community_dictionary/static/community_dictionary/practice.js:118
+msgid "Practise again"
+msgstr "Precvičovať znova"
+
+#: community_dictionary/static/community_dictionary/practice.js:97
+msgid "Recall the word or phrase."
+msgstr "Spomeňte si na slovo alebo výraz."
+
+#: community_dictionary/static/community_dictionary/practice.js:97
+msgid "Recall the picture."
+msgstr "Spomeňte si na obrázok."
+
+#: community_dictionary/static/community_dictionary/practice.js:97
+msgid "Recall the pronunciation."
+msgstr "Spomeňte si na výslovnosť."
+
+#: community_dictionary/static/community_dictionary/practice.js:101
+#: community_dictionary/static/community_dictionary/practice.js:166
+#: community_dictionary/static/community_dictionary/practice.js:227
+msgid "Show answer"
+msgstr "Odkryť odpoveď"
+
+#: community_dictionary/static/community_dictionary/practice.js:104
+msgid "Again"
+msgstr "Znova"
+
+#: community_dictionary/static/community_dictionary/practice.js:104
+msgid "Got it"
+msgstr "Viem to"
+
+#: community_dictionary/static/community_dictionary/practice.js:106
+#: community_dictionary/static/community_dictionary/practice.js:166
+msgid "Skip"
+msgstr "Preskočiť"
+
+#: community_dictionary/static/community_dictionary/practice.js:115
+msgid "%(completed)s of %(total)s completed · %(correct)s correct first time"
+msgstr ""
+"Dokončené: %(completed)s z %(total)s · správne na prvý pokus: %(correct)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:118
+msgid "Session complete"
+msgstr "Aktivita dokončená"
+
+#: community_dictionary/static/community_dictionary/practice.js:118
+msgid "%(correct)s of %(total)s correct first time."
+msgstr "Správne na prvý pokus: %(correct)s z %(total)s."
+
+#: community_dictionary/static/community_dictionary/practice.js:123
+msgid "Choose the matching word or phrase."
+msgstr "Vyberte zodpovedajúce slovo alebo výraz."
+
+#: community_dictionary/static/community_dictionary/practice.js:123
+msgid "Choose the matching picture."
+msgstr "Vyberte zodpovedajúci obrázok."
+
+#: community_dictionary/static/community_dictionary/practice.js:123
+msgid "Choose the matching recording."
+msgstr "Vyberte zodpovedajúcu nahrávku."
+
+#: community_dictionary/static/community_dictionary/practice.js:125
+#: community_dictionary/static/community_dictionary/practice.js:224
+msgid "Correct!"
+msgstr "Správne!"
+
+#: community_dictionary/static/community_dictionary/practice.js:125
+msgid "Answer shown."
+msgstr "Odpoveď bola zobrazená."
+
+#: community_dictionary/static/community_dictionary/practice.js:125
+msgid "Not this one. Try another, or show the answer."
+msgstr "Táto odpoveď nie je správna. Skúste inú alebo zobrazte odpoveď."
+
+#: community_dictionary/static/community_dictionary/practice.js:127
+msgid "Answer choices"
+msgstr "Možnosti odpovede"
+
+#: community_dictionary/static/community_dictionary/practice.js:144
+msgid "Choose picture %(label)s"
+msgstr "Vybrať obrázok %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:145
+msgid "Choose %(label)s"
+msgstr "Vybrať %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:147
+msgid "Recording %(label)s"
+msgstr "Nahrávka %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:149
+msgid "Choose recording %(label)s"
+msgstr "Vybrať nahrávku %(label)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:153
+msgid "✓ Matching answer"
+msgstr "✓ Zodpovedajúca odpoveď"
+
+#: community_dictionary/static/community_dictionary/practice.js:154
+msgid "Try another answer"
+msgstr "Skúsiť inú odpoveď"
+
+#: community_dictionary/static/community_dictionary/practice.js:164
+msgid "Next card"
+msgstr "Ďalšia kartička"
+
+#: community_dictionary/static/community_dictionary/practice.js:176
+msgid ""
+"%(completed)s of %(total)s completed · %(remembered)s solved without showing"
+" the answer"
+msgstr ""
+"Dokončené: %(completed)s z %(total)s · vyriešené bez zobrazenia odpovede: "
+"%(remembered)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:181
+msgid "Crossword grid"
+msgstr "Mriežka krížovky"
+
+#: community_dictionary/static/community_dictionary/practice.js:181
+msgid "Word search grid"
+msgstr "Mriežka osemsmerovky"
+
+#: community_dictionary/static/community_dictionary/practice.js:195
+msgid "Row %(row)s, column %(column)s%(letter)s"
+msgstr "Riadok %(row)s, stĺpec %(column)s%(letter)s"
+
+#: community_dictionary/static/community_dictionary/practice.js:206
+msgid "Fit grid"
+msgstr "Prispôsobiť mriežku"
+
+#: community_dictionary/static/community_dictionary/practice.js:206
+msgid "Larger grid"
+msgstr "Zväčšiť mriežku"
+
+#: community_dictionary/static/community_dictionary/practice.js:209
+msgid "%(number)s%(direction)s · %(letters)s letters"
+msgstr "%(number)s%(direction)s · %(letters)s písmen"
+
+#: community_dictionary/static/community_dictionary/practice.js:212
+msgid "Type the word for this picture. Spaces and punctuation are not needed."
+msgstr ""
+"Napíšte slovo pre tento obrázok. Medzery a interpunkciu nemusíte zadávať."
+
+#: community_dictionary/static/community_dictionary/practice.js:212
+msgid ""
+"Tap the first letter, then the last letter of the word. It can go across, "
+"down or diagonally."
+msgstr ""
+"Ťuknite na prvé a potom na posledné písmeno slova. Slovo môže viesť "
+"vodorovne, zvisle alebo šikmo."
+
+#: community_dictionary/static/community_dictionary/practice.js:215
+msgid "Answer shown"
+msgstr "Odpoveď bola zobrazená"
+
+#: community_dictionary/static/community_dictionary/practice.js:215
+msgid "Found!"
+msgstr "Nájdené!"
+
+#: community_dictionary/static/community_dictionary/practice.js:220
+msgid "Your answer"
+msgstr "Vaša odpoveď"
+
+#: community_dictionary/static/community_dictionary/practice.js:222
+msgid "Check answer"
+msgstr "Skontrolovať odpoveď"
+
+#: community_dictionary/static/community_dictionary/practice.js:224
+msgid "Not quite. Try again, or show the answer."
+msgstr "Ešte to nie je správne. Skúste to znova alebo zobrazte odpoveď."
+
+#: community_dictionary/static/community_dictionary/practice.js:230
+msgid "Previous clue"
+msgstr "Predchádzajúca nápoveda"
+
+#: community_dictionary/static/community_dictionary/practice.js:230
+msgid "Next clue"
+msgstr "Ďalšia nápoveda"
+
+#: community_dictionary/static/community_dictionary/practice.js:232
+msgid "Choose a picture clue"
+msgstr "Vybrať obrázkovú nápovedu"
+
+#: community_dictionary/static/community_dictionary/practice.js:234
+msgid "Puzzle complete"
+msgstr "Hlavolam dokončený"
+
+#: community_dictionary/static/community_dictionary/practice.js:234
+msgid "New puzzle"
+msgstr "Nový hlavolam"
+
+#: community_dictionary/static/community_dictionary/practice.js:237
+msgid "Now tap the last letter."
+msgstr "Teraz ťuknite na posledné písmeno."
+
+#: community_dictionary/static/community_dictionary/practice.js:239
+msgid "Choose a straight line of letters."
+msgstr "Vyberte písmená v priamke."
+
+#: community_dictionary/static/community_dictionary/practice.js:245
+msgid "Not one of these words yet. Try again."
+msgstr "Zatiaľ to nie je žiadne z hľadaných slov. Skúste to znova."
+
+#: community_dictionary/static/community_dictionary/practice.js:249
+msgid "Found it!"
+msgstr "Našli ste ho!"
+
+#: community_dictionary/static/community_dictionary/practice.js:255
+msgid "Preparing your activity…"
+msgstr "Pripravuje sa vaša aktivita…"
+
+#: community_dictionary/static/community_dictionary/practice.js:259
+msgid ""
+"No cards have both kinds of content yet. Choose another direction or add the"
+" missing pictures, words or recordings."
+msgstr ""
+"Žiadna kartička zatiaľ nemá oba druhy obsahu. Vyberte iný smer alebo "
+"pridajte chýbajúce obrázky, slová či nahrávky."
+
+#: community_dictionary/static/community_dictionary/practice.js:263
+msgid "Flashcards"
+msgstr "Kartičky"
+
+#: community_dictionary/static/community_dictionary/practice.js:263
+msgid "Picture crossword"
+msgstr "Obrázková krížovka"
+
+#: community_dictionary/static/community_dictionary/practice.js:263
+msgid "Word scramble"
+msgstr "Osemsmerovka"
+
+#: community_dictionary/static/community_dictionary/practice.js:266
+msgid "Unable to connect. Please try again."
+msgstr "Nedá sa pripojiť. Skúste to znova."
+
+#: community_dictionary/static/community_dictionary/practice.js:280
+msgid "Choose an activity to use the latest shared content."
+msgstr "Vyberte aktivitu s najnovším zdieľaným obsahom."
+
+#: community_dictionary/static/community_dictionary/recorder.js:28
+msgid "■ Stop recording"
+msgstr "■ Zastaviť nahrávanie"
+
+#: community_dictionary/static/community_dictionary/recorder.js:28
+msgid "● Record"
+msgstr "● Nahrávať"
+
+#: community_dictionary/static/community_dictionary/recorder.js:31
+msgid "Stop microphone check"
+msgstr "Zastaviť kontrolu mikrofónu"
+
+#: community_dictionary/static/community_dictionary/recorder.js:31
+msgid "Check microphone"
+msgstr "Skontrolovať mikrofón"
+
+#: community_dictionary/static/community_dictionary/recorder.js:39
+msgid "Browser default microphone"
+msgstr "Predvolený mikrofón prehliadača"
+
+#: community_dictionary/static/community_dictionary/recorder.js:41
+msgid "Microphone %(number)s"
+msgstr "Mikrofón %(number)s"
+
+#: community_dictionary/static/community_dictionary/recorder.js:49
+msgid "Use Check microphone to test this input."
+msgstr "Pomocou funkcie Skontrolovať mikrofón otestujte tento vstup."
+
+#: community_dictionary/static/community_dictionary/recorder.js:52
+msgid ""
+"Microphone access was not allowed. Check microphone permissions in the "
+"browser site settings and on your device, then try again."
+msgstr ""
+"Prístup k mikrofónu nebol povolený. Skontrolujte povolenia mikrofónu v "
+"nastaveniach prehliadača pre túto stránku aj vo svojom zariadení a skúste to"
+" znova."
+
+#: community_dictionary/static/community_dictionary/recorder.js:53
+msgid ""
+"The selected microphone is unavailable. Choose another input or reconnect "
+"it, then check again."
+msgstr ""
+"Vybraný mikrofón nie je dostupný. Vyberte iný vstup alebo ho znova pripojte "
+"a zopakujte kontrolu."
+
+#: community_dictionary/static/community_dictionary/recorder.js:54
+msgid ""
+"The microphone could not be opened. Close other recording or calling apps, "
+"then try again or choose another microphone."
+msgstr ""
+"Mikrofón sa nepodarilo otvoriť. Zatvorte ostatné aplikácie na nahrávanie "
+"alebo telefonovanie a skúste to znova, prípadne vyberte iný mikrofón."
+
+#: community_dictionary/static/community_dictionary/recorder.js:55
+msgid ""
+"Recording could not start. Check the selected microphone, or choose an "
+"existing audio file."
+msgstr ""
+"Nahrávanie sa nepodarilo spustiť. Skontrolujte vybraný mikrofón alebo "
+"vyberte existujúci zvukový súbor."
+
+#: community_dictionary/static/community_dictionary/recorder.js:73
+msgid "Input meter unavailable; listen to the finished recording."
+msgstr ""
+"Ukazovateľ úrovne vstupu nie je dostupný; vypočujte si dokončenú nahrávku."
+
+#: community_dictionary/static/community_dictionary/recorder.js:82
+msgid "Sound detected"
+msgstr "Zvuk bol zaznamenaný"
+
+#: community_dictionary/static/community_dictionary/recorder.js:82
+msgid "No sound detected — speak into the microphone."
+msgstr "Nebol zaznamenaný žiadny zvuk — hovorte do mikrofónu."
+
+#: community_dictionary/static/community_dictionary/recorder.js:88
+#: community_dictionary/static/community_dictionary/recorder.js:227
+msgid "Recording… %(seconds)s s"
+msgstr "Nahrávanie… %(seconds)s s"
+
+#: community_dictionary/static/community_dictionary/recorder.js:103
+msgid "Using: %(microphone)s"
+msgstr "Používa sa: %(microphone)s"
+
+#: community_dictionary/static/community_dictionary/recorder.js:103
+msgid "browser default microphone"
+msgstr "predvolený mikrofón prehliadača"
+
+#: community_dictionary/static/community_dictionary/recorder.js:107
+msgid "The microphone disconnected. Reconnect it or choose another input."
+msgstr "Mikrofón sa odpojil. Znova ho pripojte alebo vyberte iný vstup."
+
+#: community_dictionary/static/community_dictionary/recorder.js:119
+msgid "Input meter unavailable; listen before sharing."
+msgstr ""
+"Ukazovateľ úrovne vstupu nie je dostupný; pred zdieľaním si nahrávku "
+"vypočujte."
+
+#: community_dictionary/static/community_dictionary/recorder.js:127
+msgid ""
+"Recording needs a supported browser and HTTPS (or localhost). You can choose"
+" an existing audio file instead."
+msgstr ""
+"Nahrávanie vyžaduje podporovaný prehliadač a HTTPS (alebo localhost). Môžete"
+" namiesto toho vybrať existujúci zvukový súbor."
+
+#: community_dictionary/static/community_dictionary/recorder.js:136
+msgid "Microphone check finished"
+msgstr "Kontrola mikrofónu dokončená"
+
+#: community_dictionary/static/community_dictionary/recorder.js:137
+msgid "Sound reached the microphone. Choose Record when ready."
+msgstr "Zvuk sa dostal do mikrofónu. Keď budete pripravení, zvoľte Nahrávať."
+
+#: community_dictionary/static/community_dictionary/recorder.js:137
+msgid ""
+"No sound reached this input. Choose another microphone and check again. "
+"Check any mute switch and your device’s microphone settings."
+msgstr ""
+"Do tohto vstupu sa nedostal žiadny zvuk. Vyberte iný mikrofón a zopakujte "
+"kontrolu. Skontrolujte vypínač stlmenia a nastavenia mikrofónu vo svojom "
+"zariadení."
+
+#: community_dictionary/static/community_dictionary/recorder.js:143
+msgid "Waiting for microphone permission…"
+msgstr "Čaká sa na povolenie mikrofónu…"
+
+#: community_dictionary/static/community_dictionary/recorder.js:147
+msgid "Microphone check — speak normally"
+msgstr "Kontrola mikrofónu — hovorte normálne"
+
+#: community_dictionary/static/community_dictionary/recorder.js:151
+msgid "Microphone check could not start"
+msgstr "Kontrolu mikrofónu sa nepodarilo spustiť"
+
+#: community_dictionary/static/community_dictionary/recorder.js:166
+msgid "Checking your recording…"
+msgstr "Kontroluje sa vaša nahrávka…"
+
+#: community_dictionary/static/community_dictionary/recorder.js:178
+msgid ""
+"The recorder produced no usable audio. Your previous recording, if any, is "
+"unchanged. Try another microphone or choose a file."
+msgstr ""
+"Nahrávanie nevytvorilo použiteľný zvuk. Prípadná predchádzajúca nahrávka "
+"zostáva nezmenená. Skúste iný mikrofón alebo vyberte súbor."
+
+#: community_dictionary/static/community_dictionary/recorder.js:179
+msgid "Recording not saved"
+msgstr "Nahrávka nebola uložená"
+
+#: community_dictionary/static/community_dictionary/recorder.js:194
+msgid "Silent recording — not saved"
+msgstr "Tichá nahrávka — neuložená"
+
+#: community_dictionary/static/community_dictionary/recorder.js:195
+msgid ""
+"No sound was detected. Choose another microphone and use Check microphone. "
+"This take has not replaced any earlier recording."
+msgstr ""
+"Nebol zaznamenaný žiadny zvuk. Vyberte iný mikrofón a použite Skontrolovať "
+"mikrofón. Tento pokus nenahradil žiadnu skoršiu nahrávku."
+
+#: community_dictionary/static/community_dictionary/recorder.js:200
+msgid "Recording ready — listen before sharing"
+msgstr "Nahrávka je pripravená — pred zdieľaním si ju vypočujte"
+
+#: community_dictionary/static/community_dictionary/recorder.js:201
+msgid ""
+"This recording is very quiet. Listen and consider recording again with a "
+"higher microphone input level."
+msgstr ""
+"Táto nahrávka je veľmi tichá. Vypočujte si ju a zvážte nové nahrávanie s "
+"vyššou vstupnou úrovňou mikrofónu."
+
+#: community_dictionary/static/community_dictionary/recorder.js:202
+msgid ""
+"Sound could not be verified automatically. Listen to this recording before "
+"sharing."
+msgstr ""
+"Zvuk sa nepodarilo automaticky overiť. Pred zdieľaním si túto nahrávku "
+"vypočujte."
+
+#: community_dictionary/static/community_dictionary/recorder.js:204
+msgid "Recording could not be prepared"
+msgstr "Nahrávku sa nepodarilo pripraviť"
+
+#: community_dictionary/static/community_dictionary/recorder.js:205
+msgid "Please try recording again, or choose an existing audio file."
+msgstr "Skúste nahrávať znova alebo vyberte existujúci zvukový súbor."
+
+#: community_dictionary/static/community_dictionary/recorder.js:215
+msgid "Starting microphone…"
+msgstr "Spúšťa sa mikrofón…"
+
+#: community_dictionary/static/community_dictionary/recorder.js:231
+msgid "Recording could not start"
+msgstr "Nahrávanie sa nepodarilo spustiť"
+
+#: community_dictionary/static/community_dictionary/saved_audio.js:11
+msgid "Creating your audio preview… Please keep this page open."
+msgstr "Vytvára sa zvuková ukážka… Nechajte túto stránku otvorenú."
+
+#: community_dictionary/static/community_dictionary/saved_audio.js:22
+msgid ""
+"The connection was interrupted. Reopen Create spoken audio from the entry "
+"and check Your recent audio before starting another attempt."
+msgstr ""
+"Spojenie sa prerušilo. Z položky znova otvorte Vytvoriť hovorený zvuk a pred"
+" ďalším pokusom skontrolujte Vaše nedávne nahrávky."
+
+msgid "Across"
+msgstr "Vodorovne"
+
+msgid "Down"
+msgstr "Zvisle"
+
+msgid "across"
+msgstr "vodorovne"
+
+msgid "down"
+msgstr "zvisle"

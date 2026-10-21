@@ -5861,3 +5861,11 @@ msgstr "Les personnes ayant le même total sont ex æquo."
 msgid "No accepted human-uploaded images to count yet."
 msgstr ""
 "Aucune image apportée par une personne et validée à compter pour le moment."
+
+#: community_dictionary/localisation.py
+msgid "Slovak"
+msgstr "slovaque"
+
+#: community_dictionary/localisation.py
+msgid "Choose an interface language."
+msgstr "Choisissez une langue d’interface."
