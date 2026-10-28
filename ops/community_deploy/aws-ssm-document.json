@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Install an exact, reviewed C-LARA code-only release using the installed controller.",
+  "parameters": {
+    "Commit": {"type": "String", "allowedPattern": "^[0-9a-f]{40}$"},
+    "ExpectedCommit": {"type": "String", "allowedPattern": "^[0-9a-f]{40}$"}
+  },
+  "mainSteps": [{
+    "action": "aws:runShellScript",
+    "name": "deploy",
+    "inputs": {
+      "timeoutSeconds": "1200",
+      "runCommand": ["sudo -u ssm-user /usr/bin/python3 /opt/clara-deploy/runner.py install --config /etc/clara-deploy.json --commit '{{ Commit }}' --expected '{{ ExpectedCommit }}' --receipt /var/lib/clara-deploy/result.json"]
+    }
+  }]
+}

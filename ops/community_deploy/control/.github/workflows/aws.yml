@@ -1,0 +1,37 @@
+name: Accept laptop and deploy AWS
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+concurrency:
+  group: clara-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event.repository.private == true && github.actor == vars.HUMAN_APPROVER
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CLARA_AWS_ROLE }}
+          aws-region: ${{ vars.CLARA_AWS_REGION }}
+          role-duration-seconds: 1800
+      - name: Verify laptop result and deploy the same commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HUMAN_APPROVER: ${{ vars.HUMAN_APPROVER }}
+          CLARA_INSTANCE_ID: ${{ vars.CLARA_INSTANCE_ID }}
+        run: python3 cloud.py --request current_release.json --receipt aws-receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aws-receipt
+          path: aws-receipt.json
+          if-no-files-found: warn
+          retention-days: 30

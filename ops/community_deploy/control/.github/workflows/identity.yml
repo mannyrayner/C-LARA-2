@@ -1,0 +1,22 @@
+name: Show AWS trust identity (setup only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  identity:
+    if: github.ref == 'refs/heads/main' && github.event.repository.private == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show claims only, never the token
+        run: |
+          node --input-type=module <<'JS'
+          const response = await fetch(process.env.ACTIONS_ID_TOKEN_REQUEST_URL + '&audience=sts.amazonaws.com', {
+            headers: {Authorization: 'Bearer ' + process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}
+          });
+          if (!response.ok) throw new Error('Identity request failed');
+          const {value} = await response.json();
+          const claims = JSON.parse(Buffer.from(value.split('.')[1], 'base64url').toString());
+          console.log(JSON.stringify({aud:claims.aud, sub:claims.sub, repository:claims.repository, ref:claims.ref}, null, 2));
+          JS

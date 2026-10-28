@@ -8,3 +8,5 @@ class CommunityDictionaryConfig(AppConfig):
 
     def ready(self):
         from . import checks  # noqa: F401
+        from .deployment_health import capture_release
+        capture_release()

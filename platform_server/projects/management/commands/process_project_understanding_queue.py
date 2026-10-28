@@ -4,6 +4,7 @@ import time
 import uuid
 
 from django.core.management.base import BaseCommand
+from core import deployment_activity
 
 from projects.views import (
     _claim_next_project_understanding_request,
@@ -42,8 +43,20 @@ class Command(BaseCommand):
         self.stdout.write(f"Project-understanding worker starting as {worker_id}")
 
         while True:
-            claimed = _claim_next_project_understanding_request(worker_id)
+            try:
+                lease = deployment_activity.acquire('project-understanding')
+            except deployment_activity.Maintenance:
+                if once:
+                    return
+                time.sleep(sleep_seconds)
+                continue
+            try:
+                claimed = _claim_next_project_understanding_request(worker_id)
+            except BaseException:
+                deployment_activity.release(lease)
+                raise
             if claimed is None:
+                deployment_activity.release(lease)
                 queued_count = _count_queued_project_understanding_requests()
                 if once:
                     self.stdout.write(f"No queued project-understanding requests found (queued={queued_count}).")
@@ -55,13 +68,18 @@ class Command(BaseCommand):
             user_id = payload.get("user_id")
             question = str(payload.get("question") or "").strip()
             if not question or user_id is None:
-                _record_project_understanding_update(
-                    report_id=report_id,
-                    user_id=user_id or 0,
-                    message="Project-understanding worker found an invalid queued request; missing question or user id.",
-                    status="error",
-                )
-                _release_project_understanding_request_lock(report_id)
+                try:
+                    _record_project_understanding_update(
+                        report_id=report_id,
+                        user_id=user_id or 0,
+                        message="Project-understanding worker found an invalid queued request; missing question or user id.",
+                        status="error",
+                    )
+                finally:
+                    try:
+                        _release_project_understanding_request_lock(report_id)
+                    finally:
+                        deployment_activity.release(lease)
                 if once:
                     return
                 continue
@@ -70,7 +88,10 @@ class Command(BaseCommand):
             try:
                 _run_project_understanding_task(question, int(user_id), str(report_id))
             finally:
-                _release_project_understanding_request_lock(report_id)
+                try:
+                    _release_project_understanding_request_lock(report_id)
+                finally:
+                    deployment_activity.release(lease)
 
             if once:
                 return

@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 
 CONNECTION_CLEANUP_VERSION = 1
+DEPLOYMENT_ACTIVITY_VERSION = 1
 _slots_lock = threading.Lock()
 _slots_key = None
 _slots = None
@@ -85,18 +86,29 @@ def async_task(
         return result
 
     slots = _worker_slots()
+    from core import deployment_activity
+    # Register before returning to the HTTP caller, including semaphore waiters.
+    # Existing requests/tasks may finish their fan-out while admission is paused.
+    lease = deployment_activity.acquire('background-task', respect_gate=False)
 
     def _runner():
         # Acquire inside the new thread: nested fan-out must not block the
         # caller while it still owns a slot or a database transaction.
-        with slots:
-            try:
-                result = task_callable(*args, **kwargs)
-                if hook:
-                    hook(result)
-            finally:
-                _close_task_connections()
+        try:
+            with slots:
+                try:
+                    result = task_callable(*args, **kwargs)
+                    if hook:
+                        hook(result)
+                finally:
+                    _close_task_connections()
+        finally:
+            deployment_activity.release(lease)
 
     thread = threading.Thread(target=_runner, daemon=True)
-    thread.start()
+    try:
+        thread.start()
+    except BaseException:
+        deployment_activity.release(lease)
+        raise
     return thread

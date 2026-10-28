@@ -4,6 +4,7 @@ from projects.authentication_forms import LoginForm
 from projects import account_views, email_reset_views
 from django.views.i18n import JavaScriptCatalog
 from . import localisation
+from .deployment_health import health as deployment_health
 
 from . import evaluation_views, mwe_audio
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
@@ -12,6 +13,7 @@ from . import image_views, practice_views, port_views, capture_views, image_copy
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('deployment-health/', deployment_health, name='deployment-health'),
     path('interface-language/', localisation.set_language, name='set-language'),
     path('translations.js', JavaScriptCatalog.as_view(packages=['community_dictionary']), name='javascript-catalog'),
     path('<int:pk>/evaluate/<uuid:set_id>/repeat-audio/', evaluation_views.repeat_audio, name='evaluation-repeat-audio'),

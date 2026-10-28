@@ -1,0 +1,15 @@
+{
+  "target": "aws",
+  "repo": "/srv/C-LARA-2",
+  "state": "/var/lib/clara-deploy",
+  "activity_dir": "/var/lib/clara-deploy-activity",
+  "git": "/usr/bin/git",
+  "timeout_seconds": 120,
+  "health_url": "https://c-lara-2.c-lara.org/community-dictionaries/deployment-health/",
+  "manage": ["sudo", "-n", "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--property=RuntimeMaxSec=90", "--property=TimeoutStopSec=15", "--property=User=ubuntu", "--property=Group=www-data", "--property=WorkingDirectory=/srv/C-LARA-2/platform_server", "--property=EnvironmentFile=/etc/clara2.env", "/srv/C-LARA-2/.venv/bin/python", "manage.py"],
+  "static_manage": ["sudo", "-n", "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--property=RuntimeMaxSec=90", "--property=TimeoutStopSec=15", "--property=User=ssm-user", "--property=Group=ssm-user", "--property=WorkingDirectory=/srv/C-LARA-2/platform_server", "--property=EnvironmentFile=/etc/clara2.env", "/srv/C-LARA-2/.venv/bin/python", "manage.py"],
+  "stop": ["sudo", "-n", "/opt/clara-deploy/services.sh", "stop"],
+  "start": ["sudo", "-n", "/opt/clara-deploy/services.sh", "start"],
+  "stopped": ["sudo", "-n", "/opt/clara-deploy/services.sh", "stopped"],
+  "running": ["sudo", "-n", "/opt/clara-deploy/services.sh", "running"]
+}

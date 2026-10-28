@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 89,
+  "workspace_revision": 90,
   "as_of": "2026-10-21",
-  "assessed_commit_sha": "19fd910157326df7c6977dd5ee5f5984fcb64a4d",
+  "assessed_commit_sha": "45a907f47477894075bd48d2731823ff27715cb2",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports that the image-ladder increment worked fine. This supplies his implementation acceptance without a separate verdict from Cathy, a specified deployment environment or evidence of a participation effect. He requests Slovak localisation because Ivana is interested in experimenting, and reports already creating a Slovak/English dictionary by converting French/English. An English/Slovak content version is desired but not yet reported available. The prepared third interface locale reuses the shared gettext framework, persistent selection and matching-explanation recommendations, with canonical Slovak defaults and language aliases. All 713 Community Dictionaries tests pass, including 12 new Slovak regressions and the 15 existing localisation tests. All 95 templates compile. Catalog format/source-key/placeholder audits, four Slovak plural branches, twelve member/visitor route smoke checks plus JavaScript, and two mocked-provider conversion checks pass; all existing French translations are preserved. Native Slovak review, Ivana’s actual trial and English/Slovak conversion remain next steps. Interface selection does not translate stored dictionary content. The workflow-tidying and independent inter-rater evaluation direction, tentative 26 October Zoom and prospective communal class pilot remain in place; no new meeting or class outcome is supplied. Existing Chrome/Firefox sample rendering and English carrier implementation acceptance remain distinct from complete phone acceptance and quantified linguistic/audio improvement.",
+  "current_focus_summary": "Manny requests an initial stage-(1a) deployment patch and a working document for direct AI-led collaboration. The agreed progression is automated installation with human laptop acceptance, then AI functional testing, then AWS staging. An opt-in code/static-only controller and private workflow templates are prepared against current main, preserving the separate localisation work. Linux deployment/recovery tests and Django regressions pass; no live Windows runner, AWS permissions, deployment, provider request or stakeholder communication has been performed. One-time connection setup and exact-commit laptop/AWS rehearsals are the next gates. The broader governance document is a discussion draft, not delegated authority. Previously recorded Slovak localisation, Ivana involvement and evaluation plans remain in place without new acceptance evidence from this task.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1470,6 +1470,28 @@
         "platform_server/community_dictionary/locale/sk/LC_MESSAGES/django.po",
         "platform_server/community_dictionary/locale/sk/LC_MESSAGES/djangojs.po"
       ]
+    },
+    {
+      "id": "OBS-0132",
+      "observed_at": "2026-10-21",
+      "confidence": "high",
+      "summary": "Manny proposes staged deployment automation: initially automated laptop installation/restart with his functional acceptance before AWS, then AI laptop checks, then AWS staging. In parallel he requests a draft on AI-led conceptual collaboration with project members. He now explicitly requests the initial functionality patch and first working document. This authorises preparation, not provision of credentials, live production rollout or messages to collaborators.",
+      "evidence": [
+        "docs/roadmap/community-dictionary-ai-led-collaboration.md",
+        "docs/howto/community-deployment-stage-a.md"
+      ]
+    },
+    {
+      "id": "OBS-0133",
+      "observed_at": "2026-10-21",
+      "confidence": "high",
+      "summary": "Prepared a stdlib code/static-only deployment controller, separate private GitHub control workflow templates, fixed AWS SSM document/role examples, opt-in activity leases for requests/local tasks/assistant worker, frozen release readiness and preceding-code recovery. The controller refuses schema/dependency/controller changes, dirty or unexpected checkouts and undrained work. 24 disposable Linux controller/protocol tests pass; the 758-test Django regression run passed and all 15 focused deployment tests pass after three additions. Native Windows CI is configured but has not run here. No host setup or deployment has been performed. A shareable working draft describes decision rights, consent, durable records, research measures and stages (1a)-(1c).",
+      "evidence": [
+        "ops/community_deploy/README.md",
+        "docs/howto/community-deployment-stage-a.md",
+        "docs/roadmap/community-dictionary-ai-led-collaboration.md",
+        "experiments/community_dictionary/deployment-stage-a-2026-10-21.md"
+      ]
     }
   ],
   "assessments": [
@@ -1770,7 +1792,7 @@
     },
     {
       "id": "ASM-0012",
-      "summary": "Reducing Manny’s operational workload remains a concrete objective, measured through completed requests/releases, human touches/minutes, reliability and total human burden. The staged supervised-to-delegated experiment is still proposed; the repository Assistant is read-only and no persistent maintenance runner has been established. Successive AI-authored patches and human-reported deployments demonstrate supervised iteration, not unattended operations. The now-repaired guidance latency and duplicate-card regressions show that passing small-fixture tests did not remove the need for human acceptance at realistic scale. The repair adds measured query budgets and provenance cases, but Manny still deploys and supplies production evidence. The report should include these maintenance iterations and limits, and treat Manny’s development-time estimates as informal rather than an audited model comparison. Community data/publication authority remains with people. The new language-port repair similarly relies on Manny for deployment and production validation. Automated regression tests and read-only reconciliation reduce guesswork but do not demonstrate independent operational control. The new automatic-content option reduces user review steps but is not autonomous project maintenance. Manny now reports the option working on AWS, but its actual operational burden and real-job accounting remain to be measured; publication must not claim it removes all human operational work.",
+      "summary": "Reducing Manny’s operational and coordination burden now has an explicitly requested first implementation: a bounded deployment controller with human functional acceptance before production. This advances from a proposed experiment to prepared infrastructure, while the required connection and live host rehearsals remain unestablished. Tests demonstrate disposable Linux installation/recovery and application integration, not independent AWS operation or native Windows success. Restrict the first controller to compatible code/static changes; schema/dependency and controller-policy releases remain separate. The conceptual-work draft proposes direct user clarification and decision records, but does not grant communication or community policy authority. Measure total human effort, end-to-end accepted requests, reliability and recovery across stages, rather than equating successful model-generated patches or automatic content generation with autonomous maintenance.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1806,11 +1828,13 @@
         "OBS-0106",
         "OBS-0107",
         "OBS-0108",
-        "OBS-0109"
+        "OBS-0109",
+        "OBS-0132",
+        "OBS-0133"
       ],
-      "urgency": "start_baseline_with_next_operational_work",
+      "urgency": "rehearse_supervised_deployment_before_routine_use",
       "risk": "medium",
-      "progress": "staged_operations_experiment_proposed",
+      "progress": "stage_a_controller_prepared_live_connection_and_acceptance_pending",
       "confidence": "medium"
     },
     {
@@ -1932,6 +1956,13 @@
       "assessment_ids": [
         "ASM-0011",
         "ASM-0013"
+      ]
+    },
+    {
+      "id": "UNC-0014",
+      "summary": "Native Windows runner behaviour, environment inheritance, GitHub workflow cleanup, AWS service/permissions/readiness and IAM/SSM connection require real rehearsal. Deployment authority can access application data through deployed code; content-free receipts do not imply a cryptographic data barrier. The manual acceptance identity assumes trusted control-repository writers. Direct stakeholder communication and shared decision rights remain proposals requiring agreement; no performance or reduction-of-human-effort result is established.",
+      "assessment_ids": [
+        "ASM-0012"
       ]
     }
   ],
@@ -2075,6 +2106,13 @@
         "ASM-0011",
         "ASM-0013"
       ]
+    },
+    {
+      "id": "ACT-0016",
+      "summary": "Deliver the patch and working draft, install normally on the laptop with deployment mode initially disabled, then bootstrap the external controller/private connection and rehearse exact-commit startup and a small visible release. Configure AWS only after laptop acceptance, verify the fixed role/document and all instrumented processes, and preserve explicit acceptance before the same commit reaches production. Discuss the governance draft with interested members before initiating direct AI collaboration; do not infer authorisation to send messages.",
+      "assessment_ids": [
+        "ASM-0012"
+      ]
     }
   ],
   "predictions": [
@@ -2165,24 +2203,19 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-21",
-    "authorization_basis": "Manny accepts the image-ladder increment, reports an existing Slovak/English conversion and Ivana’s interest, and requests Slovak localisation with an English/Slovak path. AGENTS.md requires reflection of this material acceptance evidence and next collaborator trial while preserving human-owned intentions.",
-    "comments": "Prepared and verified Slovak extension with 713 passing tests, all 27 localisation tests, 95 compiled templates, 1,085 main and 166 JavaScript translations, four-form Slovak plurals, independent member/visitor route and conversion smoke checks, and installation/conversion instructions. Native Slovak review, Ivana’s use, deployment and English/Slovak content availability remain unconfirmed. No paid provider call, production content change, new external commitment, message to Ivana or human-intention edit was performed. Existing historical observations and archives remain unchanged."
+    "authorization_basis": "Manny explicitly requests a stage-(1a) functionality patch and the first working document. AGENTS.md requires reflecting material progress and boundaries in derived state.",
+    "comments": "Preparation and local verification only. No live deployment, remote commit, cloud provisioning, external message, paid request or human-intention change. Other-thread localisation state is preserved."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded Manny’s acceptance of the image ladder, his reported Slovak/English content and Ivana’s interest, and prepared a shared-framework Slovak locale with an explicitly separate English/Slovak conversion and native-review next step.",
+    "summary": "Recorded the staged deployment request and prepared bounded stage-(1a) infrastructure plus a collaboration discussion draft; distinguish local tests from pending live setup and acceptance.",
     "added_item_ids": [
-      "OBS-0130",
-      "OBS-0131",
-      "UNC-0013",
-      "ACT-0015"
+      "OBS-0132",
+      "OBS-0133",
+      "UNC-0014",
+      "ACT-0016"
     ],
     "revised_item_ids": [
-      "ASM-0011",
-      "ASM-0013",
-      "UNC-0010",
-      "UNC-0012",
-      "ACT-0012",
-      "ACT-0013"
+      "ASM-0012"
     ],
     "retained_item_ids": [
       "OBS-0001",
@@ -2314,6 +2347,8 @@
       "OBS-0127",
       "OBS-0128",
       "OBS-0129",
+      "OBS-0130",
+      "OBS-0131",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -2324,7 +2359,8 @@
       "ASM-0008",
       "ASM-0009",
       "ASM-0010",
-      "ASM-0012",
+      "ASM-0011",
+      "ASM-0013",
       "UNC-0001",
       "UNC-0002",
       "UNC-0003",
@@ -2334,7 +2370,10 @@
       "UNC-0007",
       "UNC-0008",
       "UNC-0009",
+      "UNC-0010",
       "UNC-0011",
+      "UNC-0012",
+      "UNC-0013",
       "REQ-0005",
       "REQ-0007",
       "REQ-0008",
@@ -2349,7 +2388,10 @@
       "ACT-0009",
       "ACT-0010",
       "ACT-0011",
+      "ACT-0012",
+      "ACT-0013",
       "ACT-0014",
+      "ACT-0015",
       "PRED-0001",
       "PRED-0002",
       "PRED-0003",

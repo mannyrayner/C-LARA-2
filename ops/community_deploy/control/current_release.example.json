@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "description": "Replace these empty fields with the exact tested commits before running either workflow.",
+  "commit": "",
+  "expected_laptop": "",
+  "expected_aws": "",
+  "rollback_compatible": true
+}
