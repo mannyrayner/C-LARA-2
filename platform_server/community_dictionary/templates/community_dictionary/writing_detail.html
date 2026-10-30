@@ -1,0 +1,71 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block title %}{% translate "Writing practice" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Writing practice" %} · {{ dictionary.language }}</h1>
+<p><a href="{% url 'community_dictionary:writing-start' dictionary.pk %}">{% translate "My writing — start or continue" %}</a></p>
+<div class="capture-layout">
+<img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="{% translate "Your picture" %}">
+<section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
+{% if study.status == 'draft' %}
+<h2>{% translate "2. Write about this picture" %}</h2>
+<p>{% translate "Write a short description in the dictionary's text language (up to 255 characters). Your own ideas and wording matter." %}</p>
+{% if setup_error %}<p class="notice">{{ setup_error }}</p>{% endif %}
+<form method="post" action="{% url 'community_dictionary:writing-action' dictionary.pk study.pk %}" class="stack" data-writing-draft>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
+{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}
+<p><button class="secondary" name="action" value="save">{% translate "Save draft" %}</button></p>
+<details><summary>{% translate "Feedback and voice options" %}</summary>
+<p>{{ form.feedback_language.label_tag }}{{ form.feedback_language }}{{ form.feedback_language.errors }}</p>
+<p>{{ form.voice.label_tag }}{{ form.voice }}{{ form.voice.errors }}</p></details>
+{% include 'community_dictionary/writing_cost.html' %}
+<label class="check">{{ form.ai_consent }} <span>{{ form.ai_consent.label }}</span></label>{{ form.ai_consent.errors }}
+<button name="action" value="check" {% if setup_error %}disabled{% endif %}>{% translate "Save and check my writing" %}</button>
+</form>
+{% elif study.status == 'feedback' %}
+<h2>{% translate "3. Review the feedback" %}</h2>
+<h3>{% translate "Your original" %}</h3><p dir="{{ dictionary.text_direction }}">{{ info.original_text }}</p>
+{% if feedback.outcome == 'clarify' %}<p class="notice" dir="auto">{{ feedback.question }}</p>
+{% else %}
+<h3>{% translate "Suggested version" %}</h3>
+<p class="meaning" dir="{{ dictionary.text_direction }}">{% for piece in highlighted %}{% if piece.changed %}<mark>{{ piece.text }}</mark>{% else %}{{ piece.text }}{% endif %}{% endfor %}</p>
+{% if feedback.corrections %}<h3>{% translate "Corrections and reasons" %}</h3>
+<ul>{% for correction in feedback.corrections %}<li><p><del dir="auto">{{ correction.before }}</del> → <strong dir="auto">{{ correction.after }}</strong></p><p dir="auto">{{ correction.reason }}</p></li>{% endfor %}</ul>
+{% else %}<p>{% translate "No correction was needed." %}</p>{% endif %}
+{% if feedback.suggestions %}<details><summary>{% translate "Optional improvements — not applied" %}</summary><ul>{% for suggestion in feedback.suggestions %}<li dir="auto">{{ suggestion }}</li>{% endfor %}</ul></details>{% endif %}
+<p class="help">{% translate "AI feedback can be mistaken. Approve only a version that says what you mean." %}</p>
+{% include 'community_dictionary/writing_cost.html' %}
+<form method="post" action="{% url 'community_dictionary:writing-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="permission" value="yes">
+<button name="action" value="approve">{% translate "Use this version and finish" %}</button>
+<p class="help">{% translate "By continuing, I confirm permission to share the picture and approved text, and approve the remaining AI processing costs. My original draft and correction feedback stay private." %}</p></form>
+{% endif %}
+{% elif study.status == 'failed' %}
+<p class="notice">{% translate "This attempt could not finish. Your picture, writing and any feedback are still saved privately. No failed AI request is repeated automatically." %}</p>
+<p dir="auto">{{ info.original_text }}</p>
+{% elif study.status == 'saved' %}
+<h2>{% if complete %}{% translate "Ready — your entry is complete" %}{% elif pending %}{% translate "Your text is shared; audio is being prepared" %}{% else %}{% translate "Your entry is shared; some audio needs attention" %}{% endif %}</h2>
+{% include 'community_dictionary/word_row.html' with row=sentence_row on_word_page=True %}
+<p><a class="button" href="{% url 'community_dictionary:entry' dictionary.pk study.saved_entry_id %}">{% translate "Open sentence, listen or edit" %}</a></p>
+<details><summary>{% translate "Words in this sentence" %}</summary>{% for row in word_rows %}{% include 'community_dictionary/word_row.html' %}{% endfor %}</details>
+<p class="help">{% translate "You approved the sentence. Translation, vocabulary and synthetic audio were added automatically and may still need checking." %}</p>
+{% for clip in failed_audio %}<p class="notice">{{ clip.text }}: {{ clip.failure_reason }}</p>{% endfor %}
+{% if failed_audio and not pending %}<form method="post" action="{% url 'community_dictionary:writing-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
+<p class="help">{% translate "Retry only missing audio. This is a new paid attempt; successful recordings and your text are kept." %}</p>
+{% include 'community_dictionary/writing_cost.html' %}
+<button name="action" value="retry-audio">{% translate "Retry missing audio" %}</button></form>{% endif %}
+<details><summary>{% translate "My original and feedback (private)" %}</summary><p dir="auto">{{ info.original_text }}</p><ul>{% for correction in feedback.corrections %}<li>{{ correction.before }} → {{ correction.after }}: {{ correction.reason }}</li>{% endfor %}</ul></details>
+{% else %}
+<p role="status">{% if info.approved_text %}{% translate "Creating translation, vocabulary and audio from your approved text…" %}{% else %}{% translate "Checking your writing…" %}{% endif %}</p>
+<p dir="auto">{{ info.approved_text|default:info.original_text }}</p>
+{% endif %}
+{% if study.status == 'feedback' or study.status == 'failed' %}
+<form method="post" action="{% url 'community_dictionary:writing-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="edit">{% translate "Edit my text" %}</button></form>{% endif %}
+{% if polling %}
+<p class="help">{% translate "You can leave this page and return through My writing. Processing continues in the background. Completion is shown here; no email is sent." %}</p>
+<p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p>
+<details><summary>{% translate "If progress has stopped" %}</summary><form method="post" action="{% url 'community_dictionary:writing-action' dictionary.pk study.pk %}">{% csrf_token %}<button class="secondary" name="action" value="continue">{% translate "Continue pending work" %}</button></form>
+<p>{% translate "This starts only work that has not begun. It never repeats an in-flight request." %}</p></details>
+{% endif %}
+<form method="post" action="{% url 'community_dictionary:writing-action' dictionary.pk study.pk %}">{% csrf_token %}<button class="quiet" name="action" value="discard">{% if study.status == 'saved' %}{% translate "Clear private preview" %}{% else %}{% translate "Discard this preview" %}{% endif %}</button></form>
+</section></div>
+<script src="{% static 'community_dictionary/writing.js' %}" defer></script>
+{% endblock %}

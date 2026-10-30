@@ -5786,3 +5786,202 @@ msgstr "Tieto operácie sú dostupné aj na karte Nástroje."
 
 msgid "Work on many entries at once. Choose an operation to see its options before starting."
 msgstr "Pracujte s viacerými heslami naraz. Vyberte operáciu a pred spustením si pozrite jej možnosti."
+
+msgid "1. Save a picture"
+msgstr "1. Uložiť obrázok"
+
+msgid "2. Write about this picture"
+msgstr "2. Napísať opis obrázka"
+
+msgid "3. Review the feedback"
+msgstr "3. Prečítať si spätnú väzbu"
+
+msgid "AI feedback can be mistaken. Approve only a version that says what you mean."
+msgstr "Spätná väzba AI môže byť chybná. Schváľte iba verziu, ktorá vyjadruje váš zámer."
+
+msgid "By continuing, I confirm permission to share the picture and approved text, and approve the remaining AI processing costs. My original draft and correction feedback stay private."
+msgstr "Pokračovaním potvrdzujem právo zdieľať obrázok a schválený text a súhlasím s nákladmi na zostávajúce spracovanie pomocou AI. Môj pôvodný koncept a vysvetlenia opráv zostanú súkromné."
+
+msgid "Checking your writing…"
+msgstr "Kontrola vášho textu…"
+
+msgid "Choose an action shown on this page."
+msgstr "Vyberte akciu zobrazenú na tejto stránke."
+
+msgid "Choose on or off."
+msgstr "Vyberte zapnutie alebo vypnutie."
+
+msgid "Confirm the AI request and its estimated cost."
+msgstr "Potvrďte požiadavku pre AI a jej odhadovanú cenu."
+
+msgid "Confirm the new audio request."
+msgstr "Potvrďte novú požiadavku na zvuk."
+
+msgid "Confirm your permission to share this contribution."
+msgstr "Potvrďte svoje oprávnenie zdieľať tento príspevok."
+
+msgid "Continue pending work"
+msgstr "Pokračovať v čakajúcich úlohách"
+
+msgid "Corrections and reasons"
+msgstr "Opravy a vysvetlenia"
+
+msgid "Creating translation, vocabulary and audio from your approved text…"
+msgstr "Vytvára sa preklad, slovná zásoba a zvuk zo schváleného textu…"
+
+msgid "Draft"
+msgstr "Koncept"
+
+msgid "Drafts and feedback are private and kept for 30 days unless cleared earlier. Shared entries remain in the dictionary."
+msgstr "Koncepty a spätná väzba sú súkromné a uchovávajú sa 30 dní, pokiaľ ich nevymažete skôr. Zdieľané položky zostávajú v slovníku."
+
+msgid "Edit my text"
+msgstr "Upraviť môj text"
+
+msgid "Feedback and voice options"
+msgstr "Možnosti spätnej väzby a hlasu"
+
+msgid "Feedback ready"
+msgstr "Spätná väzba je pripravená"
+
+msgid "Help me practise writing"
+msgstr "Pomáhať mi precvičovať písanie"
+
+msgid "I agree to send this picture and my writing to OpenAI and pay the estimated cost shown here."
+msgstr "Súhlasím s odoslaním tohto obrázka a môjho textu do OpenAI a s úhradou uvedenej odhadovanej ceny."
+
+msgid "If progress has stopped"
+msgstr "Ak sa spracovanie zastavilo"
+
+msgid "In progress"
+msgstr "Prebieha"
+
+msgid "Language for explanations"
+msgstr "Jazyk vysvetlení"
+
+msgid "My description"
+msgstr "Môj opis"
+
+msgid "My original and feedback (private)"
+msgstr "Môj pôvodný text a spätná väzba (súkromné)"
+
+msgid "My recent writing"
+msgstr "Moje nedávne texty"
+
+msgid "My writing — start or continue"
+msgstr "Moje texty — začať alebo pokračovať"
+
+msgid "No correction was needed."
+msgstr "Oprava nebola potrebná."
+
+msgid "No writing attempts yet."
+msgstr "Zatiaľ nemáte žiadne texty."
+
+msgid "OpenAI receives the picture and writing. After approval it also receives up to 200 existing dictionary words and meanings. Drafts and feedback stay private for up to 30 days; approved entries are shared under this dictionary's access settings."
+msgstr "OpenAI dostane obrázok a text. Po schválení dostane aj najviac 200 existujúcich slov a významov zo slovníka. Koncepty a spätná väzba zostávajú súkromné najviac 30 dní; schválené položky sa zdieľajú podľa nastavení prístupu k slovníku."
+
+msgid "Optional improvements — not applied"
+msgstr "Voliteľné vylepšenia — nepoužité"
+
+msgid "Ready — your entry is complete"
+msgstr "Hotovo — vaša položka je kompletná"
+
+msgid "Retry missing audio"
+msgstr "Znova vytvoriť chýbajúci zvuk"
+
+msgid "Retry only missing audio. This is a new paid attempt; successful recordings and your text are kept."
+msgstr "Znova vytvoriť iba chýbajúci zvuk. Ide o nový platený pokus; úspešné nahrávky a váš text zostanú zachované."
+
+msgid "Save a picture, then write about it in the language you are learning."
+msgstr "Uložte obrázok a potom ho opíšte v jazyku, ktorý sa učíte."
+
+msgid "Save and check my writing"
+msgstr "Uložiť a skontrolovať môj text"
+
+msgid "Save draft"
+msgstr "Uložiť koncept"
+
+msgid "Save picture and write"
+msgstr "Uložiť obrázok a písať"
+
+msgid "Shared — check audio progress"
+msgstr "Zdieľané — skontrolovať priebeh zvuku"
+
+msgid "Suggested version"
+msgstr "Navrhovaná verzia"
+
+msgid "The owner needs to enable Picture descriptions and saved audio first."
+msgstr "Vlastník musí najprv povoliť opisy obrázkov a ukladanie zvuku."
+
+msgid "The picture file is unavailable."
+msgstr "Súbor obrázka nie je dostupný."
+
+msgid "This attempt could not finish. Your picture, writing and any feedback are still saved privately. No failed AI request is repeated automatically."
+msgstr "Tento pokus sa nepodarilo dokončiť. Váš obrázok, text a prípadná spätná väzba sú stále súkromne uložené. Neúspešná požiadavka AI sa automaticky neopakuje."
+
+msgid "This draft has already been submitted. Open its latest feedback."
+msgstr "Tento koncept už bol odoslaný. Otvorte najnovšiu spätnú väzbu."
+
+msgid "This makes a private writing draft using this dictionary picture. The existing entry stays unchanged."
+msgstr "Týmto vytvoríte súkromný koncept pomocou obrázka zo slovníka. Existujúca položka zostane nezmenená."
+
+msgid "This preference is just for you in this dictionary, remembered for this login. Other members keep their own workflow."
+msgstr "Táto voľba platí iba pre vás v tomto slovníku a zapamätá sa počas tohto prihlásenia. Ostatní členovia si ponechajú vlastný postup."
+
+msgid "This starts only work that has not begun. It never repeats an in-flight request."
+msgstr "Spustí iba úlohy, ktoré ešte nezačali. Prebiehajúcu požiadavku nikdy neopakuje."
+
+msgid "Turn off writing practice"
+msgstr "Vypnúť precvičovanie písania"
+
+msgid "Use the usual contribution form"
+msgstr "Použiť bežný formulár príspevku"
+
+msgid "Use this version and finish"
+msgstr "Použiť túto verziu a dokončiť"
+
+msgid "Wait for the feedback before editing."
+msgstr "Pred úpravou počkajte na spätnú väzbu."
+
+msgid "Words in this sentence"
+msgstr "Slová v tejto vete"
+
+msgid "Write a short description first."
+msgstr "Najprv napíšte krátky opis."
+
+msgid "Write a short description in the dictionary's text language (up to 255 characters). Your own ideas and wording matter."
+msgstr "Napíšte krátky opis v cieľovom jazyku slovníka (najviac 255 znakov). Na vašich nápadoch a formuláciách záleží."
+
+msgid "Write about this picture"
+msgstr "Písať o tomto obrázku"
+
+msgid "Write about your pictures, get explanations of corrections, then approve the text. Translation, vocabulary and audio are created automatically after approval."
+msgstr "Píšte o svojich obrázkoch, získajte vysvetlenia opráv a potom schváľte text. Preklad, slovná zásoba a zvuk sa vytvoria automaticky po schválení."
+
+msgid "Writing practice"
+msgstr "Precvičovanie písania"
+
+msgid "You approved the sentence. Translation, vocabulary and synthetic audio were added automatically and may still need checking."
+msgstr "Schválili ste vetu. Preklad, slovná zásoba a syntetický zvuk boli pridané automaticky a môžu ešte vyžadovať kontrolu."
+
+msgid "You can leave this page and return through My writing. Processing continues in the background. Completion is shown here; no email is sent."
+msgstr "Túto stránku môžete opustiť a vrátiť sa cez Moje texty. Spracovanie pokračuje na pozadí. Dokončenie sa zobrazí tu; e-mail sa neposiela."
+
+msgid "Your entry is shared; some audio needs attention"
+msgstr "Vaša položka je zdieľaná; niektoré nahrávky vyžadujú pozornosť"
+
+msgid "Your original"
+msgstr "Váš pôvodný text"
+
+msgid "Your picture and writing stay private until you approve sharing. Saving a draft is free. AI costs are shown before you request feedback."
+msgstr "Váš obrázok a text zostávajú súkromné, kým neschválite zdieľanie. Uloženie konceptu je bezplatné. Náklady AI sa zobrazia pred vyžiadaním spätnej väzby."
+
+msgid "Your text is shared; audio is being prepared"
+msgstr "Váš text je zdieľaný; zvuk sa pripravuje"
+
+msgid "Your writing-practice preference is saved for this login."
+msgstr "Vaša voľba precvičovania písania je uložená pre toto prihlásenie."
+
+#, python-format
+msgid "Rough total estimate: US$%(cost)s for feedback, translation, vocabulary and audio. Actual cost varies; this is not a spending cap."
+msgstr "Približná celková cena: %(cost)s USD za spätnú väzbu, preklad, slovnú zásobu a zvuk. Skutočná cena sa môže líšiť; nejde o limit výdavkov."

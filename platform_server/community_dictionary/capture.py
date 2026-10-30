@@ -95,12 +95,12 @@ def account(study_id, stage, response, *, transcription=False):
 def prepare(study_id):
     with transaction.atomic():
         locks(); study=fetch(study_id,True)
-        if study.status!='waiting':
+        if study.status != ('approved' if study.input_mode == 'writing' else 'waiting'):
             return
         key=allowed(study,payment=True)
         study.status='processing'; study.save(update_fields=['status'])
     try:
-        description=study.description
+        description=(study.result['writing']['approved_text'] if study.input_mode=='writing' else study.description)
         if study.input_mode=='voice':
             response=capture_ai.transcribe(path_for(study.recording_path),tts.language_code(study.input_language),key)
             account(study.pk,'transcription',response,transcription=True)
@@ -113,11 +113,15 @@ def prepare(study_id):
             words.append({'id':source.entry_id,'lemma':source.word,'meaning':source.entry.meaning})
         response=capture_ai.interpret(path_for(study.file_path).read_bytes(),{
             'target_language':study.language,'explanation_language':study.explanation_language,
-            'input_language':study.input_language,'input_mode':study.input_mode,
+            'input_language':study.input_language,'input_mode':'approved-writing' if study.input_mode=='writing' else study.input_mode,
             'description':description,'vocabulary':words},model=study.model,api_key=key)
         account(study.pk,'interpretation',response)
         result=capture_ai.parse(response)
         result['recipe']=capture_ai.VERSION
+        if study.input_mode == 'writing':
+            if result['outcome'] != 'ready' or result['sentence'] != description:
+                raise ValueError('approved_writing_changed')
+            result['writing'] = study.result['writing']
         # A model-supplied ID is only a candidate, not an authorization or edit.
         eligible={row['id']:row for row in words}
         for word in result['words']:
@@ -126,7 +130,8 @@ def prepare(study_id):
                 word['existing_id']=0
         with transaction.atomic():
             locks(); current=fetch(study.pk,True); allowed(current)
-            current.result=result; current.description=description
+            current.result=result
+            if current.input_mode != 'writing': current.description=description
             current.status=result['outcome']; current.save(update_fields=['result','description','status'])
             if current.input_mode=='voice':
                 CaptureSpeech.objects.create(capture=current,kind='feedback',text=result['feedback'],language=current.input_language)
@@ -161,6 +166,8 @@ def publish(study_id, user, *, vocabulary=None):
             if study.status=='saved': return study.saved_entry
             if study.status!='ready': raise Conflict('Prepare and confirm the suggested meaning first.')
             data=dict(study.result)
+            if study.input_mode == 'writing' and data.get('sentence') != data.get('writing',{}).get('approved_text'):
+                raise Conflict('The final sentence must match the version you approved.')
             if vocabulary is not None:
                 # Revalidate under the same lock as publication. No IDs supplied by
                 # the browser are trusted; matching below is by local lemma/sense.
@@ -183,6 +190,13 @@ def publish(study_id, user, *, vocabulary=None):
                 'input_mode':study.input_mode,'input_language':study.input_language,'description':study.description,
                 'suggested_words':data.get('suggested_words',data['words']),
                 'confirmed_words':data['words'],'vocabulary_reviewed_by':user.pk}
+            if study.input_mode == 'writing':
+                # The private attempt retains the learner's original and feedback.
+                # Neither belongs in shared contributions, history or exports.
+                provenance.pop('description', None)
+                provenance.pop('vocabulary_reviewed_by', None)
+                provenance.update(writing_practice=True, writing_recipe=data['writing']['version'],
+                    approved_text_by=user.pk, vocabulary_generated_automatically=True)
             source=study.source_image
             image=Contribution.objects.create(entry=entry,kind='image',status='accepted',
                 author=source.author if source else user,controlled_by=(source.controlled_by or source.author) if source else user,

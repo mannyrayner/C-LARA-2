@@ -1,0 +1,24 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Writing practice" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Writing practice" %} · {{ dictionary.language }}</h1>
+<p class="lead">{% translate "Save a picture, then write about it in the language you are learning." %}</p>
+<p>{% translate "Your picture and writing stay private until you approve sharing. Saving a draft is free. AI costs are shown before you request feedback." %}</p>
+<form method="post" enctype="multipart/form-data" class="stack" data-draft-form>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ form.non_field_errors }}
+<section class="panel"><h2>{% translate "1. Save a picture" %}</h2>
+{% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% translate "Picture to describe" %}">
+<p>{% translate "This makes a private writing draft using this dictionary picture. The existing entry stays unchanged." %}</p>
+{% else %}
+<label class="button photo-button">{% translate "Take photo" %}<input type="file" name="photo" accept="image/*" capture="environment" data-camera></label>
+<label class="file-alternative">{% translate "Or choose a picture" %}<input type="file" name="photo" accept="image/*"></label>
+<img data-photo-preview class="photo-preview" alt="{% translate "Your picture preview" %}" hidden>
+<button type="button" class="quiet" data-clear-photo hidden>{% translate "Remove picture" %}</button>{{ form.photo.errors }}
+{% endif %}
+<button data-save-submit>{% translate "Save picture and write" %}</button>
+{% include 'community_dictionary/draft_status.html' %}</section></form>
+<p><a href="{% url 'community_dictionary:new' dictionary.pk %}?usual=1">{% translate "Use the usual contribution form" %}</a></p>
+<section class="panel"><h2>{% translate "My recent writing" %}</h2>
+<p class="help">{% translate "Drafts and feedback are private and kept for 30 days unless cleared earlier. Shared entries remain in the dictionary." %}</p>
+<ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:writing-detail' dictionary.pk item.pk %}">{{ item.result.writing.original_text|default:dictionary.language|truncatechars:70 }}</a> · {% if item.status == 'draft' %}{% translate "Draft" %}{% elif item.status == 'feedback' %}{% translate "Feedback ready" %}{% elif item.status == 'saved' %}{% translate "Shared — check audio progress" %}{% elif item.status == 'failed' %}{% translate "Needs attention" %}{% else %}{% translate "In progress" %}{% endif %}</li>{% empty %}<li>{% translate "No writing attempts yet." %}</li>{% endfor %}</ul></section>
+{% endblock %}

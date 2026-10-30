@@ -25,8 +25,10 @@ from .contribution_ladder import image_ladder
 
 
 def context(request, dictionary=None, **extra):
+    from .writing import enabled
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
     return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
+        'writing_mode': enabled(request, dictionary),
         'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
             'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',
             'port-vocabulary', 'port-run', 'port-review'}, **extra}
@@ -165,6 +167,9 @@ def dictionary(request, pk):
 @login_required
 def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, picture_only=False):
     dictionary = get_dictionary(request.user, pk)
+    from .writing import enabled
+    if request.method == 'GET' and not entry_id and not request_id and enabled(request, dictionary) and request.GET.get('usual') != '1':
+        return redirect('community_dictionary:writing-start', pk=pk)
     entry = get_entry(dictionary, entry_id) if entry_id else None
     response_to = None
     if request_id:
@@ -469,7 +474,7 @@ def dictionary_settings(request, pk):
     if request.method == 'POST':
         get_object_or_404(Dictionary.objects.select_for_update(), pk=pk)
     dictionary = get_dictionary(request.user, pk)
-    require_editor(request.user, dictionary)
+    # Every active member has personal preferences; dictionary policy remains owner-only.
     form = DictionarySettingsForm(instance=dictionary)
     if request.method == 'POST':
         require_owner(request.user, dictionary)

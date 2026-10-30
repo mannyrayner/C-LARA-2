@@ -1,6 +1,11 @@
 # Community dictionary development experiment
 
-Current increment: [paired MWE-audio results and additional-language trials](mwe-audio-languages-2026-10-18.md). French improved from 21/58 to 54/58 acceptable and Swedish from 1/8 to 5/8 in Manny’s unblinded paired evaluations. The German, Italian, Icelandic and Japanese extension is prepared; its listening outcomes remain pending.
+Current increment: [writing practice and the accepted Tools deployment](writing-practice-2026-10-30.md).
+A concrete learner request motivates private correction feedback followed by
+automatic enrichment. Learner acceptance is pending. The preceding Tools change
+completed the automated laptop-to-AWS path with human browsing acceptance.
+
+Earlier increment: [paired MWE-audio results and additional-language trials](mwe-audio-languages-2026-10-18.md). French improved from 21/58 to 54/58 acceptable and Swedish from 1/8 to 5/8 in Manny’s unblinded paired evaluations. The German, Italian, Icelandic and Japanese extension is prepared; its listening outcomes remain pending.
 
 Earlier increment: [human evaluation infrastructure](evaluation-2026-10-14.md). The first paper and deployed About links are available; the next task is to collect independent quality judgements on fixed samples. The new workflow has local regression evidence, not real evaluator results or learning-outcome evidence. AI comparisons are proposed next, not implemented.
 

@@ -58,6 +58,11 @@ def interpret(photo, data, *, model, api_key):
         output=io.BytesIO(); im.save(output,'JPEG',quality=85)
     with _openai_client(api_key=api_key, timeout=45, max_retries=0) as client:
         instructions=AI_INSTRUCTIONS if data.get('input_mode')=='ai' else INSTRUCTIONS
+        if data.get('input_mode') == 'approved-writing':
+            instructions += '''\nThe contributor has already approved description as their target-language text.
+Copy description EXACTLY into sentence, including punctuation. Do not correct, paraphrase or shorten it.
+Translate and extract vocabulary from that exact sentence. Do not ask for confirmation again:
+outcome=ready. The image is context for sense disambiguation, not a reason to rewrite the approved text.'''
         return client.responses.create(model=model, instructions=instructions + '\n' + WORD_INSTRUCTIONS + mwe_guidance(data.get('target_language', '')),
             input=[{'role':'user','content':[
                 {'type':'input_text','text':json.dumps(data,ensure_ascii=False)},

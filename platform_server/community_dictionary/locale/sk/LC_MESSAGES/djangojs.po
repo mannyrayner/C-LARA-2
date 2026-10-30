@@ -840,3 +840,6 @@ msgstr "vodorovne"
 
 msgid "down"
 msgstr "zvisle"
+
+msgid "Refresh to check progress. Your saved writing is safe."
+msgstr "Obnovte stránku a skontrolujte priebeh. Váš uložený text je v bezpečí."

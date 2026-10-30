@@ -64,7 +64,11 @@ class SettingsAndPictureTests(TestCase):
                 Membership.objects.filter(dictionary=self.dictionary, user=self.member).update(role=role)
                 self.client.force_login(self.member)
                 page = self.client.get(self.url('settings'))
-                self.assertEqual(page.status_code, 404 if role == 'member' else 200)
+                self.assertEqual(page.status_code, 200)
+                if role == 'member':
+                    self.assertContains(page, 'Writing practice')
+                    self.assertNotContains(page, self.url('image-style'))
+                    self.assertNotContains(page, 'Save settings')
                 self.assertEqual(self.client.get(self.url('tools')).status_code, 404)
                 self.assertNotContains(self.client.get(self.url('dictionary')), self.url('tools'))
                 if role != 'member':

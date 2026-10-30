@@ -1,0 +1,5 @@
+{% load i18n %}
+{% if estimate != None %}<p class="help">{% blocktranslate with cost=estimate|floatformat:2 %}Rough total estimate: US${{ cost }} for feedback, translation, vocabulary and audio. Actual cost varies; this is not a spending cap.{% endblocktranslate %}
+{% if personal %}{% translate "Your own OpenAI key is used." %}{% else %}{% translate "Costs are charged to your C-LARA account when credits are enabled." %}{% endif %}
+{% translate "A failed or interrupted call may still incur a provider charge." %}</p>{% endif %}
+<p class="help">{% translate "OpenAI receives the picture and writing. After approval it also receives up to 200 existing dictionary words and meanings. Drafts and feedback stay private for up to 30 days; approved entries are shared under this dictionary's access settings." %}</p>

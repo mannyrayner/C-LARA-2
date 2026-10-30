@@ -2,6 +2,14 @@
 {% block title %}{% translate "Settings" %}{% endblock %}
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Settings" %}</h1>
+<section class="panel" id="writing-practice"><h2>{% translate "Writing practice" %}</h2>
+<p>{% translate "Write about your pictures, get explanations of corrections, then approve the text. Translation, vocabulary and audio are created automatically after approval." %}</p>
+<p class="help">{% translate "This preference is just for you in this dictionary, remembered for this login. Other members keep their own workflow." %}</p>
+<form method="post" action="{% url 'community_dictionary:writing-setting' dictionary.pk %}">{% csrf_token %}
+{% if writing_mode %}<p><strong>{% translate "On" %}</strong></p><button class="secondary" name="mode" value="off">{% translate "Turn off writing practice" %}</button>
+{% elif dictionary.sentence_capture_enabled and dictionary.tts_enabled %}<button name="mode" value="on">{% translate "Help me practise writing" %}</button>
+{% else %}<p>{% translate "The owner needs to enable Picture descriptions and saved audio first." %}</p>{% endif %}</form>
+{% if dictionary.sentence_capture_enabled and dictionary.tts_enabled %}<p><a href="{% url 'community_dictionary:writing-start' dictionary.pk %}">{% translate "My writing — start or continue" %}</a></p>{% endif %}</section>
 {% if owner %}
 <section class="panel" id="workflow-suggestions"><h2>{% translate "Workflow suggestions" %}</h2><p>{% translate "Show a useful next step while browsing and on your dictionary card. Suggestions are for the owner only. Nothing is sent to AI until you approve the displayed scope and cost." %}</p><form method="post" action="{% url 'community_dictionary:workflow-setting' dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ dictionary.workflow_suggestions_revision }}">{% if dictionary.show_workflow_suggestions %}<p><strong>{% translate "On" %}</strong></p><button class="secondary" name="action" value="disable">{% translate "Turn off workflow suggestions" %}</button>{% else %}<p><strong>{% translate "Off" %}</strong></p><button name="action" value="enable">{% translate "Show workflow suggestions" %}</button>{% endif %}</form><p class="help">{% translate "These operations are also available from the Tools tab." %}</p></section>
 <section class="panel" id="discoverability"><h2>{% translate "Discoverability" %}</h2><p><strong>{% if dictionary.discoverable and not dictionary.hidden %}{% translate "On — listed in Find dictionaries" %}{% else %}{% translate "Off — not listed" %}{% endif %}</strong></p>
@@ -46,11 +54,11 @@
 <form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>{% translate "Save settings" %}</button></form>
 </section>
 {% else %}<p class="help">{% translate "The dictionary owner manages its name, languages and AI options." %}</p>{% endif %}
-<section class="panel"><h2>{% translate "Image style" %}</h2>
+{% if editor %}<section class="panel"><h2>{% translate "Image style" %}</h2>
 {% if dictionary.image_generation_enabled %}
 <p>{% translate "Choose the shared style for AI-generated pictures." %}</p>
 <a class="button secondary" href="{% url 'community_dictionary:image-style' dictionary.pk %}">{% translate "Set up or view image style" %}</a>
 {% else %}<p>{% if owner %}{% translate "Enable AI picture generation above and save to set up an image style." %}{% else %}{% translate "The owner can enable AI picture generation here before you set up a style." %}{% endif %}</p>{% endif %}
 <p class="help">{% translate "You can always take or upload your own pictures, whether AI generation is enabled or not." %}</p>
-</section>
+</section>{% endif %}
 {% endblock %}

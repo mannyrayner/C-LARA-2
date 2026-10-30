@@ -132,7 +132,10 @@ class DiscoveryTests(TestCase):
         member = Membership.objects.get(user=self.outsider)
         self.assertEqual((member.role, member.status, member.accepted), ('member', 'active', True))
         self.assertEqual(self.applicant.get(url('dictionary', self.dictionary.pk)).status_code, 200)
-        self.assertEqual(self.applicant.get(url('settings', self.dictionary.pk)).status_code, 404)
+        personal_settings = self.applicant.get(url('settings', self.dictionary.pk))
+        self.assertContains(personal_settings, 'Writing practice')
+        self.assertNotContains(personal_settings, 'Save settings')
+        self.assertEqual(self.applicant.post(url('settings', self.dictionary.pk), {}).status_code, 404)
 
     def test_request_needs_login_post_and_csrf(self):
         self.assertEqual(self.ask(self.guest).status_code, 302)

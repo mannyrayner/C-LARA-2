@@ -1,5 +1,10 @@
 # Community dictionary: setup and testing
 
+30 October: [personal writing practice](community-writing-practice.md) adds private
+learner drafts, explained corrections and one approval for subsequent processing.
+Active members can enable their own mode in Settings; owner configuration rights
+are unchanged.
+
 30 October navigation update: the owner-only [Tools tab](community-tools.md) groups
 batch sentences, language versions, expression audio and image-only copies.
 Settings retains configuration. Older instructions below that locate these operations

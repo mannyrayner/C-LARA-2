@@ -5881,3 +5881,202 @@ msgstr "Ces opérations sont également accessibles dans l’onglet Outils."
 
 msgid "Work on many entries at once. Choose an operation to see its options before starting."
 msgstr "Traitez plusieurs entrées à la fois. Choisissez une opération pour voir ses options avant de commencer."
+
+msgid "1. Save a picture"
+msgstr "1. Enregistrer une image"
+
+msgid "2. Write about this picture"
+msgstr "2. Décrire cette image par écrit"
+
+msgid "3. Review the feedback"
+msgstr "3. Lire les commentaires"
+
+msgid "AI feedback can be mistaken. Approve only a version that says what you mean."
+msgstr "Les commentaires de l’IA peuvent être erronés. N’approuvez qu’une version qui exprime votre intention."
+
+msgid "By continuing, I confirm permission to share the picture and approved text, and approve the remaining AI processing costs. My original draft and correction feedback stay private."
+msgstr "En continuant, je confirme avoir le droit de partager l’image et le texte approuvé, et j’accepte le coût des traitements IA restants. Mon brouillon original et les commentaires de correction restent privés."
+
+msgid "Checking your writing…"
+msgstr "Vérification de votre texte…"
+
+msgid "Choose an action shown on this page."
+msgstr "Choisissez une action proposée sur cette page."
+
+msgid "Choose on or off."
+msgstr "Choisissez d’activer ou de désactiver."
+
+msgid "Confirm the AI request and its estimated cost."
+msgstr "Confirmez la demande à l’IA et son coût estimé."
+
+msgid "Confirm the new audio request."
+msgstr "Confirmez la nouvelle demande audio."
+
+msgid "Confirm your permission to share this contribution."
+msgstr "Confirmez votre autorisation de partager cette contribution."
+
+msgid "Continue pending work"
+msgstr "Poursuivre les tâches en attente"
+
+msgid "Corrections and reasons"
+msgstr "Corrections et explications"
+
+msgid "Creating translation, vocabulary and audio from your approved text…"
+msgstr "Création de la traduction, du vocabulaire et de l’audio à partir de votre texte approuvé…"
+
+msgid "Draft"
+msgstr "Brouillon"
+
+msgid "Drafts and feedback are private and kept for 30 days unless cleared earlier. Shared entries remain in the dictionary."
+msgstr "Les brouillons et les commentaires sont privés et conservés pendant 30 jours, sauf si vous les effacez avant. Les entrées partagées restent dans le dictionnaire."
+
+msgid "Edit my text"
+msgstr "Modifier mon texte"
+
+msgid "Feedback and voice options"
+msgstr "Options des commentaires et de la voix"
+
+msgid "Feedback ready"
+msgstr "Commentaires disponibles"
+
+msgid "Help me practise writing"
+msgstr "M’aider à pratiquer l’écrit"
+
+msgid "I agree to send this picture and my writing to OpenAI and pay the estimated cost shown here."
+msgstr "J’accepte d’envoyer cette image et mon texte à OpenAI et de payer le coût estimé indiqué ici."
+
+msgid "If progress has stopped"
+msgstr "Si le traitement semble arrêté"
+
+msgid "In progress"
+msgstr "En cours"
+
+msgid "Language for explanations"
+msgstr "Langue des explications"
+
+msgid "My description"
+msgstr "Ma description"
+
+msgid "My original and feedback (private)"
+msgstr "Mon original et les commentaires (privés)"
+
+msgid "My recent writing"
+msgstr "Mes textes récents"
+
+msgid "My writing — start or continue"
+msgstr "Mes textes — commencer ou continuer"
+
+msgid "No correction was needed."
+msgstr "Aucune correction n’était nécessaire."
+
+msgid "No writing attempts yet."
+msgstr "Aucun texte pour le moment."
+
+msgid "OpenAI receives the picture and writing. After approval it also receives up to 200 existing dictionary words and meanings. Drafts and feedback stay private for up to 30 days; approved entries are shared under this dictionary's access settings."
+msgstr "OpenAI reçoit l’image et le texte. Après approbation, il reçoit aussi jusqu’à 200 mots et significations du dictionnaire. Les brouillons et les commentaires restent privés pendant 30 jours au maximum ; les entrées approuvées sont partagées selon les paramètres d’accès du dictionnaire."
+
+msgid "Optional improvements — not applied"
+msgstr "Améliorations facultatives — non appliquées"
+
+msgid "Ready — your entry is complete"
+msgstr "C’est prêt — votre entrée est complète"
+
+msgid "Retry missing audio"
+msgstr "Réessayer l’audio manquant"
+
+msgid "Retry only missing audio. This is a new paid attempt; successful recordings and your text are kept."
+msgstr "Réessayer uniquement l’audio manquant. Il s’agit d’une nouvelle tentative payante ; les enregistrements réussis et votre texte sont conservés."
+
+msgid "Save a picture, then write about it in the language you are learning."
+msgstr "Enregistrez une image, puis décrivez-la dans la langue que vous apprenez."
+
+msgid "Save and check my writing"
+msgstr "Enregistrer et vérifier mon texte"
+
+msgid "Save draft"
+msgstr "Enregistrer le brouillon"
+
+msgid "Save picture and write"
+msgstr "Enregistrer l’image et écrire"
+
+msgid "Shared — check audio progress"
+msgstr "Partagé — vérifier l’avancement de l’audio"
+
+msgid "Suggested version"
+msgstr "Version proposée"
+
+msgid "The owner needs to enable Picture descriptions and saved audio first."
+msgstr "Le propriétaire doit d’abord activer les descriptions d’images et l’audio enregistré."
+
+msgid "The picture file is unavailable."
+msgstr "Le fichier image est indisponible."
+
+msgid "This attempt could not finish. Your picture, writing and any feedback are still saved privately. No failed AI request is repeated automatically."
+msgstr "Cette tentative n’a pas abouti. Votre image, votre texte et les éventuels commentaires sont toujours enregistrés en privé. Aucune demande IA échouée n’est relancée automatiquement."
+
+msgid "This draft has already been submitted. Open its latest feedback."
+msgstr "Ce brouillon a déjà été envoyé. Ouvrez les derniers commentaires."
+
+msgid "This makes a private writing draft using this dictionary picture. The existing entry stays unchanged."
+msgstr "Ceci crée un brouillon privé à partir de cette image du dictionnaire. L’entrée existante reste inchangée."
+
+msgid "This preference is just for you in this dictionary, remembered for this login. Other members keep their own workflow."
+msgstr "Cette préférence ne s’applique qu’à vous dans ce dictionnaire et est mémorisée pour cette session. Les autres membres gardent leur propre façon de travailler."
+
+msgid "This starts only work that has not begun. It never repeats an in-flight request."
+msgstr "Ceci ne lance que les tâches non commencées. Une demande en cours n’est jamais répétée."
+
+msgid "Turn off writing practice"
+msgstr "Désactiver la pratique de l’écrit"
+
+msgid "Use the usual contribution form"
+msgstr "Utiliser le formulaire habituel de contribution"
+
+msgid "Use this version and finish"
+msgstr "Utiliser cette version et terminer"
+
+msgid "Wait for the feedback before editing."
+msgstr "Attendez les commentaires avant de modifier le texte."
+
+msgid "Words in this sentence"
+msgstr "Mots de cette phrase"
+
+msgid "Write a short description first."
+msgstr "Écrivez d’abord une courte description."
+
+msgid "Write a short description in the dictionary's text language (up to 255 characters). Your own ideas and wording matter."
+msgstr "Écrivez une courte description dans la langue du dictionnaire (255 caractères au maximum). Vos idées et votre formulation comptent."
+
+msgid "Write about this picture"
+msgstr "Écrire sur cette image"
+
+msgid "Write about your pictures, get explanations of corrections, then approve the text. Translation, vocabulary and audio are created automatically after approval."
+msgstr "Écrivez sur vos images, recevez des explications sur les corrections, puis approuvez le texte. La traduction, le vocabulaire et l’audio sont créés automatiquement après approbation."
+
+msgid "Writing practice"
+msgstr "Pratique de l’écrit"
+
+msgid "You approved the sentence. Translation, vocabulary and synthetic audio were added automatically and may still need checking."
+msgstr "Vous avez approuvé la phrase. La traduction, le vocabulaire et l’audio synthétique ont été ajoutés automatiquement et peuvent nécessiter une vérification."
+
+msgid "You can leave this page and return through My writing. Processing continues in the background. Completion is shown here; no email is sent."
+msgstr "Vous pouvez quitter cette page et revenir par Mes textes. Le traitement continue en arrière-plan. Sa fin est indiquée ici ; aucun courriel n’est envoyé."
+
+msgid "Your entry is shared; some audio needs attention"
+msgstr "Votre entrée est partagée ; certains audios nécessitent une intervention"
+
+msgid "Your original"
+msgstr "Votre original"
+
+msgid "Your picture and writing stay private until you approve sharing. Saving a draft is free. AI costs are shown before you request feedback."
+msgstr "Votre image et votre texte restent privés jusqu’à votre accord pour les partager. Enregistrer un brouillon est gratuit. Le coût de l’IA est indiqué avant la demande de commentaires."
+
+msgid "Your text is shared; audio is being prepared"
+msgstr "Votre texte est partagé ; l’audio est en préparation"
+
+msgid "Your writing-practice preference is saved for this login."
+msgstr "Votre préférence de pratique de l’écrit est enregistrée pour cette session."
+
+#, python-format
+msgid "Rough total estimate: US$%(cost)s for feedback, translation, vocabulary and audio. Actual cost varies; this is not a spending cap."
+msgstr "Estimation totale approximative : %(cost)s $US pour les commentaires, la traduction, le vocabulaire et l’audio. Le coût réel varie ; ce n’est pas un plafond de dépenses."

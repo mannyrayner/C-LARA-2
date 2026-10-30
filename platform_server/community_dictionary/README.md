@@ -1,10 +1,17 @@
 # Community dictionary app
 
-Current increment: [owner-only Tools tab](../../docs/howto/community-tools.md) separates
+Current increment: [personal writing practice](../../docs/howto/community-writing-practice.md).
+Save a private picture and short learner description, review explained corrections,
+then approve translation, shared vocabulary and audio in the background. Original
+writing and feedback stay private. Existing capture storage, billing and media
+permissions are reused; no migration or dependency change. First learner/phone
+acceptance is pending.
+
+Previous increment: [owner-only Tools tab](../../docs/howto/community-tools.md) separates
 batch sentences, language versions, expression audio and image-only copies from
 Settings. English/French/Slovak navigation and return links are included. Existing
 task permissions and cost approvals are retained. No migration or dependency change;
-prepared for the first changed-release trial of supervised deployment.
+accepted on laptop and AWS in the first changed-release trial of supervised deployment.
 
 Previous increment: [carrier audio in additional languages](../../docs/howto/community-mwe-audio.md). French/Swedish laptop and AWS paired evaluations are complete; German, Italian and Icelandic batches plus explicit Japanese selection are prepared for listening tests. Original recordings and the French/Swedish recipes remain unchanged. No new migration, static assets or dependencies.
 

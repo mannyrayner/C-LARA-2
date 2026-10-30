@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 91
+- **Workspace revision:** 92
 - **As of:** 2026-10-30
-- **Assessed commit:** `db1557ce1ae4f19245624a48a04d7aafb8c857cb`
+- **Assessed commit:** `48ad6c3866ba7e633a3f91da3a44a85c1c3cc50f`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-The supervised deployment path has now completed a same-version rehearsal on the Windows laptop and AWS: the assistant verified workflow logs and the AWS receipt, and Manny reports normal browsing on both. Initial SSM submission failures were traced to a document absent from the deployment region and resolved. The next trial is a small visible change: an owner-only Tools tab separates batch content operations from Settings, with French and Slovak labels. Its local checks are distinct from pending laptop and AWS acceptance. Schema/dependency/controller changes still require separate handling; automated functional acceptance, AWS staging and sustained autonomy remain later goals. The direct-collaboration governance draft remains a discussion proposal.
+The Tools change has now passed the supervised laptop-to-AWS deployment path with matching receipts and Manny’s functional acceptance on both hosts. One changed-release trial is complete. A concrete learner request now motivates personal writing practice: private picture/draft capture, explained corrections, approval, then automatic enrichment through the existing pipeline. This is a first implementation awaiting laptop and physical-phone acceptance, not evidence of learning benefit. The user wants a rapid feedback/revision cycle; beginner Icelandic needs remain a separate design question. Manual workflow dispatch/acceptance, code-only restrictions, the existing Windows CI checkout issue and later autonomy stages remain explicit.
 
 ## Factual observations
 
@@ -1095,6 +1095,22 @@ Manny proposes moving batch operations from Settings into a separate tab as the 
 - **Confidence:** high
 - **Evidence:** [`docs/howto/community-tools.md`](../howto/community-tools.md), [`platform_server/community_dictionary/templates/community_dictionary/tools.html`](../platform_server/community_dictionary/templates/community_dictionary/tools.html), [`platform_server/community_dictionary/tests/test_settings_and_pictures.py`](../platform_server/community_dictionary/tests/test_settings_and_pictures.py)
 
+### OBS-0136
+
+The Tools release 48ad6c3866ba7e633a3f91da3a44a85c1c3cc50f completed laptop run 41034724689 (17 controller steps) and AWS run 41035557064 (21 steps), with the AWS receipt referencing that laptop run and the same exact app commit. Manny accepted the laptop UI and then refreshed AWS and confirmed the new version. This completes one changed-release trial; the separate Windows controller CI checkout failure on an existing long archive path remains unresolved.
+
+- **Observed:** 2026-10-30
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/writing-practice-2026-10-30.md`](../experiments/community_dictionary/writing-practice-2026-10-30.md), [`docs/howto/community-tools.md`](../howto/community-tools.md)
+
+### OBS-0137
+
+Manny requests a first personal writing-practice mode based on learner feedback. The implementation uses private PictureCapture attempts for saved images, short target-language drafts, explained corrections and approval before the existing enrichment/publishing/audio pipeline. Original writing and feedback are omitted from shared provenance; optional style is not applied; the approved sentence is checked for exact preservation. Personal preferences are session-scoped, drafts expire after 30 days, failed audio has a bounded explicit retry, and no migration/dependency/controller change is required. Automated validation uses mocked providers; live model quality, physical-phone usability and learner outcomes remain pending.
+
+- **Observed:** 2026-10-30
+- **Confidence:** high
+- **Evidence:** [`docs/howto/community-writing-practice.md`](../howto/community-writing-practice.md), [`experiments/community_dictionary/writing-practice-2026-10-30.md`](../experiments/community_dictionary/writing-practice-2026-10-30.md), [`platform_server/community_dictionary/writing.py`](../platform_server/community_dictionary/writing.py), [`platform_server/community_dictionary/tests/test_writing.py`](../platform_server/community_dictionary/tests/test_writing.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1198,20 +1214,20 @@ Paired deployed French/Swedish results support the optional carrier batch as a u
 
 ### ASM-0012
 
-The deployment experiment has advanced from prepared infrastructure to an observed Windows-laptop-to-AWS same-version installation with human functional checks. This removes the initial connection/setup blocker and makes a small changed-release trial worthwhile. The Tools navigation request supplies that concrete trial. Keep production acceptance with Manny, and retain the compatible code/static boundary. Measure effort, failures and recovery across real releases before inferring reduced long-run maintenance burden. AI functional acceptance, AWS staging and direct stakeholder coordination remain unestablished; the governance draft still grants no communication or community-policy authority.
+The deployment experiment now has an accepted changed-release trial on the Windows laptop and AWS, using exact-commit receipts and human functional checks. This materially lowers routine installation friction, making a learner-requested writing workflow a useful next test of the criticism/revision cycle. One successful release does not establish sustained maintenance, recovery under failure or autonomous functional acceptance. Retain the compatible code/static boundary and manual release acceptance. Resolve the separate Windows CI checkout issue through an appropriate infrastructure change; do not bypass controller restrictions. The governance draft still grants no direct communication authority.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0132`, `OBS-0133`, `OBS-0134`, `OBS-0135`
-- **Urgency / risk / progress:** complete_first_changed_release_trial / medium / stage_a_same_version_rehearsal_passed_tools_release_prepared
+- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0132`, `OBS-0133`, `OBS-0134`, `OBS-0135`, `OBS-0136`, `OBS-0137`
+- **Urgency / risk / progress:** support_next_learner_driven_release / medium / changed_release_accepted_writing_mode_prepared
 - **Confidence:** high
 
 ### ASM-0013
 
-The near-term opportunity remains making the workflow clear enough to evaluate and use collaboratively. The tentative evaluation discussion and prospective class pilot connect usability work to GOAL-1, GOAL-3 and GOAL-5, but do not yet constitute a trial protocol or recruited group. Manny now reports the collaborator-requested image ladder working, removing its implementation-acceptance uncertainty. Its motivational and classroom value, and Cathy’s separate presentation verdict, remain unmeasured. Counting accepted human contributions once within existing membership-visible non-hidden dictionaries preserves the intended scope. The Slovak request is another concrete collaborator-driven opportunity: Ivana’s interest and Manny’s reported Slovak/English dictionary justify a small shared-framework locale extension without inferring that a user trial or English/Slovak conversion has already occurred. Keep the workflow and evaluation plan small and record where users need coaching; separate content-quality agreement from task usability and sustained participation.
+Concrete learner feedback now supplies a focused pedagogical workflow: write about a personal picture, understand corrections, then approve the remaining processing. A personal mode preserves other members’ workflows and avoids exposing learner errors as shared metadata. The first implementation is a reviewable experiment; a short physical-phone trial should establish usability and whether the model overcorrects. Manny plans testing before inviting the learner over the weekend. Beginner Icelandic use remains a separate request needing concrete feedback rather than assuming the same workflow suits all proficiency levels. Rapid iteration is plausible after the accepted deployment trial but its sustained value and learning outcomes remain unmeasured.
 
 - **Goals:** `GOAL-1`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0127`, `OBS-0128`, `OBS-0129`, `OBS-0130`, `OBS-0131`
-- **Urgency / risk / progress:** prepare_reviewable_workflow_before_tentative_evaluation_discussion / medium / image_ladder_accepted_slovak_collaborator_trial_prepared_evaluation_and_class_pilot_proposed
+- **Grounding observations:** `OBS-0127`, `OBS-0128`, `OBS-0129`, `OBS-0130`, `OBS-0131`, `OBS-0136`, `OBS-0137`
+- **Urgency / risk / progress:** prepare_learner_trial / medium / personal_writing_workflow_prepared_acceptance_pending
 - **Confidence:** medium
 
 ## Reported valence
@@ -1246,7 +1262,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0013`
 - **UNC-0013:** Slovak catalog and configuration checks can establish coverage, valid placeholders/plurals and selection behaviour, but Ivana or another proficient speaker still needs to review wording and real use. The new locale initially covers the same marked interface surface as French; unmarked advanced strings may remain English. Manny reports a Slovak/English dictionary, whereas English/Slovak content has not yet been created or inspected in this session. Actual conversion needs the existing cost/permission approval and linguistic/audio review. No paid request or new Slovak carrier listening result is implied by interface localisation.
   - **Assessments:** `ASM-0011`, `ASM-0013`
-- **UNC-0014:** The same-version Windows/AWS deployment path has passed with human browsing acceptance. A changed-release trial, production rollback under failure, sustained operation and reduced total human effort remain unverified. The connector can prepare releases and inspect runs, but a new manual workflow dispatch still needs Manny in the current setup. Deployed application code retains access to application data; receipts are not a data-isolation barrier. The acceptance identity assumes trusted control-repository writers. Direct stakeholder communication and shared decision rights remain proposals requiring agreement.
+- **UNC-0014:** One same-version rehearsal and one changed-release deployment passed on Windows/AWS with human browsing acceptance. Production rollback under failure, sustained operation and total human effort remain unmeasured. Fresh manual workflow dispatch still needs Manny; AI functional acceptance, AWS staging and stakeholder decision rights remain later steps. The Windows CI checkout failure is separate from passed application tests and successful actual Windows deployment. Code still has app-data access; receipts are not data isolation.
   - **Assessments:** `ASM-0012`
 
 ## Questions for human refinement
@@ -1293,8 +1309,10 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0013`
 - **ACT-0015:** Finish verification and deliver the Slovak locale patch with installation and English/Slovak conversion instructions. Have Ivana or another proficient Slovak speaker review wording, remembered interface preference and the English-learning path. Use the existing owner-approved conversion workflow to create or update an English/Slovak dictionary, checking its estimate and results before accepting content. Record actual trial, linguistic/audio issues and deployment separately; preserve the existing Slovak/English dictionary and all unrelated content.
   - **Assessments:** `ASM-0011`, `ASM-0013`
-- **ACT-0016:** Prepare the Tools change as an exact code-only release; run a fresh laptop workflow on the new control commit, obtain Manny’s UI acceptance, then deploy the same app commit to AWS and verify receipt and browsing. Preserve the existing restrictions and record outcomes separately from the same-version rehearsal. Improve safe cloud-controller error reporting in a later controller update. Discuss the governance draft before initiating direct AI collaboration; no messages are authorised.
+- **ACT-0016:** Use the accepted deployment path for the writing-practice increment: a fresh laptop run on its exact release request, Manny’s acceptance, then the same commit on AWS. Keep controller restrictions and human gates. Treat Windows CI path-length handling and safe cloud API error reporting as separate infrastructure follow-ups. Record outcomes and effort, without starting direct collaborator communication.
   - **Assessments:** `ASM-0012`
+- **ACT-0017:** Test writing practice on a small French dictionary: deliberate and absent errors, optional style, revision, private feedback, approved-text preservation, background completion and missing-audio recovery. Obtain a physical-phone check before broader invitation. Use the learner’s feedback to revise the interaction; ask for concrete beginner Icelandic tasks before expanding that workflow. Separate usability and linguistic-feedback quality from evidence of learning.
+  - **Assessments:** `ASM-0012`, `ASM-0013`
 
 ## Open predictions
 
@@ -1327,7 +1345,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-30
-- **Basis:** AGENTS.md requires reflection on material new evidence. Manny reports successful AWS browsing after the verified deployment rehearsal and requests a visible Tools navigation change.
-- **Comments:** Record verified rehearsal and prepared UI change separately from pending live acceptance. No change to human-owned intentions, provider calls or collaborator messages.
-- **Change summary:** Recorded successful supervised same-version laptop/AWS deployment and the prepared owner-only Tools tab for a first changed-release trial. Retired setup uncertainty while retaining human acceptance and later autonomy gates.
+- **Basis:** AGENTS.md reflection on the accepted changed-release deployment and Manny’s authorization of a learner-requested personal writing-practice implementation.
+- **Comments:** Human-owned intentions unchanged. Prepared functionality is not deployed or learner-accepted. No paid provider requests or collaborator messages were sent.
+- **Change summary:** Recorded the first accepted changed-release deployment and prepared a personal writing-practice workflow from concrete learner feedback. Live learner acceptance and later autonomy stages remain pending.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`
