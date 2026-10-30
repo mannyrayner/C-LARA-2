@@ -1,0 +1,26 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Picture, confirm and finish" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Picture, confirm and finish" %}</h1>
+<p class="lead">{% translate "Save a picture. Check what it says. Let the app finish the rest." %}</p>
+<p>{% translate "Your picture stays private until you confirm its description. Saving starts AI analysis under the permission you gave in Settings." %}</p>
+{% if guided_estimate != None %}<p class="help">{% blocktranslate with amount=guided_estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %}</p>{% endif %}
+{% if guided_setup_error %}<p class="notice">{{ guided_setup_error }}</p>{% endif %}
+{% if not guided_mode %}<p><a class="button" href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Enable Picture, confirm and finish in Settings first." %}</a></p>{% else %}
+<form method="post" enctype="multipart/form-data" class="stack" data-draft-form>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ form.non_field_errors }}
+<section class="panel">
+{% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% translate "Picture to describe" %}">
+{% else %}
+<label class="button photo-button">{% translate "Take photo" %}<input type="file" name="photo" accept="image/*" capture="environment" data-camera></label>
+<label class="file-alternative">{% translate "Or choose a picture" %}<input type="file" name="photo" accept="image/*"></label>
+<img data-photo-preview class="photo-preview" alt="{% translate "Your picture preview" %}" hidden>
+<button type="button" class="quiet" data-clear-photo hidden>{% translate "Remove picture" %}</button>{{ form.photo.errors }}
+{% endif %}
+<button data-save-submit>{% translate "Save picture and suggest a description" %}</button>
+{% include 'community_dictionary/draft_status.html' %}</section></form>{% endif %}
+<p><a href="{% url 'community_dictionary:new' dictionary.pk %}?usual=1">{% translate "Use the usual contribution form" %}</a> · <a href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Change my workflow" %}</a></p>
+<section class="panel"><h2>{% translate "My recent pictures" %}</h2>
+<p class="help">{% translate "Private previews are kept for 30 days unless cleared earlier. Shared entries remain in the dictionary." %}</p>
+<ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:guided-detail' dictionary.pk item.pk %}">{% if item.description %}{{ item.description|truncatechars:70 }}{% elif item.result.guided.suggestion.description %}{{ item.result.guided.suggestion.description|truncatechars:70 }}{% else %}{{ dictionary.language }}{% endif %}</a> · {% if item.status == 'feedback' %}{% translate "Description ready" %}{% elif item.status == 'saved' %}{% translate "Shared — check audio progress" %}{% elif item.status == 'failed' or item.status == 'draft' %}{% translate "Needs attention" %}{% else %}{% translate "In progress" %}{% endif %}</li>{% empty %}<li>{% translate "No guided pictures yet." %}</li>{% endfor %}</ul></section>
+{% endblock %}

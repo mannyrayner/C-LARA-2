@@ -1,10 +1,9 @@
 # Personal writing practice — first version
 
-An active member of an AI-enabled dictionary can open **Settings → Writing
-practice → Help me practise writing**. The owner must first enable Picture
+An active member of an AI-enabled dictionary can open **Settings → My way of adding pictures → Writing practice**. The owner must first enable Picture
 descriptions and saved audio. This is a personal preference for this dictionary
-in the current login session, not a policy change for other members. Signing out
-resets the preference; saved attempts remain available through **My writing**.
+remembered across logins and devices, not a policy change for other members.
+Saved attempts remain available through **My writing**.
 
 ## Phone workflow
 
@@ -60,9 +59,9 @@ existing permissions at publication.
 
 ## Deployment and first acceptance check
 
-No migration, dependency change or controller update is required. Use the
-supervised code-only laptop workflow, accept the laptop result, then deploy that
-same commit to AWS using the existing workflow. Keep the two manual acceptance
+The initial writing release was code-only. The subsequent durable-workflow
+revision adds migration 0026; follow [the preparation runbook](community-learning-deployment.md)
+once before the normal supervised laptop/AWS workflow. Keep the two manual acceptance
 steps; this feature is not an expansion of deployment authority.
 
 On a small French/English test dictionary, try a deliberate agreement error such
@@ -73,6 +72,6 @@ sentence, **Edit my text**, and the ordinary contribution form. Verify that
 another member cannot open the private feedback URL and retains their own mode.
 Repeat the main sequence on a physical phone before inviting broader use.
 
-Long paragraphs, adaptive proficiency profiles, email/push notification, and
-cross-device preference persistence are outside this first version. The workflow
+Long paragraphs, adaptive proficiency profiles and email/push notification
+remain outside this version. The workflow
 is language-general but has not yet been evaluated for beginner Icelandic use.

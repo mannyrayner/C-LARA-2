@@ -17,7 +17,8 @@ RETENTION_DAYS = 30
 
 
 def preference(request, dictionary):
-    return getattr(request, 'session', {}).get(f'writing-{dictionary.pk}', {})
+    from .learning import preference as stored
+    return {'enabled': stored(request, dictionary)['mode'] == 'writing'}
 
 
 def enabled(request, dictionary):
@@ -145,7 +146,7 @@ def retry_audio(pk, user):
     with transaction.atomic():
         capture.locks()
         study = capture.fetch(pk, True)
-        if study.user_id != user.pk or study.input_mode != 'writing' or study.status != 'saved':
+        if study.user_id != user.pk or study.input_mode not in {'writing', 'guided'} or study.status != 'saved':
             raise Conflict('Open the completed writing attempt first.')
         capture.allowed(study, payment=True)
         from .lexicon import recordings
@@ -160,7 +161,11 @@ def retry_audio(pk, user):
             CaptureSpeech.objects.create(capture=study, kind='entry', entry=clip.entry,
                 text=clip.text, meaning=clip.meaning, language=clip.language,
                 text_id=clip.text_id, meaning_id=clip.meaning_id)
-        transaction.on_commit(lambda: queue(pk))
+        if study.input_mode == 'guided':
+            from .guided import queue as enqueue
+        else:
+            enqueue = queue
+        transaction.on_commit(lambda: enqueue(pk))
 
 
 def recent(user, dictionary):

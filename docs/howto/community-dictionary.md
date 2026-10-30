@@ -1,5 +1,7 @@
 # Community dictionary: setup and testing
 
+Latest learner workflow: [Picture, confirm and finish](community-guided-pictures.md), with persistent personal modes and four generation levels (30 October 2026).
+
 30 October: [personal writing practice](community-writing-practice.md) adds private
 learner drafts, explained corrections and one approval for subsequent processing.
 Active members can enable their own mode in Settings; owner configuration rights

@@ -40,6 +40,8 @@ def create(source, user, name, selection='both'):
         photo_ai_enabled=source.photo_ai_enabled, tts_enabled=source.tts_enabled,
         sentence_capture_enabled=source.sentence_capture_enabled,
         image_generation_enabled=False)
+    from .learning import copy_level
+    copy_level(source, target)
     for original in originals:
         if not path_for(original.file_path).is_file():
             raise Conflict('An image file is missing. No copy was created; please check the source dictionary.')

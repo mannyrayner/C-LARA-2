@@ -63,8 +63,9 @@ def setting(request, pk):
     if choice == 'on':
         try: dictionary_for(request, pk)
         except Conflict as exc: return fail(request, exc, 409)
-    request.session[f'writing-{pk}'] = {'enabled': choice == 'on'}
-    messages.success(request, _('Your writing-practice preference is saved for this login.'))
+    from .learning import save_preference
+    save_preference(request, dictionary, 'writing' if choice == 'on' else 'manual')
+    messages.success(request, _('Your personal workflow is saved across logins.'))
     return redirect('community_dictionary:settings', pk=pk)
 
 

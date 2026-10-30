@@ -5985,3 +5985,163 @@ msgstr "Vaša voľba precvičovania písania je uložená pre toto prihlásenie.
 #, python-format
 msgid "Rough total estimate: US$%(cost)s for feedback, translation, vocabulary and audio. Actual cost varies; this is not a spending cap."
 msgstr "Približná celková cena: %(cost)s USD za spätnú väzbu, preklad, slovnú zásobu a zvuk. Skutočná cena sa môže líšiť; nejde o limit výdavkov."
+
+msgid "A new description request costs again. If your meaning was already confirmed, we keep it and ask you to approve finishing again."
+msgstr "Nová požiadavka na opis sa účtuje znova. Ak ste už význam potvrdili, zachováme ho a požiadame vás o opätovné schválenie dokončenia."
+
+msgid "Advanced"
+msgstr "Pokročilý"
+
+msgid "An estimate, not a spending cap. Dictionary and account limits still apply."
+msgstr "Ide o odhad, nie o limit výdavkov. Limity slovníka a účtu naďalej platia."
+
+msgid "Beginner"
+msgstr "Začiatočník"
+
+msgid "Billed to your personal OpenAI key."
+msgstr "Účtuje sa na váš osobný kľúč OpenAI."
+
+msgid "Change description"
+msgstr "Upraviť opis"
+
+msgid "Change my workflow"
+msgstr "Zmeniť môj spôsob prispievania"
+
+msgid "Choose your own workflow for this dictionary. It is remembered across logins; other members keep their own choice."
+msgstr "Vyberte si vlastný spôsob prispievania do tohto slovníka. Zapamätá sa aj po odhlásení; ostatní členovia si ponechajú svoj výber."
+
+msgid "Confirm permission and automatic AI processing before enabling this mode."
+msgstr "Pred zapnutím tohto režimu potvrďte oprávnenie a automatické spracovanie pomocou AI."
+
+msgid "Creating your sentence, words and audio…"
+msgstr "Vytvára sa vaša veta, slová a zvuk…"
+
+msgid "Description ready"
+msgstr "Opis je pripravený"
+
+msgid "Enable Picture, confirm and finish in Settings first."
+msgstr "Najprv v nastaveniach zapnite „Obrázok, potvrdenie a dokončenie“."
+
+msgid "Guides new picture descriptions. Keep precise words for what the picture shows; simplify the surrounding grammar. Existing entries are kept."
+msgstr "Určuje úroveň nových opisov obrázkov. Zachovajte presné slová pre to, čo je na obrázku; zjednodušte okolitú gramatiku. Existujúce položky sa zachovajú."
+
+msgid "Higher intermediate"
+msgstr "Vyšší stredne pokročilý"
+
+msgid "I have permission to contribute the pictures I upload. I agree to send them to OpenAI automatically for descriptions, and to pay for descriptions and the processing I approve."
+msgstr "Mám oprávnenie prispievať obrázkami, ktoré nahrávam. Súhlasím s ich automatickým odosielaním do OpenAI na vytvorenie opisov a s úhradou opisov aj spracovania, ktoré schválim."
+
+msgid "Is this what you want to say?"
+msgstr "Je toto to, čo chcete povedať?"
+
+msgid "Level of AI-generated language"
+msgstr "Úroveň jazyka generovaného AI"
+
+msgid "Low intermediate"
+msgstr "Mierne pokročilý"
+
+msgid "My pictures — start or continue"
+msgstr "Moje obrázky — začať alebo pokračovať"
+
+msgid "My recent pictures"
+msgstr "Moje nedávne obrázky"
+
+msgid "My way of adding pictures"
+msgstr "Môj spôsob pridávania obrázkov"
+
+msgid "No guided pictures yet."
+msgstr "Zatiaľ tu nie sú žiadne obrázky v tomto režime."
+
+msgid "Only a failed attempt can be retried."
+msgstr "Zopakovať možno iba neúspešný pokus."
+
+msgid "Open this draft in its personal contribution page."
+msgstr "Otvorte tento koncept na jeho stránke osobného príspevku."
+
+msgid "OpenAI receives your picture and description. After approval it also receives up to 200 existing dictionary words and meanings. Previews stay private; approved entries use this dictionary's sharing settings."
+msgstr "OpenAI dostane váš obrázok a opis. Po schválení dostane aj najviac 200 existujúcich slov a významov zo slovníka. Náhľady zostávajú súkromné; schválené položky sa riadia nastaveniami zdieľania slovníka."
+
+msgid "Picture, confirm and finish"
+msgstr "Obrázok, potvrdenie a dokončenie"
+
+msgid "Picture, confirm and finish starts paid AI analysis whenever you save a picture. Confirmation starts the remaining paid processing. Switching modes affects future pictures."
+msgstr "Režim „Obrázok, potvrdenie a dokončenie“ spustí platenú analýzu AI vždy, keď uložíte obrázok. Potvrdenie spustí zostávajúce platené spracovanie. Zmena režimu platí pre budúce obrázky."
+
+msgid "Preparing a description in your explanation language…"
+msgstr "Pripravuje sa opis vo vašom jazyku vysvetlení…"
+
+msgid "Private previews are kept for 30 days unless cleared earlier. Shared entries remain in the dictionary."
+msgstr "Súkromné náhľady sa uchovávajú 30 dní, pokiaľ ich nevymažete skôr. Zdieľané položky zostávajú v slovníku."
+
+msgid "Reload Settings to see the current cost estimate."
+msgstr "Znova načítajte nastavenia, aby ste videli aktuálny odhad ceny."
+
+msgid "Save a picture, confirm its description in your explanation language, and let the app finish the sentence, words and audio."
+msgstr "Uložte obrázok, potvrďte jeho opis vo svojom jazyku vysvetlení a nechajte aplikáciu dokončiť vetu, slová a zvuk."
+
+msgid "Save a picture. Check what it says. Let the app finish the rest."
+msgstr "Uložte obrázok. Skontrolujte jeho opis. Zvyšok nechajte na aplikáciu."
+
+msgid "Save my workflow"
+msgstr "Uložiť môj spôsob prispievania"
+
+msgid "Save picture and suggest a description"
+msgstr "Uložiť obrázok a navrhnúť opis"
+
+msgid "The AI settings changed. Reload Settings and confirm the new estimate."
+msgstr "Nastavenia AI sa zmenili. Znova načítajte nastavenia a potvrďte nový odhad."
+
+msgid "This attempt could not finish. Your picture is still saved privately. No failed AI request is repeated automatically."
+msgstr "Tento pokus sa nepodarilo dokončiť. Váš obrázok je stále súkromne uložený. Neúspešná požiadavka AI sa automaticky neopakuje."
+
+msgid "This shares the picture and creates the target-language sentence, linked words and audio automatically. You can check and edit the result afterwards."
+msgstr "Týmto sa obrázok zdieľa a automaticky sa vytvorí veta v cieľovom jazyku, prepojené slová a zvuk. Výsledok môžete neskôr skontrolovať a upraviť."
+
+msgid "Tick this only when choosing Picture, confirm and finish. You can turn the mode off here at any time."
+msgstr "Začiarknite iba pri výbere režimu „Obrázok, potvrdenie a dokončenie“. Režim tu môžete kedykoľvek vypnúť."
+
+msgid "Try again"
+msgstr "Skúsiť znova"
+
+msgid "Try the description now"
+msgstr "Skúsiť opis teraz"
+
+msgid "Use this description and finish"
+msgstr "Použiť tento opis a dokončiť"
+
+msgid "Uses your available C-LARA credit."
+msgstr "Používa váš dostupný kredit C-LARA."
+
+msgid "Usual contribution form"
+msgstr "Bežný formulár príspevku"
+
+msgid "What I want to say"
+msgstr "Čo chcem povedať"
+
+msgid "You can leave and return through My pictures. Processing continues in the background. Completion is shown here; no email is sent."
+msgstr "Stránku môžete opustiť a vrátiť sa cez Moje obrázky. Spracovanie pokračuje na pozadí. Dokončenie sa zobrazí tu; e-mail sa neposiela."
+
+msgid "You confirmed the meaning. Target-language text, vocabulary and synthetic audio were generated automatically and may still need checking."
+msgstr "Potvrdili ste význam. Text v cieľovom jazyku, slovná zásoba a syntetický zvuk boli vygenerované automaticky a môžu ešte vyžadovať kontrolu."
+
+msgid "Your personal workflow is saved across logins."
+msgstr "Váš spôsob prispievania je uložený aj pre ďalšie prihlásenia."
+
+msgid "Your picture is saved privately. AI processing has not started; check the message above or your credit and daily allowance."
+msgstr "Váš obrázok je súkromne uložený. Spracovanie AI sa ešte nezačalo; skontrolujte správu vyššie alebo svoj kredit a denný limit."
+
+msgid "Your picture stays private until you confirm its description. Saving starts AI analysis under the permission you gave in Settings."
+msgstr "Váš obrázok zostáva súkromný, kým nepotvrdíte jeho opis. Uloženie spustí analýzu AI na základe oprávnenia, ktoré ste udelili v nastaveniach."
+
+#, python-format
+
+msgid "Rough total estimate per picture, including words and audio: US$%(amount)s."
+msgstr "Približný celkový odhad na obrázok vrátane slov a zvuku: %(amount)s USD."
+
+#, python-format
+
+msgid "Write what you want to say in %(language)s (up to 255 characters)."
+msgstr "Napíšte, čo chcete povedať, v jazyku %(language)s (najviac 255 znakov)."
+
+msgid "Describe and finish this picture"
+msgstr "Opísať a dokončiť tento obrázok"

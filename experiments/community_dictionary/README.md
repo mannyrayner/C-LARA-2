@@ -1,5 +1,7 @@
 # Community dictionary development experiment
 
+Latest learner workflow: [Picture, confirm and finish](../../docs/howto/community-guided-pictures.md), with persistent personal modes and four generation levels (30 October 2026).
+
 Current increment: [writing practice and the accepted Tools deployment](writing-practice-2026-10-30.md).
 A concrete learner request motivates private correction feedback followed by
 automatic enrichment. Learner acceptance is pending. The preceding Tools change

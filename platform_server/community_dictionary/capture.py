@@ -63,6 +63,10 @@ def allowed(study, *, payment=False):
         key,personal=photo_ai.api_credentials(study.user)
         if personal!=study.personal_key:
             raise Conflict('Your API payment settings changed. Start a fresh capture.')
+        if study.input_mode == 'guided':
+            from .guided import consent_values
+            if study.result['guided']['consent'] != consent_values(study.user, dictionary):
+                raise Conflict('The AI prices, payment or dictionary settings changed. Renew the picture workflow in Settings and start a new attempt.')
         return key
 
 def charge(study, operation, cost, model, suffix):
@@ -95,7 +99,7 @@ def account(study_id, stage, response, *, transcription=False):
 def prepare(study_id):
     with transaction.atomic():
         locks(); study=fetch(study_id,True)
-        if study.status != ('approved' if study.input_mode == 'writing' else 'waiting'):
+        if study.status != ('approved' if study.input_mode in {'writing', 'guided'} else 'waiting'):
             return
         key=allowed(study,payment=True)
         study.status='processing'; study.save(update_fields=['status'])
@@ -108,12 +112,15 @@ def prepare(study_id):
             if not 0<len(description)<=1000:
                 raise ValueError('description_length')
         current=fetch(study.pk); allowed(current,payment=True)
+        from .learning import level
+        generation_level = study.result['guided']['level'] if study.input_mode == 'guided' else level(study.dictionary)
         words=[]
         for source in current.sources.filter(text_field='word').select_related('entry'):
             words.append({'id':source.entry_id,'lemma':source.word,'meaning':source.entry.meaning})
         response=capture_ai.interpret(path_for(study.file_path).read_bytes(),{
             'target_language':study.language,'explanation_language':study.explanation_language,
-            'input_language':study.input_language,'input_mode':'approved-writing' if study.input_mode=='writing' else study.input_mode,
+            'generation_level': generation_level,
+            'input_language':study.input_language,'input_mode':{'writing':'approved-writing', 'guided':'approved-picture'}.get(study.input_mode, study.input_mode),
             'description':description,'vocabulary':words},model=study.model,api_key=key)
         account(study.pk,'interpretation',response)
         result=capture_ai.parse(response)
@@ -122,6 +129,10 @@ def prepare(study_id):
             if result['outcome'] != 'ready' or result['sentence'] != description:
                 raise ValueError('approved_writing_changed')
             result['writing'] = study.result['writing']
+        if study.input_mode == 'guided':
+            if result['outcome'] != 'ready' or result['translation'] != description:
+                raise ValueError('approved_picture_meaning_changed')
+            result['guided'] = study.result['guided']
         # A model-supplied ID is only a candidate, not an authorization or edit.
         eligible={row['id']:row for row in words}
         for word in result['words']:
@@ -168,6 +179,9 @@ def publish(study_id, user, *, vocabulary=None):
             data=dict(study.result)
             if study.input_mode == 'writing' and data.get('sentence') != data.get('writing',{}).get('approved_text'):
                 raise Conflict('The final sentence must match the version you approved.')
+            if study.input_mode == 'guided' and (not data.get('guided', {}).get('approved_description') or
+                    data.get('translation') != data['guided']['approved_description']):
+                raise Conflict('The final meaning must match the description you approved.')
             if vocabulary is not None:
                 # Revalidate under the same lock as publication. No IDs supplied by
                 # the browser are trusted; matching below is by local lemma/sense.
@@ -197,6 +211,11 @@ def publish(study_id, user, *, vocabulary=None):
                 provenance.pop('vocabulary_reviewed_by', None)
                 provenance.update(writing_practice=True, writing_recipe=data['writing']['version'],
                     approved_text_by=user.pk, vocabulary_generated_automatically=True)
+            if study.input_mode == 'guided':
+                provenance.pop('vocabulary_reviewed_by', None)
+                provenance.update(guided_picture=True, guided_recipe=data['guided']['version'],
+                    generation_level=data['guided']['level'], vocabulary_generated_automatically=True,
+                    target_language_generated_automatically=True)
             source=study.source_image
             image=Contribution.objects.create(entry=entry,kind='image',status='accepted',
                 author=source.author if source else user,controlled_by=(source.controlled_by or source.author) if source else user,

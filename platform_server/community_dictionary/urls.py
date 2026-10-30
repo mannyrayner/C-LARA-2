@@ -10,7 +10,7 @@ from . import evaluation_views, mwe_audio
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
-from . import writing_views
+from . import writing_views, guided_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
@@ -53,6 +53,11 @@ urlpatterns = [
     path('<int:pk>/settings/add-sentences/', batch_views.start, name='batch-descriptions'),
     path('<int:pk>/settings/rename/', batch_views.rename, name='rename'),
     path('<int:pk>/writing/', writing_views.start, name='writing-start'),
+    path('<int:pk>/guided/', guided_views.start, name='guided-start'),
+    path('<int:pk>/pictures/<int:image_id>/guided/', guided_views.start, name='guided-image'),
+    path('<int:pk>/guided/<uuid:study_id>/', guided_views.detail, name='guided-detail'),
+    path('<int:pk>/guided/<uuid:study_id>/action/', guided_views.action, name='guided-action'),
+    path('<int:pk>/settings/contribution-workflow/', guided_views.setting, name='contribution-setting'),
     path('<int:pk>/pictures/<int:image_id>/writing/', writing_views.start, name='writing-image'),
     path('<int:pk>/writing/<uuid:study_id>/', writing_views.detail, name='writing-detail'),
     path('<int:pk>/writing/<uuid:study_id>/action/', writing_views.action, name='writing-action'),

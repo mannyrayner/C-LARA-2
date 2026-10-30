@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 92
+- **Workspace revision:** 93
 - **As of:** 2026-10-30
-- **Assessed commit:** `48ad6c3866ba7e633a3f91da3a44a85c1c3cc50f`
+- **Assessed commit:** `863e401bf1dec9dfb59f730976f56fb88699ff96`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-The Tools change has now passed the supervised laptop-to-AWS deployment path with matching receipts and Manny’s functional acceptance on both hosts. One changed-release trial is complete. A concrete learner request now motivates personal writing practice: private picture/draft capture, explained corrections, approval, then automatic enrichment through the existing pipeline. This is a first implementation awaiting laptop and physical-phone acceptance, not evidence of learning benefit. The user wants a rapid feedback/revision cycle; beginner Icelandic needs remain a separate design question. Manual workflow dispatch/acceptance, code-only restrictions, the existing Windows CI checkout issue and later autonomy stages remain explicit.
+Writing practice has a successful laptop deployment and one positive user-reported example. A complementary guided-picture workflow is now prepared: private photo capture, explanation-language confirmation, then automatic enrichment. Persistent personal modes and four dictionary language levels support different learners while retaining central image content. Tests pass with mocked providers; physical-phone, live-model and learner acceptance remain next. The two new preference tables require an explicit bounded schema-preparation step before the unchanged code-only deployment workflow; this boundary is preserved.
 
 ## Factual observations
 
@@ -1111,6 +1111,22 @@ Manny requests a first personal writing-practice mode based on learner feedback.
 - **Confidence:** high
 - **Evidence:** [`docs/howto/community-writing-practice.md`](../howto/community-writing-practice.md), [`experiments/community_dictionary/writing-practice-2026-10-30.md`](../experiments/community_dictionary/writing-practice-2026-10-30.md), [`platform_server/community_dictionary/writing.py`](../platform_server/community_dictionary/writing.py), [`platform_server/community_dictionary/tests/test_writing.py`](../platform_server/community_dictionary/tests/test_writing.py)
 
+### OBS-0138
+
+Writing release 863e401 completed laptop workflow 41044395387 successfully. Manny reports one example working and wants further tests before inviting the learner. He proposes a separate beginner flow for Kate: picture, explanation-language description, approval, then automatic remaining processing. This is an initial functional observation, not independent learner acceptance or an AWS deployment report.
+
+- **Observed:** 2026-10-30
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/guided-pictures-2026-10-30.md`](../experiments/community_dictionary/guided-pictures-2026-10-30.md)
+
+### OBS-0139
+
+Manny approves guided pictures and four approachable language levels, explicitly retaining core subjects/actions even when learners need unfamiliar words. The implementation adds persistent per-member modes/standing permission, private saved attempts, a confirmation gate, automatic existing enrichment/audio, owner-controlled generation level and English/French/Slovak UI. The full 767-test suite and final 19 guided tests passed with mocked providers. Four schema-helper tests and a real disposable SQLite migration/backup passed. Two additive preference tables are isolated in schema commit 8ee6024719b73de9f702ce4dad2848ffee88a4a7; manual preparation precedes the feature-only release. No host migration, paid provider call or physical-phone test has occurred in this session.
+
+- **Observed:** 2026-10-30
+- **Confidence:** high
+- **Evidence:** [`docs/howto/community-guided-pictures.md`](../howto/community-guided-pictures.md), [`docs/howto/community-learning-deployment.md`](../howto/community-learning-deployment.md), [`experiments/community_dictionary/guided-pictures-2026-10-30.md`](../experiments/community_dictionary/guided-pictures-2026-10-30.md), [`platform_server/community_dictionary/tests/test_guided.py`](../platform_server/community_dictionary/tests/test_guided.py), [`ops/community_deploy/tests/test_learning_schema.py`](../ops/community_deploy/tests/test_learning_schema.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1214,20 +1230,20 @@ Paired deployed French/Swedish results support the optional carrier batch as a u
 
 ### ASM-0012
 
-The deployment experiment now has an accepted changed-release trial on the Windows laptop and AWS, using exact-commit receipts and human functional checks. This materially lowers routine installation friction, making a learner-requested writing workflow a useful next test of the criticism/revision cycle. One successful release does not establish sustained maintenance, recovery under failure or autonomous functional acceptance. Retain the compatible code/static boundary and manual release acceptance. Resolve the separate Windows CI checkout issue through an appropriate infrastructure change; do not bypass controller restrictions. The governance draft still grants no direct communication authority.
+The accepted Tools deployment and positive writing laptop trial show useful progress toward reduced installation burden. Persistent learner settings now expose the deliberate limit of the code-only controller: the database must be prepared separately. A bounded, manually invoked helper creates only the reviewed new tables, backs up SQLite, and reuses maintenance/restart/recovery controls without broadening Actions or SSM authority. Successful local tests justify a supervised laptop preparation, not a claim of production migration reliability. Keep exact-release human acceptance before AWS and record the manual burden. Later functional autonomy, staging and governance remain open.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0132`, `OBS-0133`, `OBS-0134`, `OBS-0135`, `OBS-0136`, `OBS-0137`
-- **Urgency / risk / progress:** support_next_learner_driven_release / medium / changed_release_accepted_writing_mode_prepared
+- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0132`, `OBS-0133`, `OBS-0134`, `OBS-0135`, `OBS-0136`, `OBS-0137`, `OBS-0138`, `OBS-0139`
+- **Urgency / risk / progress:** support_next_learner_driven_release / medium / writing_laptop_trial_positive_guided_release_and_schema_preparation_ready
 - **Confidence:** high
 
 ### ASM-0013
 
-Concrete learner feedback now supplies a focused pedagogical workflow: write about a personal picture, understand corrections, then approve the remaining processing. A personal mode preserves other members’ workflows and avoids exposing learner errors as shared metadata. The first implementation is a reviewable experiment; a short physical-phone trial should establish usability and whether the model overcorrects. Manny plans testing before inviting the learner over the weekend. Beginner Icelandic use remains a separate request needing concrete feedback rather than assuming the same workflow suits all proficiency levels. Rapid iteration is plausible after the accepted deployment trial but its sustained value and learning outcomes remain unmeasured.
+Concrete learner needs now motivate complementary personal workflows: writing with explained correction, and guided pictures requiring only confirmation of meaning before enrichment. Four dictionary generation levels simplify phrasing while preserving important visible subjects/actions, consistent with Manny’s view that relevant new vocabulary is motivating. Writing has one positive laptop example; guided pictures remain a prepared experiment. Learner/phone trials should test clarity, overcorrection, object fidelity, level appropriateness and recovery. Keep existing contribution defaults until those trials support a broader change; implementation speed alone does not establish learning benefit.
 
 - **Goals:** `GOAL-1`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0127`, `OBS-0128`, `OBS-0129`, `OBS-0130`, `OBS-0131`, `OBS-0136`, `OBS-0137`
-- **Urgency / risk / progress:** prepare_learner_trial / medium / personal_writing_workflow_prepared_acceptance_pending
+- **Grounding observations:** `OBS-0127`, `OBS-0128`, `OBS-0129`, `OBS-0130`, `OBS-0131`, `OBS-0136`, `OBS-0137`, `OBS-0138`, `OBS-0139`
+- **Urgency / risk / progress:** prepare_learner_trial / medium / two_personal_workflows_prepared_writing_initial_laptop_acceptance
 - **Confidence:** medium
 
 ## Reported valence
@@ -1262,7 +1278,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0013`
 - **UNC-0013:** Slovak catalog and configuration checks can establish coverage, valid placeholders/plurals and selection behaviour, but Ivana or another proficient speaker still needs to review wording and real use. The new locale initially covers the same marked interface surface as French; unmarked advanced strings may remain English. Manny reports a Slovak/English dictionary, whereas English/Slovak content has not yet been created or inspected in this session. Actual conversion needs the existing cost/permission approval and linguistic/audio review. No paid request or new Slovak carrier listening result is implied by interface localisation.
   - **Assessments:** `ASM-0011`, `ASM-0013`
-- **UNC-0014:** One same-version rehearsal and one changed-release deployment passed on Windows/AWS with human browsing acceptance. Production rollback under failure, sustained operation and total human effort remain unmeasured. Fresh manual workflow dispatch still needs Manny; AI functional acceptance, AWS staging and stakeholder decision rights remain later steps. The Windows CI checkout failure is separate from passed application tests and successful actual Windows deployment. Code still has app-data access; receipts are not data isolation.
+- **UNC-0014:** One same-version rehearsal and one changed-release deployment passed on Windows/AWS with human browsing acceptance. Production rollback under failure, sustained operation and total human effort remain unmeasured. Fresh manual workflow dispatch still needs Manny; AI functional acceptance, AWS staging and stakeholder decision rights remain later steps. The Windows CI checkout failure is separate from passed application tests and successful actual Windows deployment. Code still has app-data access; receipts are not data isolation. The new additive schema helper has local recovery and SQLite evidence but no live PostgreSQL result; it remains a manual step outside the code-only controller.
   - **Assessments:** `ASM-0012`
 
 ## Questions for human refinement
@@ -1309,9 +1325,9 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0013`
 - **ACT-0015:** Finish verification and deliver the Slovak locale patch with installation and English/Slovak conversion instructions. Have Ivana or another proficient Slovak speaker review wording, remembered interface preference and the English-learning path. Use the existing owner-approved conversion workflow to create or update an English/Slovak dictionary, checking its estimate and results before accepting content. Record actual trial, linguistic/audio issues and deployment separately; preserve the existing Slovak/English dictionary and all unrelated content.
   - **Assessments:** `ASM-0011`, `ASM-0013`
-- **ACT-0016:** Use the accepted deployment path for the writing-practice increment: a fresh laptop run on its exact release request, Manny’s acceptance, then the same commit on AWS. Keep controller restrictions and human gates. Treat Windows CI path-length handling and safe cloud API error reporting as separate infrastructure follow-ups. Record outcomes and effort, without starting direct collaborator communication.
+- **ACT-0016:** Prepare the two new preference tables on the laptop using the exact schema commit and reviewed helper, then run a fresh feature-only laptop workflow. After Manny accepts the combined workflows, repeat the bounded preparation on AWS and deploy the same feature commit through the existing acceptance workflow. Preserve controller restrictions, distinguish migration preparation from code-only installation, and record outcomes/effort. No direct collaborator communication is authorized.
   - **Assessments:** `ASM-0012`
-- **ACT-0017:** Test writing practice on a small French dictionary: deliberate and absent errors, optional style, revision, private feedback, approved-text preservation, background completion and missing-audio recovery. Obtain a physical-phone check before broader invitation. Use the learner’s feedback to revise the interaction; ask for concrete beginner Icelandic tasks before expanding that workflow. Separate usability and linguistic-feedback quality from evidence of learning.
+- **ACT-0017:** Test guided pictures and writing practice on a small dictionary and a physical phone. For guided pictures, check a less-common central subject, edited explanation-language meaning, automatic completion, saved private attempts, level choices and missing-audio recovery. For writing, check deliberate/absent errors, optional style and exact approved-text preservation. Then obtain learner feedback; retain manual defaults until evidence supports changing them. Separate usability, linguistic quality and learning outcomes.
   - **Assessments:** `ASM-0012`, `ASM-0013`
 
 ## Open predictions
@@ -1345,7 +1361,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-30
-- **Basis:** AGENTS.md reflection on the accepted changed-release deployment and Manny’s authorization of a learner-requested personal writing-practice implementation.
-- **Comments:** Human-owned intentions unchanged. Prepared functionality is not deployed or learner-accepted. No paid provider requests or collaborator messages were sent.
-- **Change summary:** Recorded the first accepted changed-release deployment and prepared a personal writing-practice workflow from concrete learner feedback. Live learner acceptance and later autonomy stages remain pending.
+- **Basis:** AGENTS.md reflection on the writing laptop trial and Manny’s authorization of guided pictures and language levels.
+- **Comments:** Human-owned intentions unchanged. Guided functionality and schema preparation are tested locally, not deployed or learner-accepted. No paid provider calls or collaborator messages were sent.
+- **Change summary:** Recorded initial writing laptop acceptance and prepared complementary guided pictures with persistent preferences and four language levels. Separated the necessary additive schema preparation from the unchanged code-only deployment path.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

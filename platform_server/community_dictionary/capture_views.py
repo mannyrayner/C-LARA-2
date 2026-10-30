@@ -40,8 +40,8 @@ def start(request,pk,image_id=None):
     previous=None
     if request.GET.get('revise'):
         previous=own(request,pk,request.GET['revise'])
-        if previous.input_mode == 'writing':
-            return redirect('community_dictionary:writing-detail', pk=pk, study_id=previous.pk)
+        if previous.input_mode in {'writing', 'guided'}:
+            return redirect(f'community_dictionary:{previous.input_mode}-detail', pk=pk, study_id=previous.pk)
         capture.allowed(previous)
     prefs=request.session.get(f'capture-{pk}',{})
     initial={'input_mode':'text','input_language':dictionary.explanation_language or 'English','voice':tts.VOICE,**prefs}
@@ -130,8 +130,8 @@ def start(request,pk,image_id=None):
 @login_required
 def detail(request,pk,study_id,vocabulary=None):
     study=own(request,pk,study_id)
-    if study.input_mode == 'writing':
-        return redirect('community_dictionary:writing-detail', pk=pk, study_id=study.pk)
+    if study.input_mode in {'writing', 'guided'}:
+        return redirect(f'community_dictionary:{study.input_mode}-detail', pk=pk, study_id=study.pk)
     try: capture.allowed(study)
     except Conflict as exc: return fail(request,exc,409)
     if study.status=='saved' and study.saved_entry_id:
@@ -173,8 +173,8 @@ def detail(request,pk,study_id,vocabulary=None):
 @require_POST
 def action(request,pk,study_id):
     study=own(request,pk,study_id)
-    if study.input_mode == 'writing':
-        return fail(request, gettext('Use the writing-practice page for this draft.'), 409)
+    if study.input_mode in {'writing', 'guided'}:
+        return fail(request, gettext('Open this draft in its personal contribution page.'), 409)
     try:
         choice=request.POST.get('action')
         if choice=='process':

@@ -346,6 +346,8 @@ def approve(user, run_id):
             explanation_language=port.explanation_language,owner=user,photo_ai_enabled=port.source.photo_ai_enabled,
             tts_enabled=bool(tts.language_code(port.language)), image_generation_enabled=False,
             sentence_capture_enabled=port.source.sentence_capture_enabled)
+        from .learning import copy_level
+        copy_level(port.source, port.destination)
         port.save(update_fields=['destination'])
         event(port.destination,user,'create_language_port',detail=f'Source dictionary {port.source_id}')
     if run.stage=='audio':

@@ -5,9 +5,13 @@ from .localisation import language_label
 from .models import Dictionary, Entry, Partnership, Request
 from .storage import prepare_upload
 from .voices import VOICE_CHOICES
+from . import learning
 
 
 class DictionaryForm(forms.ModelForm):
+    generation_level = forms.ChoiceField(choices=learning.LEVELS, required=False, initial='beginner',
+        label=_('Level of AI-generated language'), help_text=_(
+            'Guides new picture descriptions. Keep precise words for what the picture shows; simplify the surrounding grammar. Existing entries are kept.'))
     sentence_capture_enabled = forms.BooleanField(required=False, label=_('Enable Picture descriptions (OpenAI)'), help_text=_('Optional experiment: members describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Contributor confirmation allows immediate publication; editors can check language afterwards. Picture, description and up to 200 words/meanings are sent to OpenAI. Off by default.'))
     image_generation_enabled = forms.BooleanField(required=False, initial=False, label=_('Enable AI picture generation (OpenAI)'), help_text=_('Owners and editors can approve a shared style and generate pictures from descriptions. Off by default. Each request needs permission to send its text to OpenAI and incurs API costs.'))
     photo_ai_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable Learn from a photo (OpenAI)'), help_text=_('Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.'))
@@ -19,6 +23,23 @@ class DictionaryForm(forms.ModelForm):
         labels = {'name': _('Name'), 'language': _('Language we are collecting'),
                   'explanation_language': _('Language for explanations (optional)'),
                   'text_direction': _('Text direction')}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial['generation_level'] = learning.level(self.instance)
+
+    def save_learning_settings(self):
+        from .models import DictionaryLearningSettings
+        # Omitted on old forms/clients: preserve the existing setting.
+        value = self.cleaned_data.get('generation_level')
+        if value:
+            DictionaryLearningSettings.objects.update_or_create(dictionary=self.instance, defaults={'level': value})
+
+    def save(self, commit=True):
+        result = super().save(commit=commit)
+        if commit: self.save_learning_settings()
+        return result
 
     def clean(self):
         data = super().clean()

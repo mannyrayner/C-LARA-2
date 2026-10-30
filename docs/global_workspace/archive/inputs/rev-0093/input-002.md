@@ -1,0 +1,1 @@
+Yes, I like your points here. Maybe we can add a control to the dictionary creation screen, to select the level of the language produced? Many users will probably not be familiar with CEFR, so perhaps beginner, low intermediate, higher intermediate, advanced.

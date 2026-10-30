@@ -31,7 +31,8 @@ def recent():
     # Retain failed/discarded attempts in the allowance. Receipts prevent retries
     # of the same submission from creating a second PictureCapture.
     return PictureCapture.objects.filter(created_at__gte=timezone.now()-timedelta(hours=24)).exclude(
-        input_mode='writing', usage__writing_request__isnull=True)
+        input_mode='writing', usage__writing_request__isnull=True).exclude(
+        input_mode='guided', usage__guided_request__isnull=True)
 
 
 def usage(dictionary, user=None):

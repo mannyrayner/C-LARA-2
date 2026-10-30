@@ -1,5 +1,7 @@
 # Community dictionary app
 
+Latest learner workflow: [Picture, confirm and finish](../../docs/howto/community-guided-pictures.md), with persistent personal modes and four generation levels (30 October 2026).
+
 Current increment: [personal writing practice](../../docs/howto/community-writing-practice.md).
 Save a private picture and short learner description, review explained corrections,
 then approve translation, shared vocabulary and audio in the background. Original

@@ -1,0 +1,4 @@
+{% load i18n %}
+{% if estimate != None %}<p class="help">{% blocktranslate with amount=estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %} {% translate "An estimate, not a spending cap. Dictionary and account limits still apply." %}
+{% if personal %}{% translate "Billed to your personal OpenAI key." %}{% else %}{% translate "Uses your available C-LARA credit." %}{% endif %} {% translate "A failed or interrupted call may still incur a provider charge." %}</p>{% endif %}
+<p class="help">{% translate "OpenAI receives your picture and description. After approval it also receives up to 200 existing dictionary words and meanings. Previews stay private; approved entries use this dictionary's sharing settings." %}</p>

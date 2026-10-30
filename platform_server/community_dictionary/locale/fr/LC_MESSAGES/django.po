@@ -6080,3 +6080,163 @@ msgstr "Votre préférence de pratique de l’écrit est enregistrée pour cette
 #, python-format
 msgid "Rough total estimate: US$%(cost)s for feedback, translation, vocabulary and audio. Actual cost varies; this is not a spending cap."
 msgstr "Estimation totale approximative : %(cost)s $US pour les commentaires, la traduction, le vocabulaire et l’audio. Le coût réel varie ; ce n’est pas un plafond de dépenses."
+
+msgid "A new description request costs again. If your meaning was already confirmed, we keep it and ask you to approve finishing again."
+msgstr "Une nouvelle demande de description entraîne un nouveau coût. Si vous aviez déjà confirmé le sens, nous le conservons et vous demandons d’approuver à nouveau la suite du traitement."
+
+msgid "Advanced"
+msgstr "Avancé"
+
+msgid "An estimate, not a spending cap. Dictionary and account limits still apply."
+msgstr "Il s’agit d’une estimation, pas d’un plafond de dépenses. Les limites du dictionnaire et du compte restent applicables."
+
+msgid "Beginner"
+msgstr "Débutant"
+
+msgid "Billed to your personal OpenAI key."
+msgstr "Facturé sur votre clé OpenAI personnelle."
+
+msgid "Change description"
+msgstr "Modifier la description"
+
+msgid "Change my workflow"
+msgstr "Changer ma façon de contribuer"
+
+msgid "Choose your own workflow for this dictionary. It is remembered across logins; other members keep their own choice."
+msgstr "Choisissez votre façon de contribuer à ce dictionnaire. Elle est mémorisée entre les connexions ; chaque membre garde son propre choix."
+
+msgid "Confirm permission and automatic AI processing before enabling this mode."
+msgstr "Confirmez votre autorisation et le traitement automatique par l’IA avant d’activer ce mode."
+
+msgid "Creating your sentence, words and audio…"
+msgstr "Création de votre phrase, des mots et de l’audio…"
+
+msgid "Description ready"
+msgstr "Description prête"
+
+msgid "Enable Picture, confirm and finish in Settings first."
+msgstr "Activez d’abord « Image, confirmation et résultat » dans les paramètres."
+
+msgid "Guides new picture descriptions. Keep precise words for what the picture shows; simplify the surrounding grammar. Existing entries are kept."
+msgstr "Guide les nouvelles descriptions d’images. Conservez les mots précis pour ce que montre l’image ; simplifiez la grammaire autour. Les entrées existantes sont conservées."
+
+msgid "Higher intermediate"
+msgstr "Intermédiaire supérieur"
+
+msgid "I have permission to contribute the pictures I upload. I agree to send them to OpenAI automatically for descriptions, and to pay for descriptions and the processing I approve."
+msgstr "J’ai le droit de contribuer les images que je téléverse. J’accepte leur envoi automatique à OpenAI pour les décrire et de payer les descriptions ainsi que les traitements que j’approuve."
+
+msgid "Is this what you want to say?"
+msgstr "Est-ce bien ce que vous voulez dire ?"
+
+msgid "Level of AI-generated language"
+msgstr "Niveau de langue généré par l’IA"
+
+msgid "Low intermediate"
+msgstr "Intermédiaire inférieur"
+
+msgid "My pictures — start or continue"
+msgstr "Mes images — commencer ou continuer"
+
+msgid "My recent pictures"
+msgstr "Mes images récentes"
+
+msgid "My way of adding pictures"
+msgstr "Ma façon d’ajouter des images"
+
+msgid "No guided pictures yet."
+msgstr "Aucune image dans ce mode pour le moment."
+
+msgid "Only a failed attempt can be retried."
+msgstr "Seule une tentative échouée peut être relancée."
+
+msgid "Open this draft in its personal contribution page."
+msgstr "Ouvrez ce brouillon dans sa page de contribution personnelle."
+
+msgid "OpenAI receives your picture and description. After approval it also receives up to 200 existing dictionary words and meanings. Previews stay private; approved entries use this dictionary's sharing settings."
+msgstr "OpenAI reçoit votre image et sa description. Après approbation, il reçoit aussi jusqu’à 200 mots et significations du dictionnaire. Les aperçus restent privés ; les entrées approuvées suivent les paramètres de partage du dictionnaire."
+
+msgid "Picture, confirm and finish"
+msgstr "Image, confirmation et résultat"
+
+msgid "Picture, confirm and finish starts paid AI analysis whenever you save a picture. Confirmation starts the remaining paid processing. Switching modes affects future pictures."
+msgstr "« Image, confirmation et résultat » lance une analyse IA payante à chaque enregistrement d’image. Votre confirmation lance les traitements payants restants. Le changement de mode concerne les prochaines images."
+
+msgid "Preparing a description in your explanation language…"
+msgstr "Préparation d’une description dans votre langue d’explication…"
+
+msgid "Private previews are kept for 30 days unless cleared earlier. Shared entries remain in the dictionary."
+msgstr "Les aperçus privés sont conservés pendant 30 jours, sauf si vous les effacez avant. Les entrées partagées restent dans le dictionnaire."
+
+msgid "Reload Settings to see the current cost estimate."
+msgstr "Rechargez les paramètres pour voir l’estimation actuelle."
+
+msgid "Save a picture, confirm its description in your explanation language, and let the app finish the sentence, words and audio."
+msgstr "Enregistrez une image, confirmez sa description dans votre langue d’explication, puis laissez l’application créer la phrase, les mots et l’audio."
+
+msgid "Save a picture. Check what it says. Let the app finish the rest."
+msgstr "Enregistrez une image. Vérifiez sa description. Laissez l’application faire le reste."
+
+msgid "Save my workflow"
+msgstr "Enregistrer ma façon de contribuer"
+
+msgid "Save picture and suggest a description"
+msgstr "Enregistrer l’image et proposer une description"
+
+msgid "The AI settings changed. Reload Settings and confirm the new estimate."
+msgstr "Les paramètres IA ont changé. Rechargez les paramètres et confirmez la nouvelle estimation."
+
+msgid "This attempt could not finish. Your picture is still saved privately. No failed AI request is repeated automatically."
+msgstr "Cette tentative n’a pas abouti. Votre image est toujours enregistrée en privé. Aucune demande IA échouée n’est relancée automatiquement."
+
+msgid "This shares the picture and creates the target-language sentence, linked words and audio automatically. You can check and edit the result afterwards."
+msgstr "Ceci partage l’image et crée automatiquement la phrase dans la langue cible, les mots liés et l’audio. Vous pourrez vérifier et modifier le résultat ensuite."
+
+msgid "Tick this only when choosing Picture, confirm and finish. You can turn the mode off here at any time."
+msgstr "Cochez uniquement pour choisir « Image, confirmation et résultat ». Vous pourrez désactiver ce mode ici à tout moment."
+
+msgid "Try again"
+msgstr "Réessayer"
+
+msgid "Try the description now"
+msgstr "Essayer la description maintenant"
+
+msgid "Use this description and finish"
+msgstr "Utiliser cette description et terminer"
+
+msgid "Uses your available C-LARA credit."
+msgstr "Utilise votre crédit C-LARA disponible."
+
+msgid "Usual contribution form"
+msgstr "Formulaire habituel de contribution"
+
+msgid "What I want to say"
+msgstr "Ce que je veux dire"
+
+msgid "You can leave and return through My pictures. Processing continues in the background. Completion is shown here; no email is sent."
+msgstr "Vous pouvez quitter cette page et revenir par Mes images. Le traitement continue en arrière-plan. Sa fin est indiquée ici ; aucun courriel n’est envoyé."
+
+msgid "You confirmed the meaning. Target-language text, vocabulary and synthetic audio were generated automatically and may still need checking."
+msgstr "Vous avez confirmé le sens. Le texte dans la langue cible, le vocabulaire et l’audio synthétique ont été générés automatiquement et peuvent encore nécessiter une vérification."
+
+msgid "Your personal workflow is saved across logins."
+msgstr "Votre façon de contribuer est mémorisée entre les connexions."
+
+msgid "Your picture is saved privately. AI processing has not started; check the message above or your credit and daily allowance."
+msgstr "Votre image est enregistrée en privé. Le traitement IA n’a pas commencé ; consultez le message ci-dessus ou vérifiez votre crédit et votre quota quotidien."
+
+msgid "Your picture stays private until you confirm its description. Saving starts AI analysis under the permission you gave in Settings."
+msgstr "Votre image reste privée jusqu’à la confirmation de sa description. L’enregistrement lance l’analyse IA selon l’autorisation donnée dans les paramètres."
+
+#, python-format
+
+msgid "Rough total estimate per picture, including words and audio: US$%(amount)s."
+msgstr "Estimation totale approximative par image, mots et audio compris : %(amount)s $US."
+
+#, python-format
+
+msgid "Write what you want to say in %(language)s (up to 255 characters)."
+msgstr "Écrivez ce que vous voulez dire en %(language)s (255 caractères au maximum)."
+
+msgid "Describe and finish this picture"
+msgstr "Décrire cette image et terminer"

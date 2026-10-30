@@ -25,10 +25,11 @@ from .contribution_ladder import image_ladder
 
 
 def context(request, dictionary=None, **extra):
-    from .writing import enabled
+    from .learning import mode
+    personal_mode = mode(request, dictionary)
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
     return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
-        'writing_mode': enabled(request, dictionary),
+        'writing_mode': personal_mode == 'writing', 'guided_mode': personal_mode == 'guided',
         'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
             'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',
             'port-vocabulary', 'port-run', 'port-review'}, **extra}
@@ -72,6 +73,7 @@ def home(request):
         dictionary = form.save(commit=False)
         dictionary.owner = request.user
         dictionary.save()
+        form.save_learning_settings()
         event(dictionary, request.user, 'create_dictionary')
         return redirect('community_dictionary:dictionary', pk=dictionary.pk)
     from .participation import controls
@@ -167,9 +169,10 @@ def dictionary(request, pk):
 @login_required
 def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, picture_only=False):
     dictionary = get_dictionary(request.user, pk)
-    from .writing import enabled
-    if request.method == 'GET' and not entry_id and not request_id and enabled(request, dictionary) and request.GET.get('usual') != '1':
-        return redirect('community_dictionary:writing-start', pk=pk)
+    from .learning import mode
+    personal_mode = mode(request, dictionary)
+    if request.method == 'GET' and not entry_id and not request_id and personal_mode in {'writing', 'guided'} and request.GET.get('usual') != '1':
+        return redirect(f'community_dictionary:{personal_mode}-start', pk=pk)
     entry = get_entry(dictionary, entry_id) if entry_id else None
     response_to = None
     if request_id:
@@ -503,7 +506,9 @@ def dictionary_settings(request, pk):
     from .discovery_views import DiscoveryForm
     from .discovery import pending_for
     from django.urls import reverse
+    from .guided_views import settings_context
     return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form,
+        **settings_context(request, dictionary),
         discovery_form=DiscoveryForm(initial={'revision': dictionary.discovery_revision}),
         pending_membership_count=pending_for(request.user).filter(dictionary=dictionary).count(),
         public_access_form=AccessForm(initial={'revision': dictionary.public_browsing_revision}),

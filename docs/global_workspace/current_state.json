@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 92,
+  "workspace_revision": 93,
   "as_of": "2026-10-30",
-  "assessed_commit_sha": "48ad6c3866ba7e633a3f91da3a44a85c1c3cc50f",
+  "assessed_commit_sha": "863e401bf1dec9dfb59f730976f56fb88699ff96",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "The Tools change has now passed the supervised laptop-to-AWS deployment path with matching receipts and Manny’s functional acceptance on both hosts. One changed-release trial is complete. A concrete learner request now motivates personal writing practice: private picture/draft capture, explained corrections, approval, then automatic enrichment through the existing pipeline. This is a first implementation awaiting laptop and physical-phone acceptance, not evidence of learning benefit. The user wants a rapid feedback/revision cycle; beginner Icelandic needs remain a separate design question. Manual workflow dispatch/acceptance, code-only restrictions, the existing Windows CI checkout issue and later autonomy stages remain explicit.",
+  "current_focus_summary": "Writing practice has a successful laptop deployment and one positive user-reported example. A complementary guided-picture workflow is now prepared: private photo capture, explanation-language confirmation, then automatic enrichment. Persistent personal modes and four dictionary language levels support different learners while retaining central image content. Tests pass with mocked providers; physical-phone, live-model and learner acceptance remain next. The two new preference tables require an explicit bounded schema-preparation step before the unchanged code-only deployment workflow; this boundary is preserved.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1534,6 +1534,28 @@
         "platform_server/community_dictionary/writing.py",
         "platform_server/community_dictionary/tests/test_writing.py"
       ]
+    },
+    {
+      "id": "OBS-0138",
+      "observed_at": "2026-10-30",
+      "confidence": "high",
+      "summary": "Writing release 863e401 completed laptop workflow 41044395387 successfully. Manny reports one example working and wants further tests before inviting the learner. He proposes a separate beginner flow for Kate: picture, explanation-language description, approval, then automatic remaining processing. This is an initial functional observation, not independent learner acceptance or an AWS deployment report.",
+      "evidence": [
+        "experiments/community_dictionary/guided-pictures-2026-10-30.md"
+      ]
+    },
+    {
+      "id": "OBS-0139",
+      "observed_at": "2026-10-30",
+      "confidence": "high",
+      "summary": "Manny approves guided pictures and four approachable language levels, explicitly retaining core subjects/actions even when learners need unfamiliar words. The implementation adds persistent per-member modes/standing permission, private saved attempts, a confirmation gate, automatic existing enrichment/audio, owner-controlled generation level and English/French/Slovak UI. The full 767-test suite and final 19 guided tests passed with mocked providers. Four schema-helper tests and a real disposable SQLite migration/backup passed. Two additive preference tables are isolated in schema commit 8ee6024719b73de9f702ce4dad2848ffee88a4a7; manual preparation precedes the feature-only release. No host migration, paid provider call or physical-phone test has occurred in this session.",
+      "evidence": [
+        "docs/howto/community-guided-pictures.md",
+        "docs/howto/community-learning-deployment.md",
+        "experiments/community_dictionary/guided-pictures-2026-10-30.md",
+        "platform_server/community_dictionary/tests/test_guided.py",
+        "ops/community_deploy/tests/test_learning_schema.py"
+      ]
     }
   ],
   "assessments": [
@@ -1834,7 +1856,7 @@
     },
     {
       "id": "ASM-0012",
-      "summary": "The deployment experiment now has an accepted changed-release trial on the Windows laptop and AWS, using exact-commit receipts and human functional checks. This materially lowers routine installation friction, making a learner-requested writing workflow a useful next test of the criticism/revision cycle. One successful release does not establish sustained maintenance, recovery under failure or autonomous functional acceptance. Retain the compatible code/static boundary and manual release acceptance. Resolve the separate Windows CI checkout issue through an appropriate infrastructure change; do not bypass controller restrictions. The governance draft still grants no direct communication authority.",
+      "summary": "The accepted Tools deployment and positive writing laptop trial show useful progress toward reduced installation burden. Persistent learner settings now expose the deliberate limit of the code-only controller: the database must be prepared separately. A bounded, manually invoked helper creates only the reviewed new tables, backs up SQLite, and reuses maintenance/restart/recovery controls without broadening Actions or SSM authority. Successful local tests justify a supervised laptop preparation, not a claim of production migration reliability. Keep exact-release human acceptance before AWS and record the manual burden. Later functional autonomy, staging and governance remain open.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1876,16 +1898,18 @@
         "OBS-0134",
         "OBS-0135",
         "OBS-0136",
-        "OBS-0137"
+        "OBS-0137",
+        "OBS-0138",
+        "OBS-0139"
       ],
       "urgency": "support_next_learner_driven_release",
       "risk": "medium",
-      "progress": "changed_release_accepted_writing_mode_prepared",
+      "progress": "writing_laptop_trial_positive_guided_release_and_schema_preparation_ready",
       "confidence": "high"
     },
     {
       "id": "ASM-0013",
-      "summary": "Concrete learner feedback now supplies a focused pedagogical workflow: write about a personal picture, understand corrections, then approve the remaining processing. A personal mode preserves other members’ workflows and avoids exposing learner errors as shared metadata. The first implementation is a reviewable experiment; a short physical-phone trial should establish usability and whether the model overcorrects. Manny plans testing before inviting the learner over the weekend. Beginner Icelandic use remains a separate request needing concrete feedback rather than assuming the same workflow suits all proficiency levels. Rapid iteration is plausible after the accepted deployment trial but its sustained value and learning outcomes remain unmeasured.",
+      "summary": "Concrete learner needs now motivate complementary personal workflows: writing with explained correction, and guided pictures requiring only confirmation of meaning before enrichment. Four dictionary generation levels simplify phrasing while preserving important visible subjects/actions, consistent with Manny’s view that relevant new vocabulary is motivating. Writing has one positive laptop example; guided pictures remain a prepared experiment. Learner/phone trials should test clarity, overcorrection, object fidelity, level appropriateness and recovery. Keep existing contribution defaults until those trials support a broader change; implementation speed alone does not establish learning benefit.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-3",
@@ -1898,11 +1922,13 @@
         "OBS-0130",
         "OBS-0131",
         "OBS-0136",
-        "OBS-0137"
+        "OBS-0137",
+        "OBS-0138",
+        "OBS-0139"
       ],
       "urgency": "prepare_learner_trial",
       "risk": "medium",
-      "progress": "personal_writing_workflow_prepared_acceptance_pending",
+      "progress": "two_personal_workflows_prepared_writing_initial_laptop_acceptance",
       "confidence": "medium"
     }
   ],
@@ -2008,7 +2034,7 @@
     },
     {
       "id": "UNC-0014",
-      "summary": "One same-version rehearsal and one changed-release deployment passed on Windows/AWS with human browsing acceptance. Production rollback under failure, sustained operation and total human effort remain unmeasured. Fresh manual workflow dispatch still needs Manny; AI functional acceptance, AWS staging and stakeholder decision rights remain later steps. The Windows CI checkout failure is separate from passed application tests and successful actual Windows deployment. Code still has app-data access; receipts are not data isolation.",
+      "summary": "One same-version rehearsal and one changed-release deployment passed on Windows/AWS with human browsing acceptance. Production rollback under failure, sustained operation and total human effort remain unmeasured. Fresh manual workflow dispatch still needs Manny; AI functional acceptance, AWS staging and stakeholder decision rights remain later steps. The Windows CI checkout failure is separate from passed application tests and successful actual Windows deployment. Code still has app-data access; receipts are not data isolation. The new additive schema helper has local recovery and SQLite evidence but no live PostgreSQL result; it remains a manual step outside the code-only controller.",
       "assessment_ids": [
         "ASM-0012"
       ]
@@ -2157,14 +2183,14 @@
     },
     {
       "id": "ACT-0016",
-      "summary": "Use the accepted deployment path for the writing-practice increment: a fresh laptop run on its exact release request, Manny’s acceptance, then the same commit on AWS. Keep controller restrictions and human gates. Treat Windows CI path-length handling and safe cloud API error reporting as separate infrastructure follow-ups. Record outcomes and effort, without starting direct collaborator communication.",
+      "summary": "Prepare the two new preference tables on the laptop using the exact schema commit and reviewed helper, then run a fresh feature-only laptop workflow. After Manny accepts the combined workflows, repeat the bounded preparation on AWS and deploy the same feature commit through the existing acceptance workflow. Preserve controller restrictions, distinguish migration preparation from code-only installation, and record outcomes/effort. No direct collaborator communication is authorized.",
       "assessment_ids": [
         "ASM-0012"
       ]
     },
     {
       "id": "ACT-0017",
-      "summary": "Test writing practice on a small French dictionary: deliberate and absent errors, optional style, revision, private feedback, approved-text preservation, background completion and missing-audio recovery. Obtain a physical-phone check before broader invitation. Use the learner’s feedback to revise the interaction; ask for concrete beginner Icelandic tasks before expanding that workflow. Separate usability and linguistic-feedback quality from evidence of learning.",
+      "summary": "Test guided pictures and writing practice on a small dictionary and a physical phone. For guided pictures, check a less-common central subject, edited explanation-language meaning, automatic completion, saved private attempts, level choices and missing-audio recovery. For writing, check deliberate/absent errors, optional style and exact approved-text preservation. Then obtain learner feedback; retain manual defaults until evidence supports changing them. Separate usability, linguistic quality and learning outcomes.",
       "assessment_ids": [
         "ASM-0012",
         "ASM-0013"
@@ -2259,21 +2285,21 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-30",
-    "authorization_basis": "AGENTS.md reflection on the accepted changed-release deployment and Manny’s authorization of a learner-requested personal writing-practice implementation.",
-    "comments": "Human-owned intentions unchanged. Prepared functionality is not deployed or learner-accepted. No paid provider requests or collaborator messages were sent."
+    "authorization_basis": "AGENTS.md reflection on the writing laptop trial and Manny’s authorization of guided pictures and language levels.",
+    "comments": "Human-owned intentions unchanged. Guided functionality and schema preparation are tested locally, not deployed or learner-accepted. No paid provider calls or collaborator messages were sent."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded the first accepted changed-release deployment and prepared a personal writing-practice workflow from concrete learner feedback. Live learner acceptance and later autonomy stages remain pending.",
+    "summary": "Recorded initial writing laptop acceptance and prepared complementary guided pictures with persistent preferences and four language levels. Separated the necessary additive schema preparation from the unchanged code-only deployment path.",
     "added_item_ids": [
-      "OBS-0136",
-      "OBS-0137",
-      "ACT-0017"
+      "OBS-0138",
+      "OBS-0139"
     ],
     "revised_item_ids": [
       "ASM-0012",
       "ASM-0013",
       "UNC-0014",
-      "ACT-0016"
+      "ACT-0016",
+      "ACT-0017"
     ],
     "retained_item_ids": [
       "OBS-0001",
@@ -2411,6 +2437,8 @@
       "OBS-0133",
       "OBS-0134",
       "OBS-0135",
+      "OBS-0136",
+      "OBS-0137",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",

@@ -1,6 +1,8 @@
 {% load i18n %}
 {% if writing_mode and can_describe_image %}
 <p><a class="button" href="{% url 'community_dictionary:writing-image' dictionary.pk image.pk %}">{% translate "Write about this picture" %}</a></p>
+{% elif guided_mode and can_describe_image %}
+<p><a class="button" href="{% url 'community_dictionary:guided-image' dictionary.pk image.pk %}">{% translate "Describe and finish this picture" %}</a></p>
 {% elif can_describe_image %}
 <section class="panel"><h2>{% translate "Describe this picture" %}</h2>
 {% if image.status == 'pending' %}<p class="help">{% translate "Confirming a description will also accept this picture." %}</p>{% endif %}
