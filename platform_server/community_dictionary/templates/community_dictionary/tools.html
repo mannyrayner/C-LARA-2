@@ -1,0 +1,19 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Tools" %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Tools" %}</h1>
+<p>{% translate "Work on many entries at once. Choose an operation to see its options before starting." %}</p>
+<section class="panel"><h2>{% translate "Add missing sentences" %}</h2>
+<p>{% translate "Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions." %}</p>
+<a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">{% translate "Add missing sentences" %}</a>
+</section>
+<section class="panel"><h2>{% translate "Language versions" %}</h2>
+<a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">{% translate "Create a version in another language" %}</a>
+{% if dictionary.language_port %}<p><a class="button secondary" href="{% url 'community_dictionary:port-vocabulary' dictionary.language_port.source_id dictionary.language_port.pk %}">{% translate "Build or update vocabulary from accepted sentences" %}</a></p><p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">{% translate "Update this version from its source dictionary" %}</a></p>{% endif %}
+<p class="help">{% translate "Preview the cost, approve processing, then review the translated entries." %}</p></section>
+<section class="panel"><h2>{% translate "Expression audio pilot" %}</h2><p>{% translate "Try carrier-based AI audio for English, French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected." %}</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">{% translate "Regenerate AI expression audio" %}</a></section>
+<section class="panel"><h2>{% translate "Testing picture descriptions" %}</h2>
+<p>{% translate "Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review." %}</p>
+<a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">{% translate "Create an image-only copy" %}</a>
+</section>
+{% endblock %}

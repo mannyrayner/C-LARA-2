@@ -25,7 +25,11 @@ from .contribution_ladder import image_ladder
 
 
 def context(request, dictionary=None, **extra):
-    return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(), **extra}
+    page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
+    return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
+        'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
+            'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',
+            'port-vocabulary', 'port-run', 'port-review'}, **extra}
 
 
 def fail(request, message, status=400):
@@ -502,6 +506,14 @@ def dictionary_settings(request, pk):
         rename_form=RenameForm(initial={'name':dictionary.name}),
         capture_usage=usage(dictionary,request.user),
         capture_allowance_form=AllowanceForm(initial={'daily_limit':dictionary.capture_daily_limit})))
+
+
+@login_required
+@require_http_methods(['GET'])
+def dictionary_tools(request, pk):
+    dictionary = get_dictionary(request.user, pk)
+    require_owner(request.user, dictionary)
+    return render(request, 'community_dictionary/tools.html', context(request, dictionary))
 
 
 @login_required

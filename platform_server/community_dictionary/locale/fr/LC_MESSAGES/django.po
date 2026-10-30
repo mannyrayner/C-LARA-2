@@ -5869,3 +5869,15 @@ msgstr "slovaque"
 #: community_dictionary/localisation.py
 msgid "Choose an interface language."
 msgstr "Choisissez une langue d’interface."
+
+msgid "Tools"
+msgstr "Outils"
+
+msgid "Back to Tools"
+msgstr "Retour aux outils"
+
+msgid "These operations are also available from the Tools tab."
+msgstr "Ces opérations sont également accessibles dans l’onglet Outils."
+
+msgid "Work on many entries at once. Choose an operation to see its options before starting."
+msgstr "Traitez plusieurs entrées à la fois. Choisissez une opération pour voir ses options avant de commencer."

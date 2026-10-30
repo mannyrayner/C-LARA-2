@@ -193,7 +193,7 @@ class BatchDescriptionTests(TestCase):
         home=self.client.get(reverse('community_dictionary:home'))
         self.assertContains(home,'1 sentence · 1 word')
         self.assertContains(self.client.get(self.url('settings')),'Rename dictionary')
-        self.assertContains(self.client.get(self.url('settings')),'Add missing sentences')
+        self.assertContains(self.client.get(self.url('tools')),'Add missing sentences')
 
     def test_withdrawal_invalidates_previews_and_hides_derived_sentence(self):
         self.picture(pending=True,meaning='cat');run=self.approve(self.quote());self.process(run)

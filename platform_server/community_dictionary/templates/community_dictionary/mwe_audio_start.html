@@ -7,4 +7,5 @@
 <p><strong>{% translate "For a comparison:" %}</strong> {% translate "First finish a word-audio evaluation under Evaluate. After regeneration, use “Repeat these word-audio items” on that closed evaluation set." %}</p>
 {% if supported and dictionary.tts_enabled %}<form method="post">{% csrf_token %}{{ form.as_p }}<button>{% translate "Show estimate — no AI calls yet" %}</button></form>{% else %}<p>{% translate "Enable saved TTS in English, French, Swedish, German, Italian, Icelandic or Japanese to use this pilot." %}</p>{% endif %}
 <h2>{% translate "Recent jobs" %}</h2>{% for run in runs %}<p><a href="{% url 'community_dictionary:mwe-audio-run' dictionary.pk run.pk %}">{{ run.created_at|date:'j M Y H:i' }} · {% translate run.status %}</a></p>{% empty %}<p>{% translate "No jobs yet." %}</p>{% endfor %}
+<p><a href="{% url 'community_dictionary:tools' dictionary.pk %}">{% translate "Back to Tools" %}</a></p>
 {% endblock %}

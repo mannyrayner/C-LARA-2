@@ -1,4 +1,4 @@
-{% extends 'community_dictionary/base.html' %}
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
 {% block title %}Add missing sentences{% endblock %}
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>Add missing sentences</h1>
@@ -9,5 +9,5 @@
 <p class="help">No AI requests or charges yet. This batch has its own cost approval, separate from the daily allowance for individual descriptions. Saving a sentence also accepts its picture if it was awaiting review. Original words, translations, recordings and contributor credits are preserved.</p></form>
 {% if port %}<p><a class="button secondary" href="{% url 'community_dictionary:port-vocabulary' dictionary.pk port.pk %}">Build or update vocabulary from accepted sentences</a></p>{% endif %}
 {% if runs %}<section class="panel"><h2>Recent jobs</h2><ul>{% for run in runs %}<li><a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}">{% if run.stage == 'vocabulary' %}Vocabulary{% else %}Sentences{% endif %} · {{ run.created_at|date:'j M H:i' }} · {{ run.status }}</a></li>{% endfor %}</ul></section>{% endif %}
-<p><a href="{% url 'community_dictionary:settings' dictionary.pk %}">Back to Settings</a></p>
+<p><a href="{% url 'community_dictionary:tools' dictionary.pk %}">{% translate "Back to Tools" %}</a></p>
 {% endblock %}

@@ -1,0 +1,1 @@
+Okay, here's a simple little change I keep forgetting to suggest. Right now, I think we have too many items under Settings - some of there are batch operations that don't belong here at all. How about creating a new tab for them?

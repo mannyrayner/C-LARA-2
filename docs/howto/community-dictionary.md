@@ -1,5 +1,10 @@
 # Community dictionary: setup and testing
 
+30 October navigation update: the owner-only [Tools tab](community-tools.md) groups
+batch sentences, language versions, expression audio and image-only copies.
+Settings retains configuration. Older instructions below that locate these operations
+under Settings now refer to Tools; their underlying workflows are unchanged.
+
 New optional workflow: [fully automatic sentences, vocabulary and audio](community-automatic-processing.md), with [installation and trial instructions](community-automatic-processing-install.md). It retains the staged review route and labels automatic publication separately from human review.
 
 Current increment: [credit display correction and read-only audit](community-credit-audit.md); [installation and AWS check](community-credit-audit-install.md). Manny confirms the guidance latency and duplicate-card repairs work on AWS. He now reports unexpectedly large reserved-credit messages. Two misleading labels are corrected; actual holds and refunds need reconciliation with the AWS ledger before changing balances. The focused 82-test suite passes. No migration or collectstatic is needed.

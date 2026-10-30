@@ -1,4 +1,4 @@
-{% extends 'community_dictionary/base.html' %}
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
 {% block title %}Language versions{% endblock %}
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% if port %}Update {{ port.name }}{% else %}Create a version in another language{% endif %}</h1>
@@ -12,4 +12,5 @@
 {% else %}<form method="post" class="panel stack">{% csrf_token %}{{ form.as_p }}<button>Estimate cost</button><p class="help">This step makes no AI calls and spends no credit.</p></form>{% endif %}
 <p class="help">When the target language changes, new recordings use the selected AI voice. Changing only the commenting language preserves the target words and existing recordings. Category labels are interpreted using example entries, then translated only when their own language changes. You can check and edit them before saving.</p>
 {% if ports %}<section class="panel"><h2>Language versions</h2>{% for version in ports %}<p><a href="{% url 'community_dictionary:port-update' dictionary.pk version.pk %}">{{ version.name }}</a> · {{ version.language }} / {{ version.explanation_language }} {% if version.destination %}· <a href="{% url 'community_dictionary:dictionary' version.destination_id %}">Open dictionary</a>{% endif %}</p>{% for run in version.runs.all|slice:':1' %}<p><a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}">Latest job · {{ run.status }}</a></p>{% endfor %}{% endfor %}</section>{% endif %}
+<p><a href="{% url 'community_dictionary:tools' dictionary.pk %}">{% translate "Back to Tools" %}</a></p>
 {% endblock %}

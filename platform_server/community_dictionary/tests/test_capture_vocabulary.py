@@ -160,7 +160,7 @@ class CaptureVocabularyTests(TestCase):
 
     def test_copy_post_replay_is_idempotent_and_get_read_only(self):
         self.image();self.client.force_login(self.owner)
-        self.assertContains(self.client.get(self.url('settings')),'Create an image-only copy')
+        self.assertContains(self.client.get(self.url('tools')),'Create an image-only copy')
         self.assertContains(self.client.get(self.url('image-only-copy')),'Both: 1 distinct picture')
         self.assertEqual(Dictionary.objects.count(),1)
         token=uuid.uuid4()

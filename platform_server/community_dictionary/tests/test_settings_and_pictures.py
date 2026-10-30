@@ -26,9 +26,11 @@ class SettingsAndPictureTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return Entry.objects.latest('pk')
 
-    def test_settings_tab_groups_controls_and_people_keeps_memberships(self):
+    def test_tools_and_settings_group_operations_and_configuration_separately(self):
         self.client.force_login(self.owner)
-        self.assertContains(self.client.get(self.url('dictionary')), self.url('settings'))
+        dictionary = self.client.get(self.url('dictionary'))
+        self.assertContains(dictionary, self.url('settings'))
+        self.assertContains(dictionary, self.url('tools'))
         people = self.client.get(self.url('people'))
         self.assertContains(people, 'Dictionary members')
         self.assertNotContains(people, 'Set up or view image style')
@@ -37,6 +39,20 @@ class SettingsAndPictureTests(TestCase):
         page = self.client.get(self.url('settings'))
         self.assertContains(page, 'Save settings')
         self.assertContains(page, self.url('image-style'))
+        tools = self.client.get(self.url('tools'))
+        self.assertContains(tools, f'<a href="{self.url("tools")}" aria-current="page">Tools</a>', html=True)
+        self.assertNotContains(tools, 'Save settings')
+        for route in ['batch-descriptions', 'port-start', 'mwe-audio', 'image-only-copy']:
+            with self.subTest(route=route):
+                self.assertContains(tools, self.url(route))
+                self.assertNotContains(page, self.url(route))
+                operation = self.client.get(self.url(route))
+                self.assertContains(operation, 'Back to Tools')
+                self.assertTrue(operation.context['tools_page'])
+        self.assertEqual(self.client.post(self.url('tools')).status_code, 405)
+        for language, label in [('fr', 'Outils'), ('sk', 'Nástroje')]:
+            self.client.cookies['community_ui_language'] = language
+            self.assertContains(self.client.get(self.url('tools')), f'<h1>{label}</h1>', html=True)
         self.dictionary.refresh_from_db()
         self.assertTrue(self.dictionary.image_generation_enabled)
         self.assertEqual(self.dictionary.image_generation_revision, 1)
@@ -49,6 +65,8 @@ class SettingsAndPictureTests(TestCase):
                 self.client.force_login(self.member)
                 page = self.client.get(self.url('settings'))
                 self.assertEqual(page.status_code, 404 if role == 'member' else 200)
+                self.assertEqual(self.client.get(self.url('tools')).status_code, 404)
+                self.assertNotContains(self.client.get(self.url('dictionary')), self.url('tools'))
                 if role != 'member':
                     self.assertContains(page, self.url('image-style'))
                     self.assertNotContains(page, 'Save settings')
@@ -119,6 +137,7 @@ class SettingsAndPictureTests(TestCase):
                 Participation.objects.update_or_create(dictionary=self.dictionary, user=self.member,
                     defaults={'withdrawn': state == 'withdrawn'})
                 self.client.force_login(user)
+                self.assertEqual(self.client.get(self.url('tools')).status_code, 404)
                 for name, args in [('settings', ()), ('add-picture', (entry.pk,))]:
                     self.assertEqual(self.client.get(self.url(name, *args)).status_code, 404)
                     self.assertEqual(self.client.post(self.url(name, *args), {}).status_code, 404)
@@ -126,6 +145,12 @@ class SettingsAndPictureTests(TestCase):
         other = Dictionary.objects.create(owner=self.owner, name='Other', language='Swedish')
         foreign = Entry.objects.create(dictionary=other, created_by=self.owner)
         self.assertEqual(self.client.get(self.url('add-picture', foreign.pk)).status_code, 404)
+        self.dictionary.personal = True
+        self.dictionary.save(update_fields=['personal'])
+        self.assertEqual(self.client.get(self.url('tools')).status_code, 404)
+        guest = Client()
+        self.assertEqual(guest.get(self.url('tools')).status_code, 302)
+        self.assertNotContains(guest.get(reverse('community_dictionary:public-home')), self.url('tools'))
 
     def test_new_routes_keep_csrf_protection(self):
         entry = self.text_entry()

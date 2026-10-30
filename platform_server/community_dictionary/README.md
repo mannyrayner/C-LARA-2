@@ -1,6 +1,12 @@
 # Community dictionary app
 
-Current increment: [carrier audio in additional languages](../../docs/howto/community-mwe-audio.md). French/Swedish laptop and AWS paired evaluations are complete; German, Italian and Icelandic batches plus explicit Japanese selection are prepared for listening tests. Original recordings and the French/Swedish recipes remain unchanged. No new migration, static assets or dependencies.
+Current increment: [owner-only Tools tab](../../docs/howto/community-tools.md) separates
+batch sentences, language versions, expression audio and image-only copies from
+Settings. English/French/Slovak navigation and return links are included. Existing
+task permissions and cost approvals are retained. No migration or dependency change;
+prepared for the first changed-release trial of supervised deployment.
+
+Previous increment: [carrier audio in additional languages](../../docs/howto/community-mwe-audio.md). French/Swedish laptop and AWS paired evaluations are complete; German, Italian and Icelandic batches plus explicit Japanese selection are prepared for listening tests. Original recordings and the French/Swedish recipes remain unchanged. No new migration, static assets or dependencies.
 
 Earlier increment: [human evaluation](../../docs/howto/community-evaluation.md), with [installation and laptop/AWS trial](../../docs/howto/community-evaluation-install.md). Adds private self-reported language competence, owner-created reproducible samples, independent resumable ratings, fixed content versions, owner-only summaries/CSV and ordinal inter-rater agreement. Source withdrawal and evaluator departure are honoured. Optional signed-in visitor evaluation requires explicit owner enablement and live public browsing. Migration 0024 is additive; one new static script. No AI evaluation calls or queue changes. Local automated checks pass; human laptop/AWS acceptance is pending.
 

@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 90
-- **As of:** 2026-10-21
-- **Assessed commit:** `45a907f47477894075bd48d2731823ff27715cb2`
+- **Workspace revision:** 91
+- **As of:** 2026-10-30
+- **Assessed commit:** `db1557ce1ae4f19245624a48a04d7aafb8c857cb`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Manny requests an initial stage-(1a) deployment patch and a working document for direct AI-led collaboration. The agreed progression is automated installation with human laptop acceptance, then AI functional testing, then AWS staging. An opt-in code/static-only controller and private workflow templates are prepared against current main, preserving the separate localisation work. Linux deployment/recovery tests and Django regressions pass; no live Windows runner, AWS permissions, deployment, provider request or stakeholder communication has been performed. One-time connection setup and exact-commit laptop/AWS rehearsals are the next gates. The broader governance document is a discussion draft, not delegated authority. Previously recorded Slovak localisation, Ivana involvement and evaluation plans remain in place without new acceptance evidence from this task.
+The supervised deployment path has now completed a same-version rehearsal on the Windows laptop and AWS: the assistant verified workflow logs and the AWS receipt, and Manny reports normal browsing on both. Initial SSM submission failures were traced to a document absent from the deployment region and resolved. The next trial is a small visible change: an owner-only Tools tab separates batch content operations from Settings, with French and Slovak labels. Its local checks are distinct from pending laptop and AWS acceptance. Schema/dependency/controller changes still require separate handling; automated functional acceptance, AWS staging and sustained autonomy remain later goals. The direct-collaboration governance draft remains a discussion proposal.
 
 ## Factual observations
 
@@ -1079,6 +1079,22 @@ Prepared a stdlib code/static-only deployment controller, separate private GitHu
 - **Confidence:** high
 - **Evidence:** [`ops/community_deploy/README.md`](../ops/community_deploy/README.md), [`docs/howto/community-deployment-stage-a.md`](../howto/community-deployment-stage-a.md), [`docs/roadmap/community-dictionary-ai-led-collaboration.md`](../roadmap/community-dictionary-ai-led-collaboration.md), [`experiments/community_dictionary/deployment-stage-a-2026-10-21.md`](../experiments/community_dictionary/deployment-stage-a-2026-10-21.md)
 
+### OBS-0134
+
+The Windows laptop and AWS supervised deployment path successfully reinstalled db1557c on both hosts. The assistant inspected successful GitHub logs and downloaded the AWS receipt: installed, expected/current application commits matching, 21 recorded checks passed, including service restart. Manny reports normal browsing. Earlier SendCommand attempts were rejected because the fixed SSM document was absent from the deployment region; creating it there resolved the problem. This establishes a same-version supervised rehearsal, not yet a changed release or AI functional acceptance.
+
+- **Observed:** 2026-10-30
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/deployment-and-tools-2026-10-30.md`](../experiments/community_dictionary/deployment-and-tools-2026-10-30.md)
+
+### OBS-0135
+
+Manny proposes moving batch operations from Settings into a separate tab as the first visible deployment experiment. The prepared owner-only Tools tab groups missing sentences, language versions/vocabulary, expression audio and image-only copies. Configuration stays in Settings. Existing operations, cost approvals and URLs are preserved; French/Slovak labels and return links are supplied. The 85-test focused suite and full 728-test Community Dictionaries suite pass after restoring unchanged resources missing from the fresh local inspection checkout. Live acceptance of the new UI is pending.
+
+- **Observed:** 2026-10-30
+- **Confidence:** high
+- **Evidence:** [`docs/howto/community-tools.md`](../howto/community-tools.md), [`platform_server/community_dictionary/templates/community_dictionary/tools.html`](../platform_server/community_dictionary/templates/community_dictionary/tools.html), [`platform_server/community_dictionary/tests/test_settings_and_pictures.py`](../platform_server/community_dictionary/tests/test_settings_and_pictures.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -1182,12 +1198,12 @@ Paired deployed French/Swedish results support the optional carrier batch as a u
 
 ### ASM-0012
 
-Reducing Manny’s operational and coordination burden now has an explicitly requested first implementation: a bounded deployment controller with human functional acceptance before production. This advances from a proposed experiment to prepared infrastructure, while the required connection and live host rehearsals remain unestablished. Tests demonstrate disposable Linux installation/recovery and application integration, not independent AWS operation or native Windows success. Restrict the first controller to compatible code/static changes; schema/dependency and controller-policy releases remain separate. The conceptual-work draft proposes direct user clarification and decision records, but does not grant communication or community policy authority. Measure total human effort, end-to-end accepted requests, reliability and recovery across stages, rather than equating successful model-generated patches or automatic content generation with autonomous maintenance.
+The deployment experiment has advanced from prepared infrastructure to an observed Windows-laptop-to-AWS same-version installation with human functional checks. This removes the initial connection/setup blocker and makes a small changed-release trial worthwhile. The Tools navigation request supplies that concrete trial. Keep production acceptance with Manny, and retain the compatible code/static boundary. Measure effort, failures and recovery across real releases before inferring reduced long-run maintenance burden. AI functional acceptance, AWS staging and direct stakeholder coordination remain unestablished; the governance draft still grants no communication or community-policy authority.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0132`, `OBS-0133`
-- **Urgency / risk / progress:** rehearse_supervised_deployment_before_routine_use / medium / stage_a_controller_prepared_live_connection_and_acceptance_pending
-- **Confidence:** medium
+- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`, `OBS-0108`, `OBS-0109`, `OBS-0132`, `OBS-0133`, `OBS-0134`, `OBS-0135`
+- **Urgency / risk / progress:** complete_first_changed_release_trial / medium / stage_a_same_version_rehearsal_passed_tools_release_prepared
+- **Confidence:** high
 
 ### ASM-0013
 
@@ -1230,7 +1246,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0013`
 - **UNC-0013:** Slovak catalog and configuration checks can establish coverage, valid placeholders/plurals and selection behaviour, but Ivana or another proficient speaker still needs to review wording and real use. The new locale initially covers the same marked interface surface as French; unmarked advanced strings may remain English. Manny reports a Slovak/English dictionary, whereas English/Slovak content has not yet been created or inspected in this session. Actual conversion needs the existing cost/permission approval and linguistic/audio review. No paid request or new Slovak carrier listening result is implied by interface localisation.
   - **Assessments:** `ASM-0011`, `ASM-0013`
-- **UNC-0014:** Native Windows runner behaviour, environment inheritance, GitHub workflow cleanup, AWS service/permissions/readiness and IAM/SSM connection require real rehearsal. Deployment authority can access application data through deployed code; content-free receipts do not imply a cryptographic data barrier. The manual acceptance identity assumes trusted control-repository writers. Direct stakeholder communication and shared decision rights remain proposals requiring agreement; no performance or reduction-of-human-effort result is established.
+- **UNC-0014:** The same-version Windows/AWS deployment path has passed with human browsing acceptance. A changed-release trial, production rollback under failure, sustained operation and reduced total human effort remain unverified. The connector can prepare releases and inspect runs, but a new manual workflow dispatch still needs Manny in the current setup. Deployed application code retains access to application data; receipts are not a data-isolation barrier. The acceptance identity assumes trusted control-repository writers. Direct stakeholder communication and shared decision rights remain proposals requiring agreement.
   - **Assessments:** `ASM-0012`
 
 ## Questions for human refinement
@@ -1277,7 +1293,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0013`
 - **ACT-0015:** Finish verification and deliver the Slovak locale patch with installation and English/Slovak conversion instructions. Have Ivana or another proficient Slovak speaker review wording, remembered interface preference and the English-learning path. Use the existing owner-approved conversion workflow to create or update an English/Slovak dictionary, checking its estimate and results before accepting content. Record actual trial, linguistic/audio issues and deployment separately; preserve the existing Slovak/English dictionary and all unrelated content.
   - **Assessments:** `ASM-0011`, `ASM-0013`
-- **ACT-0016:** Deliver the patch and working draft, install normally on the laptop with deployment mode initially disabled, then bootstrap the external controller/private connection and rehearse exact-commit startup and a small visible release. Configure AWS only after laptop acceptance, verify the fixed role/document and all instrumented processes, and preserve explicit acceptance before the same commit reaches production. Discuss the governance draft with interested members before initiating direct AI collaboration; do not infer authorisation to send messages.
+- **ACT-0016:** Prepare the Tools change as an exact code-only release; run a fresh laptop workflow on the new control commit, obtain Manny’s UI acceptance, then deploy the same app commit to AWS and verify receipt and browsing. Preserve the existing restrictions and record outcomes separately from the same-version rehearsal. Improve safe cloud-controller error reporting in a later controller update. Discuss the governance draft before initiating direct AI collaboration; no messages are authorised.
   - **Assessments:** `ASM-0012`
 
 ## Open predictions
@@ -1310,8 +1326,8 @@ None. This revision uses neutral factual and assessment language.
 ## Approval and revision
 
 - **Status:** autonomous_project_manager_update
-- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-21
-- **Basis:** Manny explicitly requests a stage-(1a) functionality patch and the first working document. AGENTS.md requires reflecting material progress and boundaries in derived state.
-- **Comments:** Preparation and local verification only. No live deployment, remote commit, cloud provisioning, external message, paid request or human-intention change. Other-thread localisation state is preserved.
-- **Change summary:** Recorded the staged deployment request and prepared bounded stage-(1a) infrastructure plus a collaboration discussion draft; distinguish local tests from pending live setup and acceptance.
+- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-30
+- **Basis:** AGENTS.md requires reflection on material new evidence. Manny reports successful AWS browsing after the verified deployment rehearsal and requests a visible Tools navigation change.
+- **Comments:** Record verified rehearsal and prepared UI change separately from pending live acceptance. No change to human-owned intentions, provider calls or collaborator messages.
+- **Change summary:** Recorded successful supervised same-version laptop/AWS deployment and the prepared owner-only Tools tab for a first changed-release trial. Retired setup uncertainty while retaining human acceptance and later autonomy gates.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

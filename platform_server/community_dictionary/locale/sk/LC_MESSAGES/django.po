@@ -5774,3 +5774,15 @@ msgstr "Slovenčina"
 #: community_dictionary/localisation.py
 msgid "Choose an interface language."
 msgstr "Vyberte jazyk rozhrania."
+
+msgid "Tools"
+msgstr "Nástroje"
+
+msgid "Back to Tools"
+msgstr "Späť na nástroje"
+
+msgid "These operations are also available from the Tools tab."
+msgstr "Tieto operácie sú dostupné aj na karte Nástroje."
+
+msgid "Work on many entries at once. Choose an operation to see its options before starting."
+msgstr "Pracujte s viacerými heslami naraz. Vyberte operáciu a pred spustením si pozrite jej možnosti."

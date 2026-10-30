@@ -3,7 +3,7 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Settings" %}</h1>
 {% if owner %}
-<section class="panel" id="workflow-suggestions"><h2>{% translate "Workflow suggestions" %}</h2><p>{% translate "Show a useful next step while browsing and on your dictionary card. Suggestions are for the owner only. Nothing is sent to AI until you approve the displayed scope and cost." %}</p><form method="post" action="{% url 'community_dictionary:workflow-setting' dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ dictionary.workflow_suggestions_revision }}">{% if dictionary.show_workflow_suggestions %}<p><strong>{% translate "On" %}</strong></p><button class="secondary" name="action" value="disable">{% translate "Turn off workflow suggestions" %}</button>{% else %}<p><strong>{% translate "Off" %}</strong></p><button name="action" value="enable">{% translate "Show workflow suggestions" %}</button>{% endif %}</form><p class="help">{% translate "The other Settings controls remain available either way." %}</p></section>
+<section class="panel" id="workflow-suggestions"><h2>{% translate "Workflow suggestions" %}</h2><p>{% translate "Show a useful next step while browsing and on your dictionary card. Suggestions are for the owner only. Nothing is sent to AI until you approve the displayed scope and cost." %}</p><form method="post" action="{% url 'community_dictionary:workflow-setting' dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ dictionary.workflow_suggestions_revision }}">{% if dictionary.show_workflow_suggestions %}<p><strong>{% translate "On" %}</strong></p><button class="secondary" name="action" value="disable">{% translate "Turn off workflow suggestions" %}</button>{% else %}<p><strong>{% translate "Off" %}</strong></p><button name="action" value="enable">{% translate "Show workflow suggestions" %}</button>{% endif %}</form><p class="help">{% translate "These operations are also available from the Tools tab." %}</p></section>
 <section class="panel" id="discoverability"><h2>{% translate "Discoverability" %}</h2><p><strong>{% if dictionary.discoverable and not dictionary.hidden %}{% translate "On — listed in Find dictionaries" %}{% else %}{% translate "Off — not listed" %}{% endif %}</strong></p>
 <p>{% translate "List this dictionary's name, languages and accepted entry counts so anyone can find it and ask to join. Your chosen public name is shown only if you opt into the contributor listing in Profile. Contents remain private unless you separately enable public browsing below." %}</p>
 <form method="post" action="{% url 'community_dictionary:discovery-setting' dictionary.pk %}">{% csrf_token %}{{ discovery_form.revision }}{% if dictionary.discoverable %}<button class="secondary" name="action" value="disable">{% translate "Turn off discoverability" %}</button>{% elif dictionary.hidden %}<p>{% translate "Make this dictionary visible before listing it." %}</p>{% else %}<button name="action" value="enable">{% translate "Make dictionary discoverable" %}</button>{% endif %}</form>
@@ -27,11 +27,6 @@
 </section>
 <section class="panel" id="dictionary-name"><h2>{% translate "Rename dictionary" %}</h2>
 <form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">{% translate "Save name" %}</button></form></section>
-<section class="panel"><h2>{% translate "Expression audio pilot" %}</h2><p>{% translate "Try carrier-based AI audio for English, French, Swedish, German, Italian and Icelandic multi-word entries, or explicitly selected Japanese entries. Earlier audio is retained; human recordings are protected." %}</p><a class="button secondary" href="{% url 'community_dictionary:mwe-audio' dictionary.pk %}">{% translate "Regenerate AI expression audio" %}</a></section>
-<section class="panel"><h2>{% translate "Add missing sentences" %}</h2>
-<p>{% translate "Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions." %}</p>
-<a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">{% translate "Add missing sentences" %}</a>
-</section>
 <section class="panel" id="dictionary-visibility"><h2>{% translate "Dictionary visibility" %}</h2>
 <p><strong>{% if dictionary.hidden %}{% translate "Hidden" %}{% else %}{% translate "Visible" %}{% endif %}</strong> {% translate "in the dictionary list." %}</p>
 <p class="help">{% translate "Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Hiding also turns off discoverability and public browsing; making it visible again does not turn either back on. Content and contribution rights are unchanged." %}</p>
@@ -46,14 +41,6 @@
 {% csrf_token %}{{ capture_allowance_form.as_p }}<button name="action" value="preview">{% translate "Preview daily cost" %}</button></form>
 <p class="help">{% translate "Review the estimate, then confirm. The new allowance applies to Picture descriptions; other AI tools have their own limits." %}</p>
 {% else %}<p>{% translate "The server administrator has paused new picture-description requests." %}</p>{% endif %}
-</section>
-<section class="panel"><h2>{% translate "Language versions" %}</h2>
-<a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">{% translate "Create a version in another language" %}</a>
-{% if dictionary.language_port %}<p><a class="button secondary" href="{% url 'community_dictionary:port-vocabulary' dictionary.language_port.source_id dictionary.language_port.pk %}">{% translate "Build or update vocabulary from accepted sentences" %}</a></p><p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">{% translate "Update this version from its source dictionary" %}</a></p>{% endif %}
-<p class="help">{% translate "Preview the cost, approve processing, then review the translated entries." %}</p></section>
-<section class="panel"><h2>{% translate "Testing picture descriptions" %}</h2>
-<p>{% translate "Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review." %}</p>
-<a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">{% translate "Create an image-only copy" %}</a>
 </section>
 <section class="panel"><h2>{% translate "Dictionary settings" %}</h2>
 <form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>{% translate "Save settings" %}</button></form>
