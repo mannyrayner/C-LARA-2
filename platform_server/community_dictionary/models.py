@@ -48,6 +48,28 @@ class Dictionary(models.Model):
         return self.name
 
 
+class DictionaryLearningSettings(models.Model):
+    """Optional generation preferences; existing content is never rewritten."""
+    dictionary = models.OneToOneField(Dictionary, on_delete=models.CASCADE, related_name='learning_settings')
+    level = models.CharField(max_length=20, default='beginner', choices=[
+        ('beginner', 'Beginner'), ('low_intermediate', 'Low intermediate'),
+        ('high_intermediate', 'Higher intermediate'), ('advanced', 'Advanced')])
+
+
+class ContributionPreference(models.Model):
+    """A member's durable workflow choice and scoped standing AI consent."""
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    mode = models.CharField(max_length=10, default='manual', choices=[
+        ('manual', 'Usual contribution form'), ('writing', 'Writing practice'),
+        ('guided', 'Picture, confirm and finish')])
+    consent = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['dictionary', 'user'], name='cd_contribution_preference')]
+
+
 class CommunityProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_profile')
     public_name = models.CharField(max_length=100, blank=True)
