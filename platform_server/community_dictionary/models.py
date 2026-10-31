@@ -314,7 +314,7 @@ class Request(models.Model):
 
 
 class Contribution(models.Model):
-    KINDS = [('text', 'Written information'), ('image', 'Picture'), ('audio', 'Recording'), ('note', 'Comment')]
+    KINDS = [('text', 'Written information'), ('image', 'Picture'), ('audio', 'Recording'), ('note', 'Comment'), ('form', 'Form in sentence')]
     STATUSES = [('pending', 'Awaiting review'), ('accepted', 'Accepted'), ('rejected', 'Changes requested'), ('withdrawn', 'Withdrawn'), ('removed', 'Removed'), ('superseded', 'Earlier copy')]
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='contributions')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
