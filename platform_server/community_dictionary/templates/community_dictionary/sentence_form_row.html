@@ -10,6 +10,8 @@
 {% else %}<span class="help">{% translate "No recording yet" %}</span>{% endif %}
 {% if row.form.meaning %}<details class="word-translation"><summary>{% translate "Translation" %}</summary><p dir="auto">{{ row.form.meaning }}</p></details>{% endif %}
 </div>
-{% if not public and editor and row.form.id %}<details><summary>{% translate "More options" %}</summary><a href="{% url 'community_dictionary:form-edit' dictionary.pk row.form.id %}">{% translate "Correct this translation" %}</a></details>{% endif %}
+{% if not public and editor and row.form.id %}<details><summary>{% translate "More options" %}</summary>
+{% if row.form.audio_method %}<p>{% translate "Audio method:" %} {{ row.form.audio_method }}</p>{% if row.form.audio_homographs %}<p>{% translate "English homographs detected:" %} {{ row.form.audio_homographs|join:", " }}</p>{% endif %}{% endif %}
+<a href="{% url 'community_dictionary:form-edit' dictionary.pk row.form.id %}">{% translate "Correct this translation" %}</a></details>{% endif %}
 <p class="help" data-word-playback-status role="status" hidden></p>
 </article>

@@ -2,13 +2,21 @@
 {% block content %}<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Forms used in sentences" %}</h1>
 <section class="panel"><h2>{{ run.status|capfirst }}</h2>
 <p>{% blocktranslate count n=rows|length %}{{ n }} sentence{% plural %}{{ n }} sentences{% endblocktranslate %} · {{ run.skipped }} {% translate "already complete or not needed" %}</p>
+{% if run.status != 'estimate' %}
+<div role="status" aria-live="polite">
+<p><strong>{% blocktranslate with done=progress.complete total=progress.total %}Sentences finished, including audio: {{ done }} / {{ total }}{% endblocktranslate %}</strong></p>
+<p>{% blocktranslate with done=progress.text_ready total=progress.total %}Sentence forms saved: {{ done }} / {{ total }}{% endblocktranslate %} · {% translate "Sentences needing attention:" %} {{ progress.failed }}</p>
+<p>{% blocktranslate with ready=progress.audio_ready total=progress.audio_total %}Recordings ready: {{ ready }} / {{ total }} created so far{% endblocktranslate %}<br>
+{% translate "Pending:" %} {{ progress.audio_pending }} · {% translate "Failed:" %} {{ progress.audio_failed }} · {% translate "Stopped:" %} {{ progress.audio_stopped }}</p>
+</div>
+{% endif %}
 <p>{% translate "Rough API estimate:" %} <strong>US${{ run.estimated_usd }}</strong> · {% translate "Maximum approved C-LARA allowance:" %} <strong>US${{ run.allowance_usd }}</strong></p>
 {% if run.payer == 'credits' %}<p>{% translate "Available credit: US$" %}{{ balance }} · {% translate "currently held: US$" %}{{ held }}</p>{% elif run.payer == 'personal' %}<p>{% translate "Billed to your personal OpenAI key. Its available balance cannot be checked here." %}</p>{% else %}<p>{% translate "Billed to the server operator; C-LARA credit charging is disabled." %}</p>{% endif %}
 <p class="help">{% translate "This is a planning estimate, not a provider invoice or spending cap. Successful results are added automatically. Failed items can be retried separately; completed work is kept." %}</p>
 {% if run.status == 'estimate' %}
 {% if not rows %}<p>{% translate "No sentence forms need processing." %}</p>{% elif expired %}<p>{% translate "This estimate expired. Prepare another below." %}</p>{% elif not enough_funds %}<p>{% translate "Insufficient C-LARA credit." %}</p>{% else %}
 <form method="post">{% csrf_token %}<label class="check"><input type="checkbox" name="approve" required> {% translate "I approve this allowance and have permission to send the sentences and vocabulary to OpenAI." %}</label><button name="action" value="approve">{% translate "Add sentence forms and audio" %}</button></form>{% endif %}
-{% elif run.status == 'running' %}<p>{% translate "Processing in the background. You may leave this page and return through Tools." %}</p><a class="button secondary" href="">{% translate "Refresh progress" %}</a><form method="post">{% csrf_token %}<button name="action" value="resume" class="secondary">{% translate "Resume interrupted work" %}</button></form>{% endif %}
+{% elif run.status == 'running' %}<p>{% translate "Processing in the background. You may leave this page and return through Tools." %}</p><a class="button secondary" href="{% url 'community_dictionary:forms-run' dictionary.pk run.pk %}">{% translate "Refresh progress" %}</a><form method="post">{% csrf_token %}<button name="action" value="resume" class="secondary">{% translate "Resume interrupted work" %}</button></form>{% endif %}
 </section>
 {% if budget_offer %}<section class="panel"><p>{% translate "More allowance is needed to finish. Additional allowance:" %} US${{ budget_offer.amount }}</p>{% if enough_extra_funds %}<form method="post">{% csrf_token %}<input type="hidden" name="budget_token" value="{{ budget_offer.token }}"><label><input name="approve" type="checkbox" required> {% translate "I approve the additional allowance" %}</label><button name="action" value="approve-more">{% translate "Continue" %}</button></form>{% else %}<p>{% translate "Insufficient C-LARA credit." %}</p>{% endif %}</section>{% endif %}
 {% for row in rows %}<section class="panel">

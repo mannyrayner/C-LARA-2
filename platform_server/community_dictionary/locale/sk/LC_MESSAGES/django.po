@@ -6240,3 +6240,48 @@ msgstr[0] "%(n)s veta"
 msgstr[1] "%(n)s vety"
 msgstr[2] "%(n)s viet"
 msgstr[3] "%(n)s vety"
+
+#, python-format
+msgid "Sentences finished, including audio: %(done)s / %(total)s"
+msgstr "Dokončené vety vrátane zvuku: %(done)s / %(total)s"
+
+#, python-format
+msgid "Sentence forms saved: %(done)s / %(total)s"
+msgstr "Uložené tvary vo vetách: %(done)s / %(total)s"
+
+msgid "Sentences needing attention:"
+msgstr "Vety vyžadujúce pozornosť:"
+
+#, python-format
+msgid "Recordings ready: %(ready)s / %(total)s created so far"
+msgstr "Hotové nahrávky: %(ready)s / %(total)s doteraz vytvorených"
+
+msgid "Pending:"
+msgstr "Čakajúce:"
+
+msgid "Failed:"
+msgstr "Neúspešné:"
+
+msgid "Stopped:"
+msgstr "Zastavené:"
+
+msgid "Whole-sentence recording"
+msgstr "Nahrávka celej vety"
+
+msgid "Carrier phrase with audio extraction"
+msgstr "Nosná veta s extrakciou zvuku"
+
+msgid "Pronunciation guidance for English homographs"
+msgstr "Pokyny k výslovnosti anglických homografov"
+
+msgid "Direct speech with language instructions"
+msgstr "Priama syntéza reči s jazykovými pokynmi"
+
+msgid "Audio method not recorded"
+msgstr "Metóda zvuku nie je zaznamenaná"
+
+msgid "Audio method:"
+msgstr "Metóda zvuku:"
+
+msgid "English homographs detected:"
+msgstr "Zistené anglické homografy:"

@@ -2,7 +2,7 @@ import copy
 import json
 import uuid
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from django.test import TestCase, override_settings, Client
 from django.urls import reverse
 from community_dictionary import capture, capture_ai, sentence_forms as sf, form_jobs, porting, port_tasks
@@ -14,6 +14,7 @@ from community_dictionary.lexicon import recordings
 from projects.models import CreditAccount, CreditLedgerEntry
 from . import test_picture_capture as fixtures
 from .test_picture_capture import response, RESULT, speech
+from . import test_tts_guidance as guidance_fixtures
 
 
 @override_settings(OPENAI_API_KEY='fixture-only', CREDITS_ENABLED=False,
@@ -219,6 +220,111 @@ class SentenceFormTests(TestCase):
         self.assertEqual(capture_ai.parse(response(data)),data)
         data['words'][0]['form_meaning']=[]
         with self.assertRaises(ValueError): capture_ai.parse(response(data))
+
+    def test_refresh_distinguishes_saved_forms_from_finished_recordings(self):
+        self.generated()
+        run=self.approve(form_jobs.quote(self.owner,self.d,uuid.uuid4()))
+        self.client.force_login(self.owner)
+        page=self.client.get(self.url('forms-run',run.pk))
+        self.assertContains(page,'Sentences finished, including audio: 0 / 1')
+        self.assertEqual(page.context['progress']['text_ready'],0)
+        self.assertIn('no-store',page['Cache-Control'])
+        with patch('community_dictionary.port_tasks.send'),patch.object(jobs,'send_speech'):
+            form_jobs.process(run.items.get().pk)
+        page=self.client.get(self.url('forms-run',run.pk))
+        self.assertEqual(page.context['progress']['text_ready'],1)
+        self.assertEqual(page.context['progress']['audio_pending'],3)
+        self.assertEqual(page.context['progress']['complete'],0)
+        clips=list(run.speech.order_by('pk'))
+        PortSpeech.objects.filter(pk=clips[0].pk).update(status='ready')
+        PortSpeech.objects.filter(pk=clips[1].pk).update(status='failed')
+        PortSpeech.objects.filter(pk=clips[2].pk).update(status='budget')
+        page=self.client.get(self.url('forms-run',run.pk))
+        p=page.context['progress']
+        self.assertEqual((p['audio_ready'],p['audio_failed'],p['audio_pending'],p['complete']),(1,1,1,0))
+        self.assertEqual(p['failed'],1)
+        run.speech.update(status='ready')
+        page=self.client.get(self.url('forms-run',run.pk))
+        self.assertContains(page,'Sentences finished, including audio: 1 / 1')
+        self.assertEqual(page.context['progress']['audio_ready'],3)
+
+    def test_progress_reads_are_bounded_and_hide_private_or_changed_sources(self):
+        for _ in range(3):self.generated()
+        run=form_jobs.quote(self.owner,self.d,uuid.uuid4())
+        with self.assertNumQueries(2):
+            rows,progress=form_jobs.progress_rows(run,self.d)
+        self.assertEqual(progress['total'],3)
+        self.assertTrue(all(row['entry'] for row in rows))
+        first=run.items.first()
+        Entry.objects.filter(pk=first.source_entry_id).update(archived=True)
+        rows,_=form_jobs.progress_rows(run,self.d)
+        self.assertIsNone(next(row['entry'] for row in rows if row['item'].pk==first.pk))
+        from community_dictionary.models import Dictionary
+        private=Dictionary.objects.create(owner=self.outsider,name='Private',language='French',personal=True)
+        other=run.items.exclude(pk=first.pk).first()
+        Entry.objects.filter(pk=other.source_entry_id).update(dictionary=private)
+        rows,_=form_jobs.progress_rows(run,self.d)
+        self.assertIsNone(next(row['entry'] for row in rows if row['item'].pk==other.pk))
+        Entry.objects.filter(pk=first.source_entry_id).update(archived=False)
+        add_contributions(first.source_entry,self.owner,{'word':'Changed wording.'},[],publish=True)
+        rows,_=form_jobs.progress_rows(run,self.d)
+        self.assertIsNone(next(row['entry'] for row in rows if row['item'].pk==first.pk))
+
+    def french_form(self):
+        self.d.language='French';self.d.save()
+        data={'outcome':'ready','feedback':'Confirm?', 'sentence':'La fille pose un livre.',
+              'translation':'The girl puts down a book.', 'words':[
+                  {'lemma':'poser','meaning':'put down','surface':'pose','existing_id':0}]}
+        study,entry=self.generated(data)
+        return study,entry,entry.contributions.get(kind='form',word='pose')
+
+    def check_french_coach(self, coach, spoken, part):
+        request=json.loads(coach.call_args.kwargs['input'])
+        self.assertEqual(request['word'],'pose')
+        self.assertEqual(request['target_language'],'fr')
+        self.assertEqual(request['meaning'],part.meaning)
+        self.assertEqual(request['meaning_language'],'English')
+        self.assertEqual(spoken.call_args.kwargs['input'],'pose')
+        self.assertIn('/poz/',spoken.call_args.kwargs['instructions'])
+        audio=sf.audio(part)
+        self.assertEqual(audio.provenance['synthesis']['english_homographs'],['pose'])
+        self.assertEqual(str(sf.audio_details(audio)['audio_method']),
+                         'Pronunciation guidance for English homographs')
+
+    def test_capture_form_homograph_uses_actual_french_guidance_adapter(self):
+        study,entry,part=self.french_form()
+        clip=study.speech.get(kind='form')
+        patch.stopall()  # Only mock the provider below, not tts.synthesize.
+        coach=Mock(return_value=guidance_fixtures.guidance(ipa='poz',definition='met un objet quelque part'))
+        with guidance_fixtures.provider(coaching=coach) as (coach,spoken,_):
+            capture.speak(clip.pk)
+        self.check_french_coach(coach,spoken,part)
+
+    def test_backfill_form_homograph_uses_actual_french_guidance_adapter(self):
+        study,entry,part=self.french_form()
+        run=self.approve(form_jobs.quote(self.owner,self.d,uuid.uuid4()))
+        with patch('community_dictionary.port_tasks.send'),patch.object(jobs,'send_speech'):
+            form_jobs.process(run.items.get().pk)
+        clip=run.speech.get()
+        patch.stopall()
+        coach=Mock(return_value=guidance_fixtures.guidance(ipa='poz',definition='met un objet quelque part'))
+        with guidance_fixtures.provider(coaching=coach) as (coach,spoken,_),patch.object(jobs,'send_speech'):
+            jobs.speak(clip.pk)
+        self.check_french_coach(coach,spoken,part)
+        self.client.force_login(self.owner)
+        self.assertContains(self.client.get(self.url('entry',entry.pk)),
+                            'Pronunciation guidance for English homographs')
+        self.d.public_browsing_enabled=True;self.d.save()
+        self.assertNotContains(Client().get(self.url('public-entry',entry.pk)),'Audio method:')
+
+    def test_audio_method_does_not_claim_unrecorded_guidance_or_extraction(self):
+        source=Mock(provenance={})
+        self.assertEqual(str(sf.audio_details(source)['audio_method']),'Audio method not recorded')
+        source.provenance={'synthesis':{'instructions':'French instructions','english_homographs':['pose']}}
+        self.assertEqual(str(sf.audio_details(source)['audio_method']),'Direct speech with language instructions')
+        source.provenance={'synthesis':{'strategy':'mwe_carrier'}}
+        self.assertEqual(str(sf.audio_details(source)['audio_method']),'Carrier phrase with audio extraction')
+        self.assertEqual(str(sf.audio_details(source,in_sentence=True)['audio_method']),'Whole-sentence recording')
 
 
 from . import test_guided as guided_fixtures, test_port_vocabulary as port_fixtures

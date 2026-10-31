@@ -6,6 +6,7 @@ import logging
 import uuid
 from django import forms
 from django.db import transaction
+from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -206,6 +207,43 @@ class QuoteForm(forms.Form):
     entry_id = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
 
+def progress_rows(run, dictionary):
+    """Read current job state in two queries; do not revalidate every word on GET.
+
+    Publication and retry approval still use the full current_item checks. A
+    saved text item is not finished until its queued recordings are ready too.
+    """
+    items = list(run.items.select_related('source_entry__dictionary', 'source_entry__current_text'))
+    audio = {}
+    for group in run.speech.values('item_id', 'status').annotate(n=Count('pk')):
+        audio.setdefault(group['item_id'], {})[group['status']] = group['n']
+    progress = dict(total=len(items), text_ready=0, complete=0, failed=0,
+                    audio_total=0, audio_ready=0, audio_pending=0, audio_failed=0, audio_stopped=0)
+    rows = []
+    for item in items:
+        counts = audio.get(item.pk, {})
+        total = sum(counts.values())
+        ready = counts.get('ready', 0)
+        failed = counts.get('failed', 0)
+        pending = sum(counts.get(s, 0) for s in ('waiting', 'queued', 'running', 'budget'))
+        progress['text_ready'] += item.status == 'saved'
+        progress['complete'] += item.status == 'saved' and ready == total
+        progress['failed'] += item.status == 'failed' or failed > 0
+        for name, value in [('total', total), ('ready', ready), ('pending', pending),
+                            ('failed', failed), ('stopped', total-ready-pending-failed)]:
+            progress['audio_'+name] += value
+        entry = item.source_entry
+        # Never display a withdrawn/private source, or label a changed sentence
+        # as the one processed by this job. Counts contain no source content.
+        if (item.invalidated or entry.dictionary_id != dictionary.pk or entry.archived or
+                not entry.current_text or entry.current_text.status != 'accepted' or
+                entry.current_text_id != item.snapshot.get('sentence', {}).get('fields', {}).get('word')):
+            entry = None
+        rows.append({'item':item, 'entry':entry, 'failed_audio':failed,
+                     'pending_audio':pending, 'token':uuid.uuid4()})
+    return rows, progress
+
+
 @page(['GET','POST'])
 def start(request, pk):
     dictionary = get_dictionary(request.user, pk); require_owner(request.user, dictionary)
@@ -234,17 +272,11 @@ def detail(request, pk, run_id):
             port_budget.approve_more(request.user, run.pk, request.POST.get('budget_token',''))
         else: raise Conflict('Unknown action.')
         return redirect('community_dictionary:forms-run', pk=pk, run_id=run.pk)
-    rows = []
-    for item in run.items.select_related('source_entry__dictionary','source_entry__current_text'):
-        item.run = run
-        try: entry = current_item(item)
-        except (Conflict, Http404): entry = None
-        rows.append({'item':item, 'entry':entry, 'failed_audio':item.speech.filter(status='failed').count(),
-            'pending_audio':item.speech.filter(status__in=['waiting','queued','running','budget']).count(), 'token':uuid.uuid4()})
+    rows, progress = progress_rows(run, dictionary)
     balance = get_user_balance_usd(request.user) if run.payer == 'credits' else None
     offer = port_budget.offer(run)
     return render(request, 'community_dictionary/forms_run.html', context(request, dictionary,
-        run=run, rows=rows, balance=balance, enough_funds=balance is None or balance >= run.allowance_usd,
+        run=run, rows=rows, progress=progress, balance=balance, enough_funds=balance is None or balance >= run.allowance_usd,
         expired=run.expires_at<=timezone.now(), held=0 if run.settled else run.reserved_usd-run.released_usd,
         budget_offer=offer, enough_extra_funds=not offer or balance is None or balance>=offer['amount']))
 

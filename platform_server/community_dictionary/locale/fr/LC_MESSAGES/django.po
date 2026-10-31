@@ -6333,3 +6333,48 @@ msgid "%(n)s sentence"
 msgid_plural "%(n)s sentences"
 msgstr[0] "%(n)s phrase"
 msgstr[1] "%(n)s phrases"
+
+#, python-format
+msgid "Sentences finished, including audio: %(done)s / %(total)s"
+msgstr "Phrases terminées, audio compris : %(done)s / %(total)s"
+
+#, python-format
+msgid "Sentence forms saved: %(done)s / %(total)s"
+msgstr "Formes enregistrées : %(done)s / %(total)s"
+
+msgid "Sentences needing attention:"
+msgstr "Phrases à vérifier :"
+
+#, python-format
+msgid "Recordings ready: %(ready)s / %(total)s created so far"
+msgstr "Enregistrements prêts : %(ready)s / %(total)s créés à ce stade"
+
+msgid "Pending:"
+msgstr "En attente :"
+
+msgid "Failed:"
+msgstr "Échecs :"
+
+msgid "Stopped:"
+msgstr "Arrêtés :"
+
+msgid "Whole-sentence recording"
+msgstr "Enregistrement de la phrase entière"
+
+msgid "Carrier phrase with audio extraction"
+msgstr "Phrase porteuse avec extraction audio"
+
+msgid "Pronunciation guidance for English homographs"
+msgstr "Consignes de prononciation pour les homographes anglais"
+
+msgid "Direct speech with language instructions"
+msgstr "Synthèse directe avec consignes de langue"
+
+msgid "Audio method not recorded"
+msgstr "Méthode audio non enregistrée"
+
+msgid "Audio method:"
+msgstr "Méthode audio :"
+
+msgid "English homographs detected:"
+msgstr "Homographes anglais détectés :"

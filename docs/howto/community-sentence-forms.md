@@ -16,7 +16,13 @@ additional dictionary entries.
 For separated expressions such as **zieht … an**, the contextual translation is
 shown but playback uses the whole sentence, explicitly labelled as such. The
 application does not synthesize an artificial phrase by joining separated parts.
-Continuous multiword forms use the existing hybrid TTS strategy.
+Continuous forms currently use the ordinary lexical TTS route, including enriched
+pronunciation guidance when English homographs are detected. Carrier extraction
+is still an explicit expression-audio regeneration pilot for word pages; it is
+not automatically used for new forms. Earlier wording incorrectly implied this
+was already the default. Under a form's **More options**, editors can inspect the
+audio method and detected English homographs from the saved generation report.
+These describe the method used, not a guarantee of correct pronunciation.
 
 ## Existing dictionaries
 
@@ -27,7 +33,10 @@ The owner opens **Tools → Add missing sentence forms**:
    the allowance to begin. Insufficient C-LARA credit prevents approval; balances
    behind personal API keys cannot be inspected.
 3. Return to the progress page through Tools. Processing continues in the
-   background. Completed translations remain if an audio request fails.
+   background. **Refresh progress** shows separate counts for saved forms,
+   sentences finished including audio, and ready/pending/failed recordings.
+   The recording total grows as sentence processing creates recording jobs.
+   Completed translations remain if an audio request fails.
 4. Use the per-sentence retry estimate for an incomplete result, or request a new
    estimate for the dictionary. Valid completed work is skipped. Audio-only retries
    reuse the saved contextual gloss and do not request another translation.

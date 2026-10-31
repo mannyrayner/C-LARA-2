@@ -5,6 +5,7 @@ normal withdrawal/restore semantics; exact input revisions prevent stale use.
 No provider calls or writes happen during presentation.
 """
 import re
+from django.utils.translation import gettext_lazy as _
 from .models import Contribution, ContributionDependency, SentenceWord
 from .capture_vocabulary import aligned_surface, identity
 from .services import Conflict
@@ -107,6 +108,26 @@ def publish(link, meaning, user, provenance, *, replace=None):
     return part
 
 
+def audio_details(recording, *, in_sentence=False):
+    """Explain recorded provenance, without claiming the pronunciation is good."""
+    if not recording:
+        return {}
+    source = recording.provenance
+    report = source.get('synthesis') or {}
+    if in_sentence:
+        method = _('Whole-sentence recording')
+    elif report.get('strategy') in {'mwe_carrier', 'lexical_carrier'} or str(
+            report.get('instructions_version', source.get('instructions_version', ''))).startswith('carrier-'):
+        method = _('Carrier phrase with audio extraction')
+    elif report.get('guidance') and report.get('english_homographs'):
+        method = _('Pronunciation guidance for English homographs')
+    elif report.get('instructions'):
+        method = _('Direct speech with language instructions')
+    else:
+        method = _('Audio method not recorded')
+    return {'audio_method':method, 'audio_homographs':report.get('english_homographs', [])}
+
+
 def presentation(link, *, public=False):
     if not different(link.surface, link.word_text.word):
         return {}
@@ -126,6 +147,7 @@ def presentation(link, *, public=False):
         result['audio'] = media_row(recording) if recording else None
     else:
         result['audio'] = recording
+        result.update(audio_details(recording, in_sentence=in_sentence))
     return result
 
 
