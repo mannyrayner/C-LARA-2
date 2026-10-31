@@ -88,6 +88,9 @@ def credentials(item):
 
 
 def process_item(item_id):
+    if fetch(item_id).run.stage == 'homographs':
+        from .homograph_experiments import process
+        return process(item_id)
     if fetch(item_id).run.stage == 'forms':
         from .form_jobs import process
         return process(item_id)
@@ -322,6 +325,9 @@ def resume(user,run_id):
     """Safe broker recovery and explicit expiry, without repeating uncertain calls."""
     porting.locks()
     run = PortRun.objects.select_for_update(of=('self',)).select_related('port__user').get(pk=run_id,port__user=user)
+    if run.stage == 'homographs':
+        from .homograph_experiments import resume as resume_experiment
+        return resume_experiment(user, run_id)
     if run.options.get('automatic_child'):
         resume(user, run.options['automatic_child'])
     cutoff = timezone.now()-timedelta(minutes=15)

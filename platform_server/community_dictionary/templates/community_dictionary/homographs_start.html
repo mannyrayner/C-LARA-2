@@ -1,0 +1,8 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Homograph audio experiment" %}</h1>
+<p>{% translate "Compare the current pronunciation-guidance method with a native-language carrier phrase followed by audio extraction. Both generate fresh recordings with the same voice. Existing dictionary audio is kept." %}</p>
+<p>{% translate "Choose words below, then check the cost before starting. Each take produces two recordings in shuffled A/B order. Save your ratings before revealing the methods; full carrier recordings are available afterwards." %}</p>
+<p class="help">{% translate "This pilot covers English homographs in French, Swedish, German, Italian and Icelandic. It includes accepted dictionary words and current sentence forms. Selected text and meanings are sent to OpenAI; images and existing recordings are not sent." %}</p>
+{% if available %}<form method="post">{% csrf_token %}{{ form.as_p }}<button>{% translate "Estimate experiment" %}</button></form>{% else %}<p>{% translate "No eligible words or sentence forms are currently available." %}</p>{% endif %}
+{% if runs %}<h2>{% translate "Your experiments" %}</h2><ul>{% for run in runs %}<li><a href="{% url 'community_dictionary:homographs-run' dictionary.pk run.pk %}">{{ run.created_at }} · {{ run.status }}</a></li>{% endfor %}</ul>{% endif %}
+{% endblock %}

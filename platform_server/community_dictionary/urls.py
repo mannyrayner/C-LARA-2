@@ -10,10 +10,14 @@ from . import evaluation_views, mwe_audio
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
-from . import writing_views, guided_views, form_jobs
+from . import writing_views, guided_views, form_jobs, homograph_experiments
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/tools/homograph-audio/', homograph_experiments.start, name='homographs-start'),
+    path('<int:pk>/tools/homograph-audio/<uuid:run_id>/', homograph_experiments.detail, name='homographs-run'),
+    path('<int:pk>/tools/homograph-audio/<uuid:run_id>/export/', homograph_experiments.export, name='homographs-export'),
+    path('<int:pk>/tools/homograph-audio/<uuid:run_id>/<int:item_id>/<str:clip_id>/', homograph_experiments.media, name='homographs-media'),
     path('<int:pk>/tools/sentence-forms/', form_jobs.start, name='forms-start'),
     path('<int:pk>/tools/sentence-forms/<uuid:run_id>/', form_jobs.detail, name='forms-run'),
     path('<int:pk>/sentence-forms/<int:part_id>/edit/', form_jobs.edit, name='form-edit'),

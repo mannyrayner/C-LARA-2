@@ -1,0 +1,40 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Homograph audio experiment" %}</h1>
+<section class="panel"><h2>{{ run.status|capfirst }}</h2>
+<p>{{ run.port.language }} · {{ run.port.voice }} · {% blocktranslate %}{{ total }} planned recordings{% endblocktranslate %}</p>
+<p>{% translate "Rough API estimate:" %} <strong>US${{ run.estimated_usd }}</strong> · {% translate "Approved allowance:" %} US${{ run.allowance_usd }}</p>
+{% if run.payer == 'credits' %}<p>{% translate "Available credit: US$" %}{{ balance }} · {% translate "currently held: US$" %}{{ held }}</p>{% elif run.payer == 'personal' %}<p>{% translate "Billed to your personal OpenAI key. Its available balance cannot be checked here." %}</p>{% else %}<p>{% translate "Billed to the server operator; C-LARA credit charging is disabled." %}</p>{% endif %}
+<p class="help">{% translate "Estimates are not invoices or provider spending caps. Carrier extraction permits up to five completed attempts per take; network failures are not automatically retried. Failed recordings remain part of the experiment." %}</p>
+{% if run.status == 'estimate' %}
+{% if expired %}<p>{% translate "This estimate expired. Create a new experiment." %}</p>{% elif not enough_funds %}<p>{% translate "Insufficient C-LARA credit." %}</p>{% else %}<form method="post">{% csrf_token %}<label class="check"><input name="approve" type="checkbox" required> {% translate "I approve the displayed allowance and have permission to send the selected text and meanings to OpenAI." %}</label><button name="action" value="approve">{% translate "Generate comparison recordings" %}</button></form>{% endif %}
+{% elif run.status == 'running' %}
+<p role="status">{% blocktranslate %}Finished: {{ finished }} / {{ total }} · Failed: {{ failures }}{% endblocktranslate %}</p><p>{% translate "You may leave this page and return through Tools. Ratings become available when processing finishes." %}</p>
+<a class="button secondary" href="{% url 'community_dictionary:homographs-run' dictionary.pk run.pk %}">{% translate "Refresh progress" %}</a>
+<form method="post">{% csrf_token %}<button name="action" value="resume" class="secondary">{% translate "Resume interrupted work" %}</button><p class="help">{% translate "After 15 minutes, interrupted requests are marked failed, not repeated. Unstarted recordings can continue." %}</p><button name="action" value="cancel" class="quiet danger">{% translate "Cancel and discard this experiment" %}</button></form>
+{% elif run.status == 'cancelled' and not run.settled %}<form method="post">{% csrf_token %}<p>{% translate "Finalising cancelled requests may take up to 15 minutes. This will not generate new recordings." %}</p><button name="action" value="resume" class="secondary">{% translate "Finish accounting" %}</button></form>
+{% elif run.settled %}<p>{% translate "Settled cost estimate: US$" %}{{ run.charged_usd }} · {% translate "Failed recordings:" %} {{ failures }}</p>{% endif %}
+</section>
+<p>{% translate "Dictionary recordings are unchanged. Only you can access this experiment while you remain the dictionary owner." %}</p>
+{% if unavailable %}<p>{% translate "Some sources changed or were withdrawn; their experimental recordings are no longer available." %}</p>{% endif %}
+{% if run.options.revealed %}<section class="panel"><h2>{% translate "Results by method" %}</h2>
+{% for s in summary %}<p><strong>{{ s.method }}</strong><br>{% translate "Acceptable:" %} {{ s.acceptable }} · {% translate "Minor problem:" %} {{ s.minor }} · {% translate "Major problem:" %} {{ s.major }} · {% translate "Cannot judge:" %} {{ s.cannot }} · {% translate "Failed:" %} {{ s.failed }} · {% translate "Not rated:" %} {{ s.unrated }}</p>{% endfor %}
+<a href="{% url 'community_dictionary:homographs-export' dictionary.pk run.pk %}">{% translate "Download ratings (CSV)" %}</a><p class="help">{% translate "Methods are now visible. Later rating changes are marked in the export." %}</p></section>{% endif %}
+{% if run.status == 'complete' and rows %}
+<p>{% translate "Judge each recording as a natural pronunciation of the displayed word in this language and sense. Use Minor problem for awkward but usable prosody, Major problem for wrong pronunciation or unusable audio, and Cannot judge when unsure." %}</p>
+<form method="post" id="homograph-ratings">{% csrf_token %}<input type="hidden" name="revision" value="{{ run.options.ratings_revision }}">
+<p><button name="action" value="save">{% translate "Save ratings" %}</button></p>
+<div class="experiment-scroll"><table class="experiment-table"><thead><tr><th scope="col">{% translate "Word / form" %}</th><th scope="col">A</th><th scope="col">B</th></tr></thead><tbody>
+{% for row in rows %}<tr><th scope="row"><a href="{% url 'community_dictionary:entry' dictionary.pk row.word.entry %}">{{ row.word.word }}</a><br>{{ row.word.meaning }}{% if row.word.context %}<p class="help">{{ row.word.context }}</p>{% endif %}<small>{% translate "Take" %} {{ row.repeat }}</small></th>
+{% for clip in row.clips %}<td>{% if clip.method_name %}<p>{{ clip.method_name }}</p>{% endif %}
+{% if clip.status == 'ready' %}<audio controls preload="none" aria-label="{{ row.word.word }} {{ clip.label }}" src="{% url 'community_dictionary:homographs-media' dictionary.pk run.pk row.item.pk clip.id %}"></audio>
+<label for="rating-{{ clip.id }}">{% translate "Rating" %} {{ clip.label }}</label><select id="rating-{{ clip.id }}" name="rating_{{ clip.id }}">{% for value,label in ratings %}<option value="{{ value }}"{% if value == clip.rating %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+<label for="note-{{ clip.id }}">{% translate "Notes" %} {{ clip.label }}</label><textarea id="note-{{ clip.id }}" name="note_{{ clip.id }}" rows="2" maxlength="1000">{{ clip.note }}</textarea>
+{% else %}<p>{% translate "No usable recording was produced." %}</p>{% endif %}
+{% if run.options.revealed and clip.full_path %}<details><summary>{% translate "Full carrier recording (last completed attempt)" %}</summary><audio controls preload="none" src="{% url 'community_dictionary:homographs-media' dictionary.pk run.pk row.item.pk clip.id %}?full=1"></audio></details>{% endif %}
+</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+<p><button name="action" value="save">{% translate "Save ratings" %}</button> {% if not run.options.revealed %}<button class="secondary" name="action" value="reveal">{% translate "Save and reveal methods" %}</button>{% endif %}</p>
+</form>
+{% elif run.status == 'estimate' %}<ul>{% for row in rows %}{% if row.repeat == 1 %}<li>{{ row.word.word }} — {{ row.word.meaning }}</li>{% endif %}{% endfor %}</ul>{% endif %}
+<p><a href="{% url 'community_dictionary:homographs-start' dictionary.pk %}">{% translate "New experiment / earlier experiments" %}</a></p>
+<link rel="stylesheet" href="{% static 'community_dictionary/homograph_experiment.css' %}"><script src="{% static 'community_dictionary/homograph_experiment.js' %}" defer></script>
+{% endblock %}

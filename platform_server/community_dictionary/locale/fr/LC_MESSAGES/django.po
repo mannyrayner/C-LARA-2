@@ -6378,3 +6378,205 @@ msgstr "Méthode audio :"
 
 msgid "English homographs detected:"
 msgstr "Homographes anglais détectés :"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Homograph audio experiment"
+msgstr "Expérience audio sur les homographes"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Compare homograph audio"
+msgstr "Comparer la prononciation des homographes"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Current pronunciation guidance"
+msgstr "Aide à la prononciation actuelle"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Carrier phrase with extraction"
+msgstr "Phrase porteuse avec extraction audio"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Words and sentence forms"
+msgstr "Mots et formes dans les phrases"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Choose up to 20. Nothing is selected automatically."
+msgstr "Choisissez jusqu’à 20 éléments. Aucune sélection automatique."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Choose at most 20 words or forms."
+msgstr "Choisissez au plus 20 mots ou formes."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Takes per method and word"
+msgstr "Prises par méthode et par mot"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Not rated"
+msgstr "Non évalué"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Acceptable"
+msgstr "Acceptable"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Minor problem"
+msgstr "Problème mineur"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Major problem"
+msgstr "Problème majeur"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Cannot judge"
+msgstr "Impossible à évaluer"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Ratings saved."
+msgstr "Évaluations enregistrées."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Compare pronunciation guidance with carrier extraction. Listen, rate and export experimental recordings without replacing dictionary audio."
+msgstr "Comparez l’aide à la prononciation avec l’extraction d’une phrase porteuse. Écoutez, évaluez et exportez les enregistrements expérimentaux sans remplacer ceux du dictionnaire."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Compare the current pronunciation-guidance method with a native-language carrier phrase followed by audio extraction. Both generate fresh recordings with the same voice. Existing dictionary audio is kept."
+msgstr "Comparez la méthode actuelle d’aide à la prononciation à une phrase porteuse dans la langue cible, suivie d’une extraction audio. Les deux méthodes produisent de nouveaux enregistrements avec la même voix. Les enregistrements du dictionnaire sont conservés."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Choose words below, then check the cost before starting. Each take produces two recordings in shuffled A/B order. Save your ratings before revealing the methods; full carrier recordings are available afterwards."
+msgstr "Choisissez les mots ci-dessous, puis vérifiez le coût avant de commencer. Chaque prise produit deux enregistrements dans un ordre A/B aléatoire. Enregistrez vos évaluations avant de révéler les méthodes ; les phrases porteuses complètes seront ensuite disponibles."
+
+#: community_dictionary/homograph_experiments.py
+msgid "This pilot covers English homographs in French, Swedish, German, Italian and Icelandic. It includes accepted dictionary words and current sentence forms. Selected text and meanings are sent to OpenAI; images and existing recordings are not sent."
+msgstr "Cette expérience porte sur les homographes anglais en français, suédois, allemand, italien et islandais. Elle inclut les mots acceptés du dictionnaire et les formes actuelles dans les phrases. Le texte sélectionné et ses traductions sont envoyés à OpenAI ; les images et les enregistrements existants ne le sont pas."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Estimate experiment"
+msgstr "Estimer le coût de l’expérience"
+
+#: community_dictionary/homograph_experiments.py
+msgid "No eligible words or sentence forms are currently available."
+msgstr "Aucun mot ni forme admissible n’est actuellement disponible."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Your experiments"
+msgstr "Vos expériences"
+
+#: community_dictionary/homograph_experiments.py
+#, python-format
+msgid "%(total)s planned recordings"
+msgstr "%(total)s enregistrements prévus"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Approved allowance:"
+msgstr "Provision autorisée :"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Estimates are not invoices or provider spending caps. Carrier extraction permits up to five completed attempts per take; network failures are not automatically retried. Failed recordings remain part of the experiment."
+msgstr "Les estimations ne sont ni des factures ni des plafonds de dépenses chez le fournisseur. L’extraction autorise jusqu’à cinq tentatives terminées par prise ; les erreurs réseau ne sont pas relancées automatiquement. Les échecs restent inclus dans l’expérience."
+
+#: community_dictionary/homograph_experiments.py
+msgid "This estimate expired. Create a new experiment."
+msgstr "Cette estimation a expiré. Créez une nouvelle expérience."
+
+#: community_dictionary/homograph_experiments.py
+msgid "I approve the displayed allowance and have permission to send the selected text and meanings to OpenAI."
+msgstr "J’approuve la provision affichée et j’ai l’autorisation d’envoyer le texte sélectionné et ses traductions à OpenAI."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Generate comparison recordings"
+msgstr "Générer les enregistrements à comparer"
+
+#: community_dictionary/homograph_experiments.py
+#, python-format
+msgid "Finished: %(finished)s / %(total)s · Failed: %(failures)s"
+msgstr "Terminés : %(finished)s / %(total)s · Échecs : %(failures)s"
+
+#: community_dictionary/homograph_experiments.py
+msgid "You may leave this page and return through Tools. Ratings become available when processing finishes."
+msgstr "Vous pouvez quitter cette page et y revenir par Outils. L’évaluation sera disponible à la fin du traitement."
+
+#: community_dictionary/homograph_experiments.py
+msgid "After 15 minutes, interrupted requests are marked failed, not repeated. Unstarted recordings can continue."
+msgstr "Après 15 minutes, les requêtes interrompues sont marquées comme ayant échoué, sans être répétées. Les enregistrements non commencés peuvent continuer."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Cancel and discard this experiment"
+msgstr "Annuler et supprimer cette expérience"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Settled cost estimate: US$"
+msgstr "Coût estimé après règlement : US$"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Failed recordings:"
+msgstr "Enregistrements échoués :"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Dictionary recordings are unchanged. Only you can access this experiment while you remain the dictionary owner."
+msgstr "Les enregistrements du dictionnaire sont inchangés. Vous seul pouvez accéder à cette expérience tant que vous êtes propriétaire du dictionnaire."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Some sources changed or were withdrawn; their experimental recordings are no longer available."
+msgstr "Certains contenus sources ont été modifiés ou retirés ; leurs enregistrements expérimentaux ne sont plus disponibles."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Results by method"
+msgstr "Résultats par méthode"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Not rated:"
+msgstr "Non évalués :"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Methods are now visible. Later rating changes are marked in the export."
+msgstr "Les méthodes sont désormais visibles. Les modifications ultérieures des évaluations seront signalées dans l’export."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Judge each recording as a natural pronunciation of the displayed word in this language and sense. Use Minor problem for awkward but usable prosody, Major problem for wrong pronunciation or unusable audio, and Cannot judge when unsure."
+msgstr "Évaluez si chaque enregistrement prononce naturellement le mot affiché dans cette langue et avec ce sens. Choisissez Problème mineur pour une prosodie maladroite mais utilisable, Problème majeur pour une prononciation erronée ou un audio inutilisable, et Impossible à évaluer en cas de doute."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Save ratings"
+msgstr "Enregistrer les évaluations"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Word / form"
+msgstr "Mot / forme"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Take"
+msgstr "Prise"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Rating"
+msgstr "Évaluation"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Notes"
+msgstr "Remarques"
+
+#: community_dictionary/homograph_experiments.py
+msgid "No usable recording was produced."
+msgstr "Aucun enregistrement utilisable n’a été produit."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Full carrier recording (last completed attempt)"
+msgstr "Enregistrement complet avec phrase porteuse (dernière tentative terminée)"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Save and reveal methods"
+msgstr "Enregistrer et révéler les méthodes"
+
+#: community_dictionary/homograph_experiments.py
+msgid "New experiment / earlier experiments"
+msgstr "Nouvelle expérience / expériences précédentes"
+
+#: community_dictionary/templates/community_dictionary/homographs_run.html
+msgid "Finish accounting"
+msgstr "Terminer le règlement"
+
+#: community_dictionary/templates/community_dictionary/homographs_run.html
+msgid "Finalising cancelled requests may take up to 15 minutes. This will not generate new recordings."
+msgstr "Le règlement des requêtes annulées peut prendre jusqu’à 15 minutes. Aucun nouvel enregistrement ne sera généré."

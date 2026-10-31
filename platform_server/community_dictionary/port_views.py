@@ -22,6 +22,8 @@ from .views import context, fail, private_media_response
 
 
 def run_url(run):
+    if run.stage == 'homographs':
+        return reverse('community_dictionary:homographs-run',args=[run.port.source_id,run.pk])
     if run.stage == 'forms':
         return reverse('community_dictionary:forms-run',args=[run.port.source_id,run.pk])
     if run.port.is_audio_batch:
@@ -266,6 +268,10 @@ def action(request,pk,run_id):
 @login_required
 @require_http_methods(['GET','POST'])
 def review(request,pk,run_id,item_id):
+    experiment = PortRun.objects.filter(pk=run_id, port__source_id=pk,
+        port__user=request.user, stage='homographs').select_related('port').first()
+    if experiment:
+        return redirect(run_url(experiment))
     attention_only = request.GET.get('attention') == '1'
     try:
         run = owned_run(request,pk,run_id)

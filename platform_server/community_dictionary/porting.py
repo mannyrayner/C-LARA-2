@@ -129,6 +129,9 @@ def input_data(item):
 def current_item(item):
     """Recheck both sides before a call, before previewing, and before saving."""
     run, port = item.run, item.run.port
+    if run.stage == 'homographs':
+        from .homograph_experiments import current_item
+        return current_item(item), None
     if run.stage == 'audio':
         if run.port.is_audio_batch:
             from .mwe_audio import current_item
@@ -372,6 +375,11 @@ def approve(user, run_id):
 
 
 def clear_preview(item, message='This preview is no longer available.'):
+    if item.run.stage == 'homographs':
+        from .homograph_experiments import erase_files
+        erase_files(item)
+        item.snapshot = {'words':[]}
+        item.save(update_fields=['snapshot'])
     path = item.file_path
     item.file_path, item.result, item.message, item.invalidated = '', {}, message, True
     item.needs_attention, item.attention_note, item.review_values = False, '', {}
@@ -495,6 +503,8 @@ def copy_component(source, entry, user, port, provenance=None):
 def save_item(user, item_id, values, *, automatic=False):
     locks()
     item = PortItem.objects.select_for_update(of=('self',)).select_related('run__port__user','run__port__source','run__port__destination').get(pk=item_id,run__port__user=user)
+    if item.run.stage == 'homographs':
+        raise Conflict('Experimental recordings cannot be published to the dictionary.')
     if automatic and (not item.run.options.get('automatic') or item.run.status != 'running'):
         raise Conflict('Automatic publication is not authorised.')
     if item.run.stage == 'descriptions':

@@ -88,7 +88,7 @@ def current_item(item):
 def quote(user, dictionary, token, *, entry_ids=None):
     porting.locks()
     require_owner(user, dictionary)
-    previous = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, port__is_audio_batch=True).first()
+    previous = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, port__is_audio_batch=True, stage='audio').first()
     if previous:
         return previous
     if PortRun.objects.filter(pk=token).exists():
@@ -174,7 +174,7 @@ def restore(user, run):
     porting.locks()
     run = PortRun.objects.select_for_update().select_related('port__source','port__user').get(pk=run.pk)
     require_owner(user, run.port.source)
-    if not run.port.is_audio_batch or run.port.user_id != user.pk or not run.settled:
+    if run.stage != 'audio' or not run.port.is_audio_batch or run.port.user_id != user.pk or not run.settled:
         raise Conflict('Finish or cancel this job before restoring earlier audio.')
     count = skipped = 0
     for item in run.items.all():
@@ -249,7 +249,7 @@ def start(request, pk):
     return render(request, 'community_dictionary/mwe_audio_start.html', context(request, dictionary,
         form=form, supported=tts.language_code(dictionary.language) in carrier.SUPPORTED_LANGUAGES,
         japanese=tts.language_code(dictionary.language) == 'ja',
-        runs=PortRun.objects.filter(port__source=dictionary, port__user=request.user, port__is_audio_batch=True)[:10]))
+        runs=PortRun.objects.filter(port__source=dictionary, port__user=request.user, port__is_audio_batch=True, stage='audio')[:10]))
 
 
 @page(['GET', 'POST'])
@@ -257,7 +257,7 @@ def detail(request, pk, run_id):
     dictionary = get_dictionary(request.user, pk)
     require_owner(request.user, dictionary)
     run = get_object_or_404(PortRun.objects.select_related('port__user','port__source'), pk=run_id,
-        port__source=dictionary, port__user=request.user, port__is_audio_batch=True)
+        port__source=dictionary, port__user=request.user, port__is_audio_batch=True, stage='audio')
     if request.method == 'POST':
         if request.POST.get('action') == 'baseline':
             batch = baseline(request.user, run)

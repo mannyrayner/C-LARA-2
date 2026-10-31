@@ -115,9 +115,20 @@ def estimate(text, language, *, allowance=False):
     return tts.estimate_cost(spoken+instructions, duration) * (5 if allowance else Decimal('1.4'))
 
 
+def homograph_eligible(text, language):
+    """Explicit experiment only; never broadens the ordinary MWE selection."""
+    from .pronunciation import homographs
+    return (tts.language_code(language) in AUTOMATIC_LANGUAGES - {'en'}
+            and 1 <= len(text.split()) <= 12 and len(text) <= 120
+            and not any(c in text for c in '.!?;\n\r。！？；')
+            and bool(homographs(text, tts.language_code(language))))
+
+
 def synthesize(text, *, language, model, voice, api_key, report, before_request=None,
-               explicit_selection=False):
-    if not eligible(text, language, explicit_selection=explicit_selection) or model != tts.MODEL or voice not in tts.VOICE_NAMES:
+               explicit_selection=False, homograph_experiment=False, keep_full=None):
+    allowed = (homograph_eligible(text, language) if homograph_experiment else
+               eligible(text, language, explicit_selection=explicit_selection))
+    if not allowed or model != tts.MODEL or voice not in tts.VOICE_NAMES:
         raise ValueError('unsupported_carrier_synthesis')
     from pipeline.audio import OpenAITTSEngine
     spoken, instructions = request(text, tts.language_code(language))
@@ -127,6 +138,8 @@ def synthesize(text, *, language, model, voice, api_key, report, before_request=
         stage='setup', english_homographs=[], attempts=[], guidance_cost_usd='0',
         speech_cost_usd='0', uncertain_cost=False, instructions=instructions,
         extraction_algorithm=carrier_audio.ALGORITHM, extraction_config=carrier_audio.DEFAULT.copy())
+    if homograph_experiment:
+        report['strategy'] = 'homograph_carrier_experiment'
     with tts._openai_client(api_key=api_key, timeout=30.0, max_retries=0) as client:
         engine = OpenAITTSEngine(client=client, model=model, require_language_instructions=True)
         with tempfile.TemporaryDirectory(prefix='community-carrier-') as temporary:
@@ -149,6 +162,8 @@ def synthesize(text, *, language, model, voice, api_key, report, before_request=
                     report['uncertain_cost'] = True
                     raise  # Unknown-cost network/API/malformed output is never retried.
                 report['speech_cost_usd'] = str(Decimal(report['speech_cost_usd'])+tts.estimate_cost(spoken+instructions, duration))
+                if keep_full:
+                    keep_full(prepared)  # Caller may retain the last completed take privately.
                 sound = carrier_audio.load(prepared[0])
                 measurement = carrier_audio.measure(sound, carrier_audio.DEFAULT)
                 record.update(outcome=measurement['status'], duration_seconds=duration, extraction=measurement)

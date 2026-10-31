@@ -6285,3 +6285,205 @@ msgstr "Metóda zvuku:"
 
 msgid "English homographs detected:"
 msgstr "Zistené anglické homografy:"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Homograph audio experiment"
+msgstr "Zvukový experiment s homografmi"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Compare homograph audio"
+msgstr "Porovnať výslovnosť homografov"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Current pronunciation guidance"
+msgstr "Súčasné pokyny na výslovnosť"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Carrier phrase with extraction"
+msgstr "Nosná fráza s extrakciou zvuku"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Words and sentence forms"
+msgstr "Slová a tvary vo vetách"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Choose up to 20. Nothing is selected automatically."
+msgstr "Vyberte najviac 20 položiek. Nič sa nevyberá automaticky."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Choose at most 20 words or forms."
+msgstr "Vyberte najviac 20 slov alebo tvarov."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Takes per method and word"
+msgstr "Nahrávky na metódu a slovo"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Not rated"
+msgstr "Nehodnotené"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Acceptable"
+msgstr "Prijateľné"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Minor problem"
+msgstr "Menší problém"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Major problem"
+msgstr "Závažný problém"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Cannot judge"
+msgstr "Neviem posúdiť"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Ratings saved."
+msgstr "Hodnotenia boli uložené."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Compare pronunciation guidance with carrier extraction. Listen, rate and export experimental recordings without replacing dictionary audio."
+msgstr "Porovnajte pokyny na výslovnosť s extrakciou z nosnej frázy. Počúvajte, hodnoťte a exportujte experimentálne nahrávky bez nahradenia zvuku v slovníku."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Compare the current pronunciation-guidance method with a native-language carrier phrase followed by audio extraction. Both generate fresh recordings with the same voice. Existing dictionary audio is kept."
+msgstr "Porovnajte súčasnú metódu pokynov na výslovnosť s nosnou frázou v cieľovom jazyku a následnou extrakciou zvuku. Obe vytvoria nové nahrávky rovnakým hlasom. Existujúce nahrávky v slovníku sa zachovajú."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Choose words below, then check the cost before starting. Each take produces two recordings in shuffled A/B order. Save your ratings before revealing the methods; full carrier recordings are available afterwards."
+msgstr "Vyberte slová nižšie a pred spustením skontrolujte cenu. Každý pokus vytvorí dve nahrávky v náhodnom poradí A/B. Pred odhalením metód uložte hodnotenia; celé nahrávky nosných fráz budú dostupné potom."
+
+#: community_dictionary/homograph_experiments.py
+msgid "This pilot covers English homographs in French, Swedish, German, Italian and Icelandic. It includes accepted dictionary words and current sentence forms. Selected text and meanings are sent to OpenAI; images and existing recordings are not sent."
+msgstr "Tento pilot zahŕňa anglické homografy vo francúzštine, švédčine, nemčine, taliančine a islandčine. Zahŕňa prijaté slová zo slovníka a aktuálne tvary vo vetách. Vybraný text a významy sa odošlú OpenAI; obrázky a existujúce nahrávky sa neodosielajú."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Estimate experiment"
+msgstr "Odhadnúť cenu experimentu"
+
+#: community_dictionary/homograph_experiments.py
+msgid "No eligible words or sentence forms are currently available."
+msgstr "Momentálne nie sú dostupné vhodné slová ani tvary vo vetách."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Your experiments"
+msgstr "Vaše experimenty"
+
+#: community_dictionary/homograph_experiments.py
+#, python-format
+msgid "%(total)s planned recordings"
+msgstr "Plánované nahrávky: %(total)s"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Approved allowance:"
+msgstr "Schválená rezerva:"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Estimates are not invoices or provider spending caps. Carrier extraction permits up to five completed attempts per take; network failures are not automatically retried. Failed recordings remain part of the experiment."
+msgstr "Odhady nie sú faktúry ani limity výdavkov u poskytovateľa. Extrakcia umožňuje najviac päť dokončených pokusov na nahrávku; sieťové chyby sa automaticky neopakujú. Neúspešné nahrávky zostávajú súčasťou experimentu."
+
+#: community_dictionary/homograph_experiments.py
+msgid "This estimate expired. Create a new experiment."
+msgstr "Tento odhad vypršal. Vytvorte nový experiment."
+
+#: community_dictionary/homograph_experiments.py
+msgid "I approve the displayed allowance and have permission to send the selected text and meanings to OpenAI."
+msgstr "Schvaľujem zobrazenú rezervu a mám povolenie odoslať vybraný text a významy OpenAI."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Generate comparison recordings"
+msgstr "Vytvoriť nahrávky na porovnanie"
+
+#: community_dictionary/homograph_experiments.py
+#, python-format
+msgid "Finished: %(finished)s / %(total)s · Failed: %(failures)s"
+msgstr "Dokončené: %(finished)s / %(total)s · Neúspešné: %(failures)s"
+
+#: community_dictionary/homograph_experiments.py
+msgid "You may leave this page and return through Tools. Ratings become available when processing finishes."
+msgstr "Túto stránku môžete opustiť a vrátiť sa cez Nástroje. Hodnotenie bude dostupné po dokončení spracovania."
+
+#: community_dictionary/homograph_experiments.py
+msgid "After 15 minutes, interrupted requests are marked failed, not repeated. Unstarted recordings can continue."
+msgstr "Po 15 minútach sa prerušené požiadavky označia ako neúspešné a neopakujú sa. Nezačaté nahrávky môžu pokračovať."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Cancel and discard this experiment"
+msgstr "Zrušiť a zahodiť tento experiment"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Settled cost estimate: US$"
+msgstr "Odhad vyúčtovanej ceny: US$"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Failed recordings:"
+msgstr "Neúspešné nahrávky:"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Dictionary recordings are unchanged. Only you can access this experiment while you remain the dictionary owner."
+msgstr "Nahrávky v slovníku sa nemenia. K experimentu máte prístup iba vy, kým zostávate vlastníkom slovníka."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Some sources changed or were withdrawn; their experimental recordings are no longer available."
+msgstr "Niektoré zdroje sa zmenili alebo boli stiahnuté; ich experimentálne nahrávky už nie sú dostupné."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Results by method"
+msgstr "Výsledky podľa metódy"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Not rated:"
+msgstr "Nehodnotené:"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Methods are now visible. Later rating changes are marked in the export."
+msgstr "Metódy sú teraz viditeľné. Neskoršie zmeny hodnotení sa označia v exporte."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Judge each recording as a natural pronunciation of the displayed word in this language and sense. Use Minor problem for awkward but usable prosody, Major problem for wrong pronunciation or unusable audio, and Cannot judge when unsure."
+msgstr "Posúďte, či nahrávka prirodzene vyslovuje zobrazené slovo v danom jazyku a význame. Vyberte Menší problém pri neprirodzenej, ale použiteľnej prozódii, Závažný problém pri nesprávnej výslovnosti alebo nepoužiteľnom zvuku a Neviem posúdiť, ak si nie ste istí."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Save ratings"
+msgstr "Uložiť hodnotenia"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Word / form"
+msgstr "Slovo / tvar"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Take"
+msgstr "Pokus"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Rating"
+msgstr "Hodnotenie"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Notes"
+msgstr "Poznámky"
+
+#: community_dictionary/homograph_experiments.py
+msgid "No usable recording was produced."
+msgstr "Nebola vytvorená použiteľná nahrávka."
+
+#: community_dictionary/homograph_experiments.py
+msgid "Full carrier recording (last completed attempt)"
+msgstr "Celá nahrávka nosnej frázy (posledný dokončený pokus)"
+
+#: community_dictionary/homograph_experiments.py
+msgid "Save and reveal methods"
+msgstr "Uložiť a odhaliť metódy"
+
+#: community_dictionary/homograph_experiments.py
+msgid "New experiment / earlier experiments"
+msgstr "Nový experiment / predchádzajúce experimenty"
+
+#: community_dictionary/templates/community_dictionary/homographs_run.html
+msgid "Finish accounting"
+msgstr "Dokončiť vyúčtovanie"
+
+#: community_dictionary/templates/community_dictionary/homographs_run.html
+msgid "Finalising cancelled requests may take up to 15 minutes. This will not generate new recordings."
+msgstr "Dokončenie zrušených požiadaviek môže trvať až 15 minút. Nevytvoria sa žiadne nové nahrávky."
