@@ -62,6 +62,9 @@ def sentences(dictionary):
 
 def audio_is_current(audio, entry, dictionary):
     source = audio.provenance
+    if source.get('sentence_form'):
+        from .sentence_forms import audio_current
+        return audio_current(audio)
     if source.get('origin') != 'synthetic':
         return True
     if not entry.public_word or source.get('source_text') != entry.public_word:
@@ -77,7 +80,7 @@ def audio_is_current(audio, entry, dictionary):
 
 def media_for(entry, dictionary):
     return [c for c in entry.public_media if c.kind == 'image' or
-            (c.kind == 'audio' and audio_is_current(c, entry, dictionary))]
+            (c.kind == 'audio' and not c.provenance.get('sentence_form') and audio_is_current(c, entry, dictionary))]
 
 
 def row(entry, dictionary):
@@ -122,13 +125,15 @@ def sentence_links(dictionary):
 
 def words_for(entry, image, dictionary):
     linked = sentence_links(dictionary).filter(sentence_text_id=entry.current_text_id)
+    from .sentence_forms import presentation as form_presentation
+    forms = {link.word_entry_id:form_presentation(link, public=True) for link in linked.select_related('sentence_text__entry__dictionary','word_entry__current_meaning','word_text')}
     surfaces = dict(linked.values_list('word_entry_id', 'surface'))
     ids = set(surfaces)
     if image:
         ids.update(image_links(dictionary).filter(image_id=image['id']).values_list('word_entry_id', flat=True))
     result = []
     for word in words(dictionary).filter(pk__in=ids).exclude(pk=entry.pk).order_by('public_word', 'pk'):
-        result.append({**row(word, dictionary), 'surface': surfaces.get(word.pk, '')})
+        result.append({**row(word, dictionary), 'surface': surfaces.get(word.pk, ''), 'form':forms.get(word.pk, {})})
     return result
 
 

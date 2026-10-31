@@ -65,6 +65,7 @@ class VocabularyForm(forms.Form):
     meaning = forms.CharField(label=_('Translation / meaning'), max_length=300)
     surface = forms.CharField(label=_('As used in the sentence (optional)'), max_length=100,
                               required=False, help_text=_('Use … between separated parts, or leave blank.'))
+    form_meaning = forms.CharField(label=_('Translation of the form in this sentence'), max_length=300, required=False)
 
 
 class VocabularyFormSet(forms.BaseFormSet):
@@ -93,7 +94,8 @@ class VocabularyFormSet(forms.BaseFormSet):
 
     def words(self):
         return [{'lemma': f.cleaned_data['lemma'], 'meaning': f.cleaned_data['meaning'],
-                 'surface': f.cleaned_data.get('surface', ''), 'existing_id': 0}
+                 'surface': f.cleaned_data.get('surface', ''), 'existing_id': 0,
+                 **({'form_meaning': f.cleaned_data['form_meaning']} if f.cleaned_data.get('form_meaning') else {})}
                 for f in self.forms if f.cleaned_data and not f.cleaned_data.get('DELETE')]
 
 

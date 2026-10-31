@@ -566,3 +566,10 @@ The optional [email recovery workflow](email-password-reset.md) adds Forgotten p
 to both login pages after SMTP configuration. See its [installation runbook](email-password-reset-install.md).
 Optional [anonymous browsing](community-public-browsing.md) is implemented separately;
 it is off by default and does not relax the member endpoints' permissions.
+
+## Forms used in sentences
+
+Sentence vocabulary can now show the actual form, its contextual translation and
+audio alongside the dictionary lemma. Owners can use **Tools → Add missing sentence
+forms** for existing material. See [sentence forms](community-sentence-forms.md)
+for cost approval, corrections, retries and the first-version limits.

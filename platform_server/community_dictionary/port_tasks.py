@@ -43,7 +43,7 @@ def dispatch(run_id):
         return
     from .automatic import publish_ready
     publish_ready(run)
-    if run.stage in {'vocabulary','audio'}:
+    if run.stage in {'vocabulary','audio','forms'}:
         from .port_vocabulary_tasks import dispatch as dispatch_vocabulary
         return dispatch_vocabulary(run)
     active = run.items.filter(status__in=['queued','running']).count()
@@ -69,9 +69,13 @@ def credentials(item):
         raise Conflict('The job was cancelled.')
     if item.run.prices.get('speech_recipe') != tts.INSTRUCTIONS_VERSION:
         raise Conflict('Pronunciation processing changed. Prepare and approve a fresh estimate.')
-    if (item.run.stage != 'vocabulary' and item.snapshot.get('entry_type') == 'sentence' and
+    if (item.run.stage not in {'vocabulary','forms'} and item.snapshot.get('entry_type') == 'sentence' and
             item.run.prices.get('sentence_speech_recipe') != port_ai.speech_version(item.snapshot)):
         raise Conflict('Sentence speech processing changed. Prepare and approve a fresh estimate.')
+    if item.run.stage == 'forms':
+        from .sentence_forms import VERSION
+        if item.run.prices.get('forms_recipe') != VERSION:
+            raise Conflict('Sentence forms processing changed. Prepare a new estimate.')
     if item.run.stage == 'descriptions':
         from .batch_descriptions import VERSION
         if item.run.prices.get('description_recipe') != VERSION:
@@ -84,6 +88,9 @@ def credentials(item):
 
 
 def process_item(item_id):
+    if fetch(item_id).run.stage == 'forms':
+        from .form_jobs import process
+        return process(item_id)
     if fetch(item_id).run.stage == 'vocabulary':
         from .port_vocabulary_tasks import process_item as process_vocabulary
         return process_vocabulary(item_id)
@@ -318,7 +325,7 @@ def resume(user,run_id):
     if run.options.get('automatic_child'):
         resume(user, run.options['automatic_child'])
     cutoff = timezone.now()-timedelta(minutes=15)
-    if run.stage in {'vocabulary','audio'}:
+    if run.stage in {'vocabulary','audio','forms'}:
         from .port_vocabulary_tasks import recover_speech
         recover_speech(run,cutoff)
     for item in run.items.filter(status='running',started_at__lt=cutoff):

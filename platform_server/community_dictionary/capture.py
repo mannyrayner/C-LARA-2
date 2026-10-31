@@ -189,8 +189,8 @@ def publish(study_id, user, *, vocabulary=None):
                     raise Conflict('Please correct the vocabulary suggestions first.')
                 data['suggested_words']=data['words']
                 data['words']=vocabulary.words()
-                if [(w['lemma'],w['meaning'],w['surface']) for w in data['words']] != [
-                        (w['lemma'],w['meaning'],w['surface']) for w in data['suggested_words']]:
+                if [(w['lemma'],w['meaning'],w['surface'],w.get('form_meaning','')) for w in data['words']] != [
+                        (w['lemma'],w['meaning'],w['surface'],w.get('form_meaning','')) for w in data['suggested_words']]:
                     data['vocabulary_edited_by']=user.pk
                 study.result=data
             # Confirmation is also the editor's approval of this pending source.
@@ -228,6 +228,8 @@ def publish(study_id, user, *, vocabulary=None):
             for target in publish_words(sentence,data['words'],user,provenance,[image]):
                 plan_speech(study,target)
             plan_speech(study,entry)
+            from .sentence_forms import capture_speech
+            capture_speech(study, entry)
             transaction.on_commit(lambda:queue_audio(str(study.pk)))
             study.status='saved'; study.saved_entry=entry; study.save(update_fields=['status','saved_entry','result'])
             event(study.dictionary,user,'capture_confirmed',entry,'Contributor confirmed meaning; language not expert checked')
@@ -238,6 +240,12 @@ def publish(study_id, user, *, vocabulary=None):
 
 def speech_allowed(clip, *, payment=False):
     key=allowed(clip.capture,payment=payment)
+    if clip.kind == 'form':
+        from .sentence_forms import current
+        part = Contribution.objects.filter(pk=clip.text_id, entry_id=clip.entry_id, kind='form').select_related('entry__dictionary').first()
+        if not part or not current(part) or part.word != clip.text or part.meaning != clip.meaning:
+            raise Conflict('This sentence form changed. Use its current version.')
+        return key
     if clip.entry_id:
         entry=Entry.objects.get(pk=clip.entry_id)
         if (entry.archived or entry.dictionary_id!=clip.capture.dictionary_id or
@@ -245,16 +253,36 @@ def speech_allowed(clip, *, payment=False):
             raise Conflict('The words changed; generate audio from the updated entry.')
     return key
 
+def available_audio(clip):
+    if clip.kind == 'form':
+        from .sentence_forms import audio
+        part = Contribution.objects.filter(pk=clip.text_id, entry_id=clip.entry_id).select_related('entry__dictionary').first()
+        return audio(part) if part else None
+    if clip.entry_id:
+        from .lexicon import recordings
+        available = recordings(clip.entry, clip.capture.dictionary)
+        return available[0] if available else None
+    return None
+
+
+def failed_audio(study):
+    failed, seen = [], set()
+    for clip in study.speech.filter(status='failed').order_by('-pk'):
+        key = (clip.kind, clip.text_id)
+        if key not in seen and not available_audio(clip):
+            clip.failure_reason = tts.failure_message(clip.report)
+            failed.append(clip); seen.add(key)
+    return failed
+
+
 def speak(clip_id):
     with transaction.atomic():
         locks()
         clip=CaptureSpeech.objects.select_for_update().select_related('capture__dictionary','capture__user').get(pk=clip_id)
         if clip.status!='waiting': return
         key=speech_allowed(clip,payment=True)
-        if clip.entry_id:
-            from .lexicon import recordings
-            if recordings(Entry.objects.get(pk=clip.entry_id),clip.capture.dictionary):
-                clip.status='ready'; clip.save(update_fields=['status']); return
+        if clip.entry_id and available_audio(clip):
+            clip.status='ready'; clip.save(update_fields=['status']); return
         clip.status='running'; clip.save(update_fields=['status'])
     report={}; prepared=None
     def check():
@@ -265,7 +293,7 @@ def speak(clip_id):
         prepared,_=tts.synthesize(clip.text,language=tts.language_code(clip.language),model=tts.MODEL,
             voice=clip.capture.voice,api_key=key,meaning=clip.meaning,meaning_language=clip.capture.explanation_language,
             report=report,before_request=check,
-            speech_kind='sentence' if clip.kind=='feedback' or clip.entry.entry_type=='sentence' else 'entry')
+            speech_kind='sentence' if clip.kind=='feedback' or (clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
     except Exception as exc:
         code=tts.record_failure(report,exc)
         log.warning('Capture speech %s failed (%s; stage=%s; reason=%s)',
@@ -282,8 +310,13 @@ def speak(clip_id):
             except (Conflict,Http404): prepared=None
             if current.status=='running':
                 if prepared:
-                    media=write_upload(prepared,current.capture.dictionary_id,paths)
-                    if current.entry_id:
+                    if current.kind == 'form':
+                        from .sentence_forms import publish_audio
+                        current.contribution = publish_audio(Contribution.objects.select_related('entry__dictionary').get(pk=current.text_id),
+                            current.capture.user, prepared, paths, {'provider':'openai', 'model':tts.MODEL,
+                            'voice':current.capture.voice, 'synthesis':report, 'capture_id':str(current.capture_id)})
+                    elif current.entry_id:
+                        media=write_upload(prepared,current.capture.dictionary_id,paths)
                         entry=Entry.objects.get(pk=current.entry_id)
                         audio=Contribution.objects.create(entry=entry,author=current.capture.user,controlled_by=current.capture.user,
                             kind='audio',status='accepted',provenance={'origin':'synthetic','provider':'openai','model':tts.MODEL,
@@ -295,7 +328,7 @@ def speak(clip_id):
                         for part_id in [current.text_id,current.meaning_id]:
                             if part_id: ContributionDependency.objects.get_or_create(source_id=part_id,derived=audio)
                         current.contribution=audio
-                    else: current.file_path=media['file_path']
+                    else: current.file_path=write_upload(prepared,current.capture.dictionary_id,paths)['file_path']
                     current.status='ready'
                 else: current.status='failed'
             current.save()
@@ -329,7 +362,8 @@ def sentence_context(entry):
     links=sentence_links(entry.dictionary).filter(sentence_text__entry=entry).select_related('word_entry')
     checked=LanguageCheck.objects.filter(entry=entry,text_id=entry.current_text_id,meaning_id=entry.current_meaning_id).first()
     reports=AttentionReport.objects.filter(entry=entry,note__entry=entry,note__status='accepted',resolved_at__isnull=True)
-    return {'sentence_words':[{'surface':link.surface,**word_row(link.word_entry,entry.dictionary)} for link in links],
+    from .sentence_forms import presentation as form_presentation
+    return {'sentence_words':[{'surface':link.surface, 'form':form_presentation(link), **word_row(link.word_entry,entry.dictionary)} for link in links],
         'related_sentences':linked_sentences(entry), 'language_check':checked,'attention_count':reports.count(),
         'automatic_publication':any(p and p.provenance.get('automatic_publication')
             for p in [entry.current_text,entry.current_meaning]),
@@ -355,7 +389,7 @@ def run_audio(study_id):
     from django.db import close_old_connections
     close_old_connections()
     try:
-        ids=list(CaptureSpeech.objects.filter(capture_id=study_id,kind='entry',status='waiting').order_by('pk').values_list('pk',flat=True)[:MAX_EDITED_WORDS+1])
+        ids=list(CaptureSpeech.objects.filter(capture_id=study_id,kind__in=['entry','form'],status='waiting').order_by('pk').values_list('pk',flat=True)[:2*MAX_EDITED_WORDS+1])
         for clip_id in ids:
             try:
                 speak(clip_id)

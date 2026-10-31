@@ -6240,3 +6240,96 @@ msgstr "Écrivez ce que vous voulez dire en %(language)s (255 caractères au max
 
 msgid "Describe and finish this picture"
 msgstr "Décrire cette image et terminer"
+
+msgid "Add contextual translations and audio to existing sentence vocabulary. Completed forms and human corrections are kept."
+msgstr "Ajouter les traductions en contexte et l’audio au vocabulaire des phrases existantes. Les formes déjà complètes et les corrections humaines sont conservées."
+
+msgid "Add missing sentence forms"
+msgstr "Ajouter les formes manquantes dans les phrases"
+
+msgid "Add sentence forms and audio"
+msgstr "Ajouter les formes et leur audio"
+
+msgid "Add translations and recordings for the forms used in existing sentences, keeping the shared dictionary lemmas. Existing translations, recordings and human corrections are preserved."
+msgstr "Ajouter les traductions et les enregistrements des formes utilisées dans les phrases existantes, en conservant les lemmes partagés. Les traductions, les enregistrements et les corrections humaines existants sont préservés."
+
+msgid "Correct this translation"
+msgstr "Corriger cette traduction"
+
+msgid "Dictionary form"
+msgstr "Forme du dictionnaire"
+
+msgid "Estimate missing work"
+msgstr "Estimer le travail restant"
+
+msgid "Estimate retry for this sentence"
+msgstr "Estimer une nouvelle tentative pour cette phrase"
+
+msgid "Form in sentence"
+msgstr "Forme dans la phrase"
+
+msgid "Forms used in sentences"
+msgstr "Formes utilisées dans les phrases"
+
+msgid "Hear it in the whole sentence"
+msgstr "Écouter dans la phrase entière"
+
+msgid "I approve the additional allowance"
+msgstr "J’approuve le montant supplémentaire"
+
+msgid "I approve this allowance and have permission to send the sentences and vocabulary to OpenAI."
+msgstr "J’approuve ce montant et j’ai l’autorisation d’envoyer les phrases et le vocabulaire à OpenAI."
+
+msgid "In this sentence"
+msgstr "Dans cette phrase"
+
+msgid "Maximum approved C-LARA allowance:"
+msgstr "Montant C-LARA maximal approuvé :"
+
+msgid "More allowance is needed to finish. Additional allowance:"
+msgstr "Un montant supplémentaire est nécessaire pour terminer :"
+
+msgid "More options"
+msgstr "Plus d’options"
+
+msgid "New estimate / retry missing forms"
+msgstr "Nouvelle estimation / réessayer les formes manquantes"
+
+msgid "No sentence forms need processing."
+msgstr "Aucune forme ne nécessite de traitement."
+
+msgid "Only missing work is included. You will see an estimate and approve it before any AI requests are sent. Sentences, their translations and linked words are sent to OpenAI; no images or existing recordings are sent."
+msgstr "Seul le travail manquant est inclus. Vous verrez une estimation à approuver avant toute requête IA. Les phrases, leurs traductions et les mots liés sont envoyés à OpenAI ; aucune image ni aucun enregistrement existant n’est envoyé."
+
+msgid "Processing in the background. You may leave this page and return through Tools."
+msgstr "Traitement en arrière-plan. Vous pouvez quitter cette page et y revenir par Outils."
+
+msgid "Resume interrupted work"
+msgstr "Reprendre le travail interrompu"
+
+msgid "Stops waiting work. Completed results remain; in-flight requests may still cost money."
+msgstr "Arrête le travail en attente. Les résultats terminés sont conservés ; les requêtes déjà en cours peuvent encore être facturées."
+
+msgid "This changes the contextual translation only. The dictionary lemma and sentence are kept. The owner can add missing audio through Tools."
+msgstr "Seule la traduction en contexte est modifiée. Le lemme et la phrase sont conservés. Le propriétaire peut ajouter l’audio manquant dans Outils."
+
+msgid "This is a planning estimate, not a provider invoice or spending cap. Successful results are added automatically. Failed items can be retried separately; completed work is kept."
+msgstr "Il s’agit d’une estimation, pas d’une facture du fournisseur ni d’un plafond de dépenses. Les résultats réussis sont ajoutés automatiquement. Vous pouvez relancer séparément les éléments échoués ; le travail terminé est conservé."
+
+msgid "Translation of the form in this sentence"
+msgstr "Traduction de la forme dans cette phrase"
+
+msgid "already complete or not needed"
+msgstr "déjà complètes ou sans traitement nécessaire"
+
+msgid "recordings failed"
+msgstr "enregistrements échoués"
+
+msgid "recordings pending"
+msgstr "enregistrements en attente"
+
+#, python-format
+msgid "%(n)s sentence"
+msgid_plural "%(n)s sentences"
+msgstr[0] "%(n)s phrase"
+msgstr[1] "%(n)s phrases"

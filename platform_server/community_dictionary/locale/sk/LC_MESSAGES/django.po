@@ -6145,3 +6145,98 @@ msgstr "Napíšte, čo chcete povedať, v jazyku %(language)s (najviac 255 znako
 
 msgid "Describe and finish this picture"
 msgstr "Opísať a dokončiť tento obrázok"
+
+msgid "Add contextual translations and audio to existing sentence vocabulary. Completed forms and human corrections are kept."
+msgstr "Pridať kontextové preklady a zvuk k slovnej zásobe existujúcich viet. Hotové tvary a ľudské opravy sa zachovajú."
+
+msgid "Add missing sentence forms"
+msgstr "Doplniť chýbajúce tvary vo vetách"
+
+msgid "Add sentence forms and audio"
+msgstr "Pridať tvary a zvuk"
+
+msgid "Add translations and recordings for the forms used in existing sentences, keeping the shared dictionary lemmas. Existing translations, recordings and human corrections are preserved."
+msgstr "Pridať preklady a nahrávky tvarov použitých v existujúcich vetách pri zachovaní spoločných slovníkových hesiel. Existujúce preklady, nahrávky a ľudské opravy sa zachovajú."
+
+msgid "Correct this translation"
+msgstr "Opraviť tento preklad"
+
+msgid "Dictionary form"
+msgstr "Slovníkový tvar"
+
+msgid "Estimate missing work"
+msgstr "Odhadnúť zostávajúcu prácu"
+
+msgid "Estimate retry for this sentence"
+msgstr "Odhadnúť opakovanie pre túto vetu"
+
+msgid "Form in sentence"
+msgstr "Tvar vo vete"
+
+msgid "Forms used in sentences"
+msgstr "Tvary použité vo vetách"
+
+msgid "Hear it in the whole sentence"
+msgstr "Vypočuť v celej vete"
+
+msgid "I approve the additional allowance"
+msgstr "Schvaľujem dodatočnú sumu"
+
+msgid "I approve this allowance and have permission to send the sentences and vocabulary to OpenAI."
+msgstr "Schvaľujem túto sumu a mám oprávnenie odoslať vety a slovnú zásobu do OpenAI."
+
+msgid "In this sentence"
+msgstr "V tejto vete"
+
+msgid "Maximum approved C-LARA allowance:"
+msgstr "Maximálna schválená suma C-LARA:"
+
+msgid "More allowance is needed to finish. Additional allowance:"
+msgstr "Na dokončenie je potrebná dodatočná suma:"
+
+msgid "More options"
+msgstr "Ďalšie možnosti"
+
+msgid "New estimate / retry missing forms"
+msgstr "Nový odhad / zopakovať chýbajúce tvary"
+
+msgid "No sentence forms need processing."
+msgstr "Žiadne tvary nevyžadujú spracovanie."
+
+msgid "Only missing work is included. You will see an estimate and approve it before any AI requests are sent. Sentences, their translations and linked words are sent to OpenAI; no images or existing recordings are sent."
+msgstr "Zahrnie sa iba chýbajúca práca. Pred odoslaním požiadaviek AI uvidíte a schválite odhad. Do OpenAI sa odošlú vety, ich preklady a prepojené slová; žiadne obrázky ani existujúce nahrávky."
+
+msgid "Processing in the background. You may leave this page and return through Tools."
+msgstr "Spracovanie na pozadí. Stránku môžete opustiť a vrátiť sa cez Nástroje."
+
+msgid "Resume interrupted work"
+msgstr "Pokračovať v prerušenej práci"
+
+msgid "Stops waiting work. Completed results remain; in-flight requests may still cost money."
+msgstr "Zastaví čakajúcu prácu. Dokončené výsledky zostanú zachované; prebiehajúce požiadavky môžu byť stále účtované."
+
+msgid "This changes the contextual translation only. The dictionary lemma and sentence are kept. The owner can add missing audio through Tools."
+msgstr "Zmení sa iba kontextový preklad. Slovníkové heslo a veta sa zachovajú. Vlastník môže doplniť chýbajúci zvuk cez Nástroje."
+
+msgid "This is a planning estimate, not a provider invoice or spending cap. Successful results are added automatically. Failed items can be retried separately; completed work is kept."
+msgstr "Ide o odhad, nie o faktúru poskytovateľa ani o limit jeho nákladov. Úspešné výsledky sa pridajú automaticky. Neúspešné položky možno zopakovať samostatne; dokončená práca sa zachová."
+
+msgid "Translation of the form in this sentence"
+msgstr "Preklad tvaru v tejto vete"
+
+msgid "already complete or not needed"
+msgstr "už hotové alebo nepotrebné"
+
+msgid "recordings failed"
+msgstr "neúspešné nahrávky"
+
+msgid "recordings pending"
+msgstr "čakajúce nahrávky"
+
+#, python-format
+msgid "%(n)s sentence"
+msgid_plural "%(n)s sentences"
+msgstr[0] "%(n)s veta"
+msgstr[1] "%(n)s vety"
+msgstr[2] "%(n)s viet"
+msgstr[3] "%(n)s vety"

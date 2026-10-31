@@ -10,10 +10,13 @@ from . import evaluation_views, mwe_audio
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
-from . import writing_views, guided_views
+from . import writing_views, guided_views, form_jobs
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/tools/sentence-forms/', form_jobs.start, name='forms-start'),
+    path('<int:pk>/tools/sentence-forms/<uuid:run_id>/', form_jobs.detail, name='forms-run'),
+    path('<int:pk>/sentence-forms/<int:part_id>/edit/', form_jobs.edit, name='form-edit'),
     path('deployment-health/', deployment_health, name='deployment-health'),
     path('interface-language/', localisation.set_language, name='set-language'),
     path('translations.js', JavaScriptCatalog.as_view(packages=['community_dictionary']), name='javascript-catalog'),

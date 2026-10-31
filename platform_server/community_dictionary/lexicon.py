@@ -74,7 +74,7 @@ def image_family_roots(rows):
 def outdated_tts(contribution, entry, dictionary):
     """Only synthetic recordings have a known spoken text to compare."""
     source = contribution.provenance
-    return (contribution.kind == 'audio' and source.get('origin') == 'synthetic'
+    return bool(source.get('sentence_form')) or (contribution.kind == 'audio' and source.get('origin') == 'synthetic'
             and (source.get('source_text') != entry.word
                  or source.get('language') != dictionary.language
                  or (source.get('source_meaning_id') is not None and

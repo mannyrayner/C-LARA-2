@@ -150,15 +150,15 @@ def retry_audio(pk, user):
             raise Conflict('Open the completed writing attempt first.')
         capture.allowed(study, payment=True)
         from .lexicon import recordings
-        for clip in study.speech.filter(kind='entry', status='failed').select_related('entry'):
-            if study.speech.filter(entry_id=clip.entry_id, status__in=['waiting', 'running']).exists():
+        for clip in study.speech.filter(kind__in=['entry','form'], status='failed').select_related('entry'):
+            if study.speech.filter(entry_id=clip.entry_id, text_id=clip.text_id, status__in=['waiting', 'running']).exists():
                 continue
             capture.speech_allowed(clip)
-            if recordings(clip.entry, study.dictionary):
+            if capture.available_audio(clip):
                 continue
             # A failed attempt is superseded locally, not retried with its old
             # accounting key. Do not revive a running/uncertain provider call.
-            CaptureSpeech.objects.create(capture=study, kind='entry', entry=clip.entry,
+            CaptureSpeech.objects.create(capture=study, kind=clip.kind, entry=clip.entry,
                 text=clip.text, meaning=clip.meaning, language=clip.language,
                 text_id=clip.text_id, meaning_id=clip.meaning_id)
         if study.input_mode == 'guided':

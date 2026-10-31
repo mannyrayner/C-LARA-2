@@ -16,7 +16,7 @@ from . import porting, port_vocabulary as vocabulary, port_costs, tts
 from .models import Entry, PortRun, PortItem, PortSpeech, PortEntryLink, VocabularyState, SentenceWord
 from .services import Conflict
 
-VERSION = 'automatic-dictionary-1'
+VERSION = 'automatic-dictionary-forms-2'
 ZERO = Decimal('0')
 
 
@@ -228,7 +228,7 @@ def _continue(run):
     child = PortRun.objects.create(port=run.port, stage='vocabulary', model=run.model,
         source_language=run.port.language, source_explanation_language=run.port.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION,
-                'vocabulary_recipe':vocabulary.VERSION}, payer=run.payer,
+                'vocabulary_recipe':vocabulary.VERSION,'forms_recipe':'sentence-forms-1'}, payer=run.payer,
         options={'budget_version':1, 'automatic':True, 'automatic_recipe':VERSION,
                  'automatic_root':str(run.pk)}, expires_at=timezone.now()+timedelta(hours=1))
     total = sum((p[3] for p in plans), ZERO)

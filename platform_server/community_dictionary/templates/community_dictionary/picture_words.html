@@ -3,7 +3,7 @@
 <section class="panel picture-words" id="picture-words" aria-labelledby="picture-words-heading">
   <h2 id="picture-words-heading">{% translate "Words for this picture" %}</h2>
   {% for row in picture_words %}
-    {% if row.surface and row.surface != row.entry.word %}<p class="help" dir="auto">{{ row.surface }} → {{ row.entry.word }}</p>{% endif %}
+{% if row.surface and row.surface != row.entry.word and not row.form %}<p class="help" dir="auto">{{ row.surface }} → {{ row.entry.word }}</p>{% endif %}
     {% include 'community_dictionary/word_row.html' with hide_pronunciation_warning=True %}
   {% endfor %}
 </section>

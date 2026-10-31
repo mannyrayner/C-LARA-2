@@ -159,10 +159,7 @@ def detail(request,pk,study_id,vocabulary=None):
     # A failed attempt is historical, but the shared word may now have a valid
     # replacement (manual TTS or human audio). Use the same current recordings as
     # the displayed rows; never promote a private preview or pending contribution.
-    recovered={row['entry'].pk for row in [sentence_row,*word_rows] if row and row['audio']}
-    failed_audio=[clip for clip in study.speech.filter(status='failed') if clip.entry_id not in recovered]
-    for clip in failed_audio:
-        clip.failure_reason=tts.failure_message(clip.report)
+    failed_audio=capture.failed_audio(study)
     return render(request,'community_dictionary/capture_detail.html',context(request,study.dictionary,study=study,
         pending=pending,feedback=feedback,next_image=next_image,vocabulary=vocabulary,word_rows=word_rows,language_check=language_check,
         sentence_row=sentence_row,

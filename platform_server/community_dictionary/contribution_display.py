@@ -56,7 +56,7 @@ def entry_cards(entries, user, kind=''):
                 source.get('source_text') != word or source.get('language') != entry.dictionary.language)
             if not part.earlier_audio:
                 audio.append(part)
-        notes = [p for p in current if p.kind == 'note']
+        notes = [p for p in current if p.kind in {'note', 'form'}]
         shown = {p.pk for p in fields + images + audio + notes}
         # Every owned revision stays reachable, including rejected proposals and
         # recordings for earlier wording. Reference histories are not copied.

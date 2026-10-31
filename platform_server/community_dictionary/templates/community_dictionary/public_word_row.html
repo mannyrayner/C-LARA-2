@@ -1,7 +1,9 @@
 {% load i18n %}
+{% if row.form %}{% include 'community_dictionary/sentence_form_row.html' with public=True %}{% endif %}
 <article class="word-row" data-word-row data-entry-id="{{ row.id }}" data-audio-id="{{ row.audio.id|default:'' }}">
+{% if row.form %}<p class="help">{% translate "Dictionary form" %}</p>{% endif %}
 <h3 dir="{{ dictionary.text_direction }}"{% if hide_heading %} class="sr-only"{% endif %}>{{ row.title }}</h3>
-{% if row.surface and row.surface != row.word %}<p class="help" dir="auto">{% blocktranslate with surface=row.surface %}In the sentence: {{ surface }}{% endblocktranslate %}</p>{% endif %}
+{% if row.surface and row.surface != row.word and not row.form %}<p class="help" dir="auto">{% blocktranslate with surface=row.surface %}In the sentence: {{ surface }}{% endblocktranslate %}</p>{% endif %}
 <div class="word-actions">
 {% if row.audio %}<button type="button" class="secondary" data-word-listen aria-label="{% blocktranslate with word=row.title %}Listen to {{ word }}{% endblocktranslate %}" aria-pressed="false" hidden>{% translate "Listen" %}</button>
 <audio controls preload="none" data-word-audio aria-label="{% blocktranslate with word=row.title %}Recording of {{ word }}{% endblocktranslate %}" src="{% url 'community_dictionary:public-media' dictionary.pk row.audio.id %}"></audio>

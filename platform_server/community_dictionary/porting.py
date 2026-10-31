@@ -135,6 +135,9 @@ def current_item(item):
             return current_item(item), None
         from .port_audio import current_item as audio_current
         return audio_current(item), None
+    if run.stage == 'forms':
+        from .form_jobs import current_item
+        return current_item(item), None
     if run.stage == 'vocabulary':
         from . import port_vocabulary
         return port_vocabulary.current_item(item), None
@@ -305,7 +308,7 @@ def approve(user, run_id):
         return run  # retrying the same approval never sends again
     from . import automatic
     automatic.check_quote(run)
-    if run.stage == 'audio' and run.port.runs.filter(status='running').exists():
+    if run.stage in {'audio', 'forms'} and run.port.runs.filter(status='running').exists():
         raise Conflict('Finish the current job before approving audio recovery.')
     if run.expires_at <= timezone.now() or payer_now(user) != run.payer:
         raise Conflict('This estimate expired or the payment account changed. Prepare a new estimate.')
@@ -317,6 +320,10 @@ def approve(user, run_id):
     if run.stage == 'vocabulary':
         from . import port_vocabulary
         current_prices['vocabulary_recipe'] = port_vocabulary.VERSION
+        current_prices['forms_recipe'] = 'sentence-forms-1'
+    if run.stage == 'forms':
+        from .sentence_forms import VERSION
+        current_prices['forms_recipe'] = VERSION
     if run.stage == 'descriptions':
         from .batch_descriptions import VERSION
         current_prices['description_recipe'] = VERSION
@@ -370,7 +377,7 @@ def clear_preview(item, message='This preview is no longer available.'):
     item.needs_attention, item.attention_note, item.review_values = False, '', {}
     if item.status != 'running':
         item.status = 'discarded'
-    if item.run.stage in {'vocabulary','audio'}:
+    if item.run.stage in {'vocabulary','audio','forms'}:
         item.speech.exclude(status__in=['ready','failed','discarded','running']).update(status='discarded', report={})
     item.save(update_fields=['file_path','result','status','message','invalidated',
                             'needs_attention','attention_note','review_values'])
@@ -411,7 +418,7 @@ def settle(run):
         return
     from . import port_budget
     port_budget.release_finished(run)
-    if run.stage in {'vocabulary','audio'}:
+    if run.stage in {'vocabulary','audio','forms'}:
         if run.items.filter(status__in=['ready','unclear']).exists() or run.speech.filter(status__in=['waiting','queued','running','budget']).exists():
             return
     items = list(run.items.all())
@@ -462,7 +469,7 @@ def cancel(user, run_id):
     run.save(update_fields=['status'])
     for item in run.items.exclude(status__in=['saved','discarded']):
         clear_preview(item, 'Cancelled. No further requests will be sent.')
-    if run.stage in {'vocabulary','audio'}:
+    if run.stage in {'vocabulary','audio','forms'}:
         run.speech.filter(status__in=['waiting','queued','budget']).update(status='discarded',report={})
     settle(run)
     return run
@@ -493,7 +500,7 @@ def save_item(user, item_id, values, *, automatic=False):
     if item.run.stage == 'descriptions':
         from .batch_descriptions import save_item
         return save_item(user, item, values, automatic=automatic)
-    if item.run.stage in {'vocabulary','audio'}:
+    if item.run.stage in {'vocabulary','audio','forms'}:
         raise Conflict('Use the vocabulary review form for this result.')
     if item.status == 'saved':
         return PortEntryLink.objects.get(port=item.run.port,source=item.source_entry).destination

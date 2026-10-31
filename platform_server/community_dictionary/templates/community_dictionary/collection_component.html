@@ -5,6 +5,7 @@
   {% if item.conflicting_text %}<p class="help">The original entry already has different text here. Use Edit words in that entry to propose a change.</p>{% endif %}
   {% if item.part.kind == 'image' and item.media_url %}<img class="candidate-image" src="{{ item.media_url }}" alt="Picture for this entry" loading="lazy">{% elif item.media_url %}<audio controls preload="none" src="{{ item.media_url }}"></audio>{% endif %}
   {% if item.part.kind == 'text' %}<p class="component-value" dir="auto">{{ item.part.text_value|default:'(Empty component)'|linebreaksbr }}</p>{% endif %}
+  {% if item.part.kind == 'form' %}<p dir="auto">{{ item.part.word }} — {{ item.part.meaning }}</p>{% endif %}
   {% if item.part.body %}<p dir="auto">{{ item.part.body|linebreaksbr }}</p>{% endif %}
   {% if item.part.label %}<p dir="auto">{{ item.part.label }}</p>{% endif %}
   {% if item.part.provenance.origin == 'generated' %}<p class="badge">AI-generated picture · {{ item.part.provenance.model }}</p>{% endif %}{% if item.part.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice · {{ item.part.provenance.language }} · Spoken text: <span dir="auto">{{ item.part.provenance.source_text }}</span>{% if item.part.earlier_audio %}<br>Earlier or unconfirmed wording — kept in history.{% endif %}</p>{% endif %}

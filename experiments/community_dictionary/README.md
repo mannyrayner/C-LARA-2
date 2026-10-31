@@ -303,3 +303,5 @@ The [original pilot record](mwe-audio-pilot-2026-10-18.md) is historical.
 Laptop/AWS acceptance and the paired French/Swedish outcomes now appear in
 [the extension record](mwe-audio-languages-2026-10-18.md), alongside the new
 experimental language scope.
+
+- [Sentence forms and incremental backfill, 31 October 2026](sentence-forms-2026-10-31.md).

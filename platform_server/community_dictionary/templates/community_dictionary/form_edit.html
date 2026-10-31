@@ -1,0 +1,5 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
+<h1>{% translate "Correct this translation" %}</h1><p dir="auto">{{ sentence }}</p><h2 dir="auto">{{ part.word }}</h2>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button>{% translate "Save" %}</button></form>
+<p class="help">{% translate "This changes the contextual translation only. The dictionary lemma and sentence are kept. The owner can add missing audio through Tools." %}</p>
+{% endblock %}

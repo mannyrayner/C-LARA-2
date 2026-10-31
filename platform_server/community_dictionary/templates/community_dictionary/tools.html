@@ -16,4 +16,5 @@
 <p>{% translate "Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review." %}</p>
 <a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">{% translate "Create an image-only copy" %}</a>
 </section>
+<section class="panel"><h2>{% translate "Forms used in sentences" %}</h2><p>{% translate "Add contextual translations and audio to existing sentence vocabulary. Completed forms and human corrections are kept." %}</p><a class="button secondary" href="{% url 'community_dictionary:forms-start' dictionary.pk %}">{% translate "Add missing sentence forms" %}</a></section>
 {% endblock %}

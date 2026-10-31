@@ -124,9 +124,9 @@ def input_data(item):
 def estimate(entry, prices, extra):
     from . import port_costs
     analysis = port_costs.analysis(entry, prices, extra)
-    # Three new words per sentence is a planning assumption; reuse reduces it.
+    # Plan three lemmas and three contextual forms; reuse/identical forms reduce this.
     # Actual edited/reused words determine speech work after human review.
-    estimate = analysis + 3*port_costs.speech('x'*12, '', prices, unknown=True)
+    estimate = analysis + 6*port_costs.speech('x'*12, '', prices, unknown=True)
     return porting.money(estimate), port_costs.allowance(estimate)
 
 
@@ -151,7 +151,7 @@ def quote(user, port, token, *, automatic=False):
     port.runs.filter(stage='vocabulary',status='estimate').update(status='cancelled')
     run = PortRun.objects.create(id=token,port=port,stage='vocabulary',model=model, options={'budget_version':1},
         source_language=port.language,source_explanation_language=port.explanation_language,
-        prices={**{k:str(v) for k,v in prices.items()},'speech_recipe':tts.INSTRUCTIONS_VERSION,'vocabulary_recipe':VERSION},
+        prices={**{k:str(v) for k,v in prices.items()},'speech_recipe':tts.INSTRUCTIONS_VERSION,'vocabulary_recipe':VERSION,'forms_recipe':'sentence-forms-1'},
         payer='personal' if personal else 'credits' if credits_enabled() else 'server',expires_at=timezone.now()+timedelta(hours=1))
     planned = plan(port, prices)
     run.skipped = planned['skipped']
@@ -214,7 +214,7 @@ def validated_words(words, sentence):
     from .capture_forms import VocabularyForms
     data={'words-TOTAL_FORMS':str(len(words)),'words-INITIAL_FORMS':'0'}
     for i,word in enumerate(words):
-        for field in ['lemma','meaning','surface']:
+        for field in ['lemma','meaning','surface','form_meaning']:
             data[f'words-{i}-{field}']=word.get(field,'')
     form = VocabularyForms(data,prefix='words',sentence=sentence)
     if not form.is_valid():
@@ -290,6 +290,8 @@ def save_item(user, item_id, words, *, automatic=False):
         if not recordings(target,entry.dictionary):
             PortSpeech.objects.get_or_create(run=item.run,entry=target,text=target.current_text,
                 defaults={'item':item,'meaning':target.current_meaning})
+    from .sentence_forms import port_speech
+    port_speech(item.run, item, entry)
     VocabularyState.objects.update_or_create(sentence=entry,defaults={
         'snapshot':item.snapshot['sentence'],'recipe':VERSION,'accepted_by':user,'accepted_at':timezone.now(),
         'words':[{'entry':target.pk,'text':target.current_text_id,'meaning':target.current_meaning_id} for target in targets]})

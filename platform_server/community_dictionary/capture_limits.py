@@ -12,11 +12,11 @@ from .services import Conflict
 
 SALT = 'community-picture-description-limit-v1'
 QUOTE_SECONDS = 600
-ESTIMATE_VERSION = 'capture-budget-1'
+ESTIMATE_VERSION = 'capture-budget-forms-2'
 # This is the existing short-description estimate, not a spending guarantee.
 INPUT_TOKENS = 12000
 OUTPUT_TOKENS = 2600
-AUDIO_ALLOWANCE_USD = Decimal('.08')
+AUDIO_ALLOWANCE_USD = Decimal('.16')
 
 
 def ceiling():

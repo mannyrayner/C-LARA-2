@@ -22,6 +22,8 @@ from .views import context, fail, private_media_response
 
 
 def run_url(run):
+    if run.stage == 'forms':
+        return reverse('community_dictionary:forms-run',args=[run.port.source_id,run.pk])
     if run.port.is_audio_batch:
         return reverse('community_dictionary:mwe-audio-run',args=[run.port.source_id,run.pk])
     return reverse('community_dictionary:port-run',args=[run.port.source_id,run.pk])
@@ -131,7 +133,7 @@ def detail(request,pk,run_id):
         run = owned_run(request,pk,run_id)
     except Conflict as exc:
         return fail(request,exc,409)
-    if run.port.is_audio_batch:
+    if run.port.is_audio_batch or run.stage == 'forms':
         return redirect(run_url(run))
     if run.options.get('automatic') and run.status != 'estimate':
         return automatic_detail(request, run)
@@ -218,7 +220,7 @@ def action(request,pk,run_id):
     # Cancellation remains available to the payer even if membership was revoked.
     run = get_object_or_404(PortRun,pk=run_id,port__source_id=pk,port__user=request.user)
     action = request.POST.get('action')
-    if run.port.is_audio_batch and action not in {'approve','resume','cancel','approve-more'}:
+    if (run.port.is_audio_batch or run.stage == 'forms') and action not in {'approve','resume','cancel','approve-more'}:
         return fail(request,'This action is not available for expression audio.',400)
     try:
         if action == 'cancel':

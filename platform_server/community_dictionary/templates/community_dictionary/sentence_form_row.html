@@ -1,0 +1,15 @@
+{% load i18n %}
+<article class="word-row" data-word-row data-entry-id="form-{{ row.form.link_id }}" data-audio-id="{{ row.form.id|default:'' }}-{{ row.form.audio.id|default:'' }}">
+<p class="help">{% translate "In this sentence" %}</p>
+<h3 dir="auto">{{ row.form.surface }}</h3>
+<div class="word-actions">
+{% if row.form.audio %}
+{% if row.form.in_sentence %}<span class="help">{% translate "Hear it in the whole sentence" %}</span>{% endif %}
+<button type="button" class="secondary" data-word-listen aria-pressed="false" hidden>{% translate "Listen" %}</button>
+<audio controls preload="none" data-word-audio aria-label="{% translate 'Form in sentence' %}" src="{% if public %}{% url 'community_dictionary:public-media' dictionary.pk row.form.audio.id %}{% else %}{% url 'community_dictionary:media' dictionary.pk row.form.audio.pk %}{% endif %}"></audio>
+{% else %}<span class="help">{% translate "No recording yet" %}</span>{% endif %}
+{% if row.form.meaning %}<details class="word-translation"><summary>{% translate "Translation" %}</summary><p dir="auto">{{ row.form.meaning }}</p></details>{% endif %}
+</div>
+{% if not public and editor and row.form.id %}<details><summary>{% translate "More options" %}</summary><a href="{% url 'community_dictionary:form-edit' dictionary.pk row.form.id %}">{% translate "Correct this translation" %}</a></details>{% endif %}
+<p class="help" data-word-playback-status role="status" hidden></p>
+</article>

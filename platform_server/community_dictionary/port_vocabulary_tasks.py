@@ -38,8 +38,10 @@ def dispatch(run):
 
 
 def credentials(item):
-    if item.run.stage=='audio':
+    if item.run.stage in {'audio','forms'}:
         return port_tasks.credentials(item)
+    if item.run.prices.get('forms_recipe') != 'sentence-forms-1':
+        raise Conflict('Sentence-form processing changed. Prepare a new estimate.')
     if item.run.prices.get('vocabulary_recipe')!=vocabulary.VERSION:
         raise Conflict('Vocabulary processing changed. Prepare a new estimate.')
     return port_tasks.credentials(item)
@@ -102,6 +104,11 @@ def speech_row(pk,lock=False):
 def speech_credentials(clip):
     clip.item.run=clip.run
     key=credentials(clip.item)
+    if clip.text.kind == 'form':
+        from .sentence_forms import current
+        if clip.text.entry_id != clip.entry_id or not current(clip.text) or clip.meaning_id != clip.text_id:
+            raise Conflict('This sentence form changed. Prepare a new estimate.')
+        return key
     if (clip.entry.archived or clip.entry.dictionary_id!=clip.run.port.target_id or
             clip.entry.current_text_id!=clip.text_id or clip.entry.current_meaning_id!=clip.meaning_id or
             clip.text.status!='accepted' or clip.meaning and clip.meaning.status!='accepted'):
@@ -118,7 +125,12 @@ def speak(pk):
             clip.status='discarded';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         from .lexicon import recordings
-        if not clip.run.port.is_audio_batch and recordings(clip.entry,clip.run.port.target):
+        if clip.text.kind == 'form':
+            from .sentence_forms import audio
+            already_recorded = bool(audio(clip.text))
+        else:
+            already_recorded = bool(recordings(clip.entry,clip.run.port.target))
+        if not clip.run.port.is_audio_batch and already_recorded:
             clip.status='ready';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         clip.item.run=clip.run
@@ -141,7 +153,7 @@ def speak(pk):
             prepared,duration=tts.synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
                 model=tts.MODEL,voice=clip.run.port.voice,api_key=key,
                 meaning=clip.meaning.meaning if clip.meaning else '',meaning_language=clip.run.port.explanation_language,
-                speech_kind='sentence' if clip.entry.entry_type=='sentence' else 'entry',
+                speech_kind='sentence' if clip.text.kind != 'form' and clip.entry.entry_type=='sentence' else 'entry',
                 report=report,guidance_model=clip.run.model,guidance_prices=clip.run.prices,before_request=still_allowed)
     except Exception as exc:
         log.warning('Vocabulary audio %s failed (%s)',pk,type(exc).__name__)
@@ -171,6 +183,11 @@ def speak(pk):
                     from .mwe_audio import publish
                     clip.item = item
                     publish(clip, prepared, paths, report)
+                elif prepared and clip.text.kind == 'form':
+                    from .sentence_forms import publish_audio
+                    publish_audio(clip.text, clip.run.port.user, prepared, paths,
+                        {'provider':'openai', 'voice':clip.run.port.voice, 'model':tts.MODEL,
+                         'synthesis':report, 'run':str(clip.run_id)})
                 elif prepared:
                     from .lexicon import recordings
                     if not recordings(clip.entry,clip.run.port.target):

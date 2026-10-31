@@ -309,3 +309,11 @@ and [migration/install instructions](../../docs/howto/community-port-reliability
 Owner-approved expression-audio regeneration and same-entry word-audio evaluations
 have human-reported laptop/AWS acceptance in French and Swedish. The additional
 language extension is experimental. See [the current guide](../../docs/howto/community-mwe-audio.md).
+
+### Contextual sentence forms
+
+Sentence vocabulary shows an inflected surface alongside its shared lemma, with
+contextual translations and separately scoped audio. New AI capture and vocabulary
+jobs populate it; owners can backfill existing content under Tools. See
+[usage and limits](../../docs/howto/community-sentence-forms.md) and the
+[reviewed deployment sequence](../../docs/howto/community-sentence-forms-deployment.md).

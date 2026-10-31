@@ -158,9 +158,9 @@ class CaptureLimitTests(TestCase):
         with patch('community_dictionary.photo_ai.pricing_configuration',return_value=('configured-model',{'input':'2','output':'10'})), override_settings(CREDITS_ENABLED=True,OPENAI_API_KEY=''):
             CreditAccount.objects.update_or_create(user=self.owner,defaults={'balance_usd':Decimal('1')})
             estimate,page=self.preview(50)
-            self.assertEqual(Decimal(estimate['per_request']),Decimal('.13'))
-            self.assertEqual(estimate['daily_estimate'],Decimal('6.50'))
-            self.assertContains(page,'US$6.50')
+            self.assertEqual(Decimal(estimate['per_request']),Decimal('.21'))
+            self.assertEqual(estimate['daily_estimate'],Decimal('10.50'))
+            self.assertContains(page,'US$10.50')
             self.assertContains(page,'balance may not cover')
             self.assertFalse(AIUsageCharge.objects.exists())
         self.ai.assert_not_called();self.tts.assert_not_called()

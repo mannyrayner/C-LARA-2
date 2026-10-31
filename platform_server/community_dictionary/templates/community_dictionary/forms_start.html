@@ -1,0 +1,7 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Add missing sentence forms" %}</h1>
+<p>{% translate "Add translations and recordings for the forms used in existing sentences, keeping the shared dictionary lemmas. Existing translations, recordings and human corrections are preserved." %}</p>
+<p>{% translate "Only missing work is included. You will see an estimate and approve it before any AI requests are sent. Sentences, their translations and linked words are sent to OpenAI; no images or existing recordings are sent." %}</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button>{% translate "Estimate missing work" %}</button></form>
+{% if runs %}<h2>{% translate "Recent jobs" %}</h2><ul>{% for run in runs %}<li><a href="{% url 'community_dictionary:forms-run' dictionary.pk run.pk %}">{{ run.created_at }} · {{ run.status }}</a></li>{% endfor %}</ul>{% endif %}
+{% endblock %}

@@ -24,7 +24,8 @@ def consent_values(user, dictionary):
         'explanation_language': dictionary.explanation_language or 'English',
         'model': model, 'personal': personal,
         'rates': {k: str(prices[k]) for k in ['input', 'output']},
-        'speech_model': tts.MODEL, 'speech_recipe': tts.INSTRUCTIONS_VERSION}
+        'speech_model': tts.MODEL, 'speech_recipe': tts.INSTRUCTIONS_VERSION,
+        'forms_recipe': 'sentence-forms-1'}
 
 
 def estimate(values):

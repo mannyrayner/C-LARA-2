@@ -151,6 +151,7 @@ def price_basis(stage, prices):
         result['sentence_speech_recipe'] = port_ai.speech_version({'entry_type': 'sentence'})
     else:
         result['vocabulary_recipe'] = vocabulary.VERSION
+        result['forms_recipe'] = 'sentence-forms-1'
     return result
 
 

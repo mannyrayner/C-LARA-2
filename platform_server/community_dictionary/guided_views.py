@@ -152,12 +152,8 @@ def page(request, dictionary, study, form=None):
     form.fields['description'].widget.attrs['lang'] = tts.language_code(study.explanation_language)
     rows = capture.sentence_context(study.saved_entry)['sentence_words'] if study.saved_entry_id else []
     sentence = word_row(study.saved_entry, dictionary) if study.saved_entry_id else None
-    recovered = {row['entry'].pk for row in [sentence, *rows] if row and row['audio']}
     pending = study.speech.filter(status__in=['waiting', 'running']).exists()
-    failed, seen = [], set()
-    for clip in study.speech.filter(status='failed').order_by('-pk'):
-        if clip.entry_id not in recovered and clip.entry_id not in seen:
-            clip.failure_reason = tts.failure_message(clip.report); failed.append(clip); seen.add(clip.entry_id)
+    failed = capture.failed_audio(study)
     return no_store(render(request, 'community_dictionary/guided_detail.html', context(request, dictionary,
         study=study, info=info, suggestion=suggestion, form=form,
         estimate=guided.estimate(info['consent']), personal=study.personal_key,
