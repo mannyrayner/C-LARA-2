@@ -37,6 +37,8 @@ VERSION = 'homograph-review-1'
 STAGE = 'audio_repair'
 REVIEW = 'audio_review'
 MAX_REPAIR = 100
+DEFAULT_CANDIDATES = 3
+MAX_CANDIDATES = 5
 DECISIONS = {'': _('Not reviewed'), 'keep': _('Keep'), 'replace': _('Needs regeneration')}
 
 
@@ -159,16 +161,20 @@ def check_approval(run):
 
 
 @transaction.atomic
-def quote(user, dictionary, token):
+def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, selected_ids=None, previous_run=None):
     porting.locks(); require_owner(user, dictionary)
     existing = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, stage=STAGE).first()
     if existing:
         return existing
     if PortRun.objects.filter(pk=token).exists():
         raise Conflict(_('Reload the review page.'))
+    if type(candidate_count) is not int or not 1 <= candidate_count <= MAX_CANDIDATES:
+        raise Conflict(_('Choose between one and five candidates per word or form.'))
     chosen = []
     for old, decision in decisions(user, dictionary).values():
         if decision != 'replace':
+            continue
+        if selected_ids is not None and old['id'] not in selected_ids:
             continue
         try:
             row = live_row(dictionary, old['id'])
@@ -178,6 +184,8 @@ def quote(user, dictionary, token):
             chosen.append(row)
     if not chosen:
         raise Conflict(_('Mark at least one current recording as Needs regeneration first.'))
+    if selected_ids is not None and {row['id'] for row in chosen} != set(selected_ids):
+        raise Conflict(_('The recording or its review changed. Reload before saving.'))
     if len(chosen) > MAX_REPAIR:
         raise Conflict(_('Regenerate at most 100 marked words or forms in one batch.'))
     model, _key, _personal, prices = photo_ai.configuration(user)
@@ -187,7 +195,8 @@ def quote(user, dictionary, token):
     run = PortRun.objects.create(pk=token, port=port, stage=STAGE, model=model,
         source_language=dictionary.language, source_explanation_language=dictionary.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION},
-        options={'review_version':VERSION}, payer=porting.payer_now(user),
+        options={'review_version':VERSION, 'candidate_count':candidate_count,
+                 'previous_run':str(previous_run) if previous_run else ''}, payer=porting.payer_now(user),
         expires_at=timezone.now()+timedelta(hours=1))
     grouped = {}
     for row in chosen:
@@ -197,8 +206,9 @@ def quote(user, dictionary, token):
         for row in words:
             estimated = porting.money(port_costs.speech(row['word'], dictionary.language, prices))
             allowance = port_costs.allowance(estimated)
-            clips.append({'id':uuid.uuid4().hex, 'word_id':row['id'], 'method':'guidance',
-                'status':'waiting', 'allowance':str(allowance), 'estimate':str(estimated), 'cost':'0', 'report':{}})
+            for number in range(1, candidate_count + 1):
+                clips.append({'id':uuid.uuid4().hex, 'word_id':row['id'], 'method':'guidance', 'candidate':number,
+                    'status':'waiting', 'allowance':str(allowance), 'estimate':str(estimated), 'cost':'0', 'report':{}})
         item = PortItem.objects.create(run=run, source_entry_id=entry_id, snapshot={'words':words}, result={'clips':clips},
             estimated_usd=sum(Decimal(c['estimate']) for c in clips),
             allowance_usd=sum(Decimal(c['allowance']) for c in clips))
@@ -207,6 +217,27 @@ def quote(user, dictionary, token):
         run.allowance_usd += item.allowance_usd
     run.save()
     return run
+
+
+@transaction.atomic
+def quote_more(user, dictionary, run_id, item_id, part_id, token, candidate_count):
+    """A new approved batch for one still-marked word; existing previews survive."""
+    porting.locks(); require_owner(user, dictionary)
+    item = get_object_or_404(PortItem.objects.select_related('run__port__source','run__port__user'),
+        pk=item_id, run_id=run_id, run__stage=STAGE, run__port__source=dictionary, run__port__user=user)
+    if not any(row['id'] == part_id for row in item.snapshot.get('words', [])):
+        raise Http404
+    # Retried submissions return their original estimate, even after later review.
+    existing = PortRun.objects.filter(pk=token, stage=STAGE, port__source=dictionary,
+        port__user=user, options__previous_run=str(run_id)).first()
+    if existing:
+        return existing
+    current_item(item)
+    if item.run.status != 'complete' or not item.run.settled:
+        raise Conflict(_('Wait until generation finishes before requesting more candidates.'))
+    if any(c['word_id'] == part_id and c.get('decision') == 'accept' for c in item.result.get('clips', [])):
+        raise Conflict(_('A replacement was already accepted for this item. Return to the checklist to review it again.'))
+    return quote(user, dictionary, token, candidate_count, selected_ids={part_id}, previous_run=run_id)
 
 
 def current_item(item):
@@ -235,6 +266,8 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
         raise Conflict(_('This preview is not ready.'))
     if clip.get('decision'):
         return  # repeated submit is harmless
+    if any(c['word_id'] == clip['word_id'] and c.get('decision') == 'accept' for c in item.result['clips']):
+        raise Conflict(_('A replacement was already accepted for this item. Return to the checklist to review it again.'))
     row = next(r for r in item.snapshot['words'] if r['id']==clip['word_id'])
     if decision == 'reject':
         clip['decision'] = 'reject'
@@ -284,17 +317,25 @@ def owner_run(request, pk, run_id):
     return dictionary, run
 
 
+def quote_input(request):
+    try:
+        token = uuid.UUID(request.POST.get('token', ''))
+        count = int(request.POST.get('candidates', str(DEFAULT_CANDIDATES)))
+    except (ValueError, TypeError):
+        raise Conflict(_('Choose between one and five candidates per word or form.'))
+    if not 1 <= count <= MAX_CANDIDATES:
+        raise Conflict(_('Choose between one and five candidates per word or form.'))
+    return token, count
+
+
 @page(['GET','POST'])
 def home(request, pk):
     dictionary = owner(request, pk)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'quote':
-            try:
-                token = uuid.UUID(request.POST.get('token', ''))
-            except ValueError:
-                raise Conflict(_('Reload the review page.'))
-            run = quote(request.user, dictionary, token)
+            token, count = quote_input(request)
+            run = quote(request.user, dictionary, token, count)
             return redirect('community_dictionary:audio-review-run', pk=pk, run_id=run.pk)
         if action not in DECISIONS:
             raise Conflict(_('Choose Keep or Needs regeneration.'))
@@ -324,6 +365,7 @@ def home(request, pk):
                     break
     return render(request, 'community_dictionary/audio_review.html', context(request, dictionary,
         rows=paging, total=len(rows), kept=counts['keep'], marked=counts['replace'], unreviewed=counts[''], token=uuid.uuid4(),
+        candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
         runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user)[:10]))
 
 
@@ -332,7 +374,15 @@ def detail(request, pk, run_id):
     dictionary, run = owner_run(request, pk, run_id)
     if request.method == 'POST':
         action = request.POST.get('action')
-        if action == 'approve':
+        if action == 'more':
+            token, count = quote_input(request)
+            try:
+                item_id, part_id = int(request.POST.get('item','0')), int(request.POST.get('part','0'))
+            except ValueError:
+                raise Http404
+            next_run = quote_more(request.user, dictionary, run.pk, item_id, part_id, token, count)
+            return redirect('community_dictionary:audio-review-run', pk=pk, run_id=next_run.pk)
+        elif action == 'approve':
             if request.POST.get('approve') != 'on':
                 raise Conflict(_('Approve the estimate and permission to send selected text to OpenAI.'))
             porting.approve(request.user, run.pk)
@@ -363,13 +413,21 @@ def detail(request, pk, run_id):
         except (Conflict, Http404):
             unavailable += 1; continue
         for row in item.snapshot['words']:
-            clip = next(c for c in item.result['clips'] if c['word_id']==row['id'])
-            rows.append({'word':row, 'clip':clip, 'item':item})
-    progress = Counter(r['clip']['status'] for r in rows)
+            clips = [dict(c) for c in item.result['clips'] if c['word_id']==row['id']]
+            for number, clip in enumerate(clips, 1):
+                clip.setdefault('candidate', number)  # Existing single-preview jobs remain usable.
+            rows.append({'word':row, 'clips':clips, 'item':item, 'token':uuid.uuid4(),
+                         'accepted':any(c.get('decision')=='accept' for c in clips)})
+    clips = [c for row in rows for c in row['clips']]
+    progress = Counter(c['status'] for c in clips)
     balance = get_user_balance_usd(request.user) if run.payer=='credits' else None
     return render(request, 'community_dictionary/audio_review_run.html', context(request, dictionary,
-        run=run, rows=rows, total=len(rows), finished=progress['ready']+progress['failed'],
+        run=run, rows=rows, words=len(rows), total=len(clips), finished=progress['ready']+progress['failed'],
         failures=progress['failed'], unavailable=unavailable, balance=balance,
+        candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
+        previous_run=run.options.get('previous_run'),
+        later_runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user,
+                                         options__previous_run=str(run.pk)).order_by('created_at'),
         enough_funds=balance is None or balance>=run.allowance_usd,
         expired=run.expires_at<=timezone.now(), held=0 if run.settled else run.reserved_usd-run.released_usd))
 

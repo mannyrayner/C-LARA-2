@@ -6734,3 +6734,40 @@ msgstr "Attendez la fin de la génération avant de choisir les enregistrements.
 
 msgid "You can leave and return through Review homograph audio. Existing dictionary audio remains available."
 msgstr "Vous pouvez partir et revenir par Vérifier l’audio des homographes. L’audio existant du dictionnaire reste disponible."
+
+msgid "Choose between one and five candidates per word or form."
+msgstr "Choisissez entre un et cinq candidats par mot ou forme."
+
+msgid "Wait until generation finishes before requesting more candidates."
+msgstr "Attendez la fin de la génération avant de demander d’autres candidats."
+
+msgid "A replacement was already accepted for this item. Return to the checklist to review it again."
+msgstr "Un remplacement a déjà été accepté pour cet élément. Revenez à la liste pour le vérifier à nouveau."
+
+msgid "Candidates per word or form"
+msgstr "Candidats par mot ou forme"
+
+msgid "Compare several attempts and choose the best. More candidates cost more; you approve the estimate before generation."
+msgstr "Comparez plusieurs essais et choisissez le meilleur. Davantage de candidats coûtent plus cher ; vous approuvez l’estimation avant la génération."
+
+#, python-format
+msgid "%(words)s words / forms · %(total)s candidate recordings"
+msgstr "%(words)s mots / formes · %(total)s enregistrements candidats"
+
+msgid "Earlier candidates"
+msgstr "Candidats précédents"
+
+msgid "Further candidate batches"
+msgstr "Lots de candidats supplémentaires"
+
+msgid "No usable recording was produced. Existing audio is unchanged."
+msgstr "Aucun enregistrement utilisable n’a été produit. L’audio existant est inchangé."
+
+msgid "More candidates for this item"
+msgstr "Candidats supplémentaires pour cet élément"
+
+msgid "Estimate more candidates"
+msgstr "Estimer des candidats supplémentaires"
+
+msgid "Earlier previews are kept. A new estimate must be approved before generating more audio."
+msgstr "Les aperçus précédents sont conservés. Une nouvelle estimation doit être approuvée avant de générer davantage d’audio."
