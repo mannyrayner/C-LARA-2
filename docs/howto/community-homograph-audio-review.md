@@ -27,6 +27,9 @@ is wrong.
    Progress survives leaving the page. Text, meaning, language or audio changes
    invalidate the corresponding decision. Human recordings cannot be selected for
    automatic replacement.
+   The summary lists every group still marked **Needs regeneration**, with links
+   to the appropriate review page and card. It follows the expressions filter
+   and updates as decisions change, including items on other pages.
 3. Choose one to five **Candidates per word or form** (default three), then
    **Estimate regeneration of marked items** (up to 100 items per batch).
    A group needs only one set of candidates, not a separate set for every

@@ -7,6 +7,7 @@
 <p class="help">{% translate "By default, only single words are listed. Equivalent sentence forms share a review group; different dictionary senses and voices stay separate." %}</p>
 <section class="panel">
 <p role="status">{% blocktranslate %}{{ total }} words / forms · {{ kept }} kept · {{ marked }} need regeneration · {{ unreviewed }} not reviewed{% endblocktranslate %}</p>
+{% if pending_rows %}<p><strong>{% translate "Needs regeneration" %}:</strong> {% for pending in pending_rows %}<a href="?page={{ pending.page }}&amp;expressions={% if include_expressions %}1{% else %}0{% endif %}#word-{{ pending.word.id }}" title="{{ pending.word.meaning }} · {{ pending.word.voice }}">{{ pending.word.word }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
 <p>{% translate "Each decision is saved immediately. You can leave and return; changed text or recordings need a fresh review." %}</p>
 {% if marked %}<form method="post">{% csrf_token %}<input type="hidden" name="token" value="{{ token }}">
 <input type="hidden" name="expressions" value="{% if include_expressions %}1{% else %}0{% endif %}">
