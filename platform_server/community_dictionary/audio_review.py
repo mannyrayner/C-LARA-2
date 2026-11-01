@@ -495,6 +495,8 @@ def home(request, pk):
     rows = review_groups(request.user, dictionary, include_expressions=include_expressions)
     counts = Counter(r['decision'] for r in rows)
     paging = Paginator(rows, 20).get_page(request.GET.get('page'))
+    pending_rows = [{'word':row['word'], 'page':index // paging.paginator.per_page + 1}
+                    for index, row in enumerate(rows) if row['decision']=='replace']
     form_labels(paging)
     audio_by_id = Contribution.objects.filter(pk__in={a['id'] for r in paging
         for member in r['members'] for a in member['audio']}).in_bulk()
@@ -521,7 +523,7 @@ def home(request, pk):
                     break
     return render(request, 'community_dictionary/audio_review.html', context(request, dictionary,
         rows=paging, total=len(rows), kept=counts['keep'], marked=counts['replace'], unreviewed=counts[''], token=uuid.uuid4(),
-        include_expressions=include_expressions,
+        include_expressions=include_expressions, pending_rows=pending_rows,
         candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
         runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user)[:10]))
 
