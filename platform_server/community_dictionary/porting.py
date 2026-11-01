@@ -129,6 +129,9 @@ def input_data(item):
 def current_item(item):
     """Recheck both sides before a call, before previewing, and before saving."""
     run, port = item.run, item.run.port
+    if run.stage == 'audio_repair':
+        from .audio_review import current_item
+        return current_item(item), None
     if run.stage == 'homographs':
         from .homograph_experiments import current_item
         return current_item(item), None
@@ -306,7 +309,12 @@ def payer_now(user):
 def approve(user, run_id):
     locks()
     run = PortRun.objects.select_for_update(of=('self',)).select_related('port__source','port__destination','port__user').get(pk=run_id,port__user=user)
-    authority(run.port)
+    if run.stage == 'audio_repair':
+        from .audio_review import authority as repair_authority, check_approval
+        repair_authority(run.port)
+        check_approval(run)
+    else:
+        authority(run.port)
     if run.status != 'estimate':
         return run  # retrying the same approval never sends again
     from . import automatic
@@ -317,7 +325,7 @@ def approve(user, run_id):
         raise Conflict('This estimate expired or the payment account changed. Prepare a new estimate.')
     model, _, _, prices = photo_ai.configuration(user)
     current_prices = {**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION}
-    if run.port.is_audio_batch:
+    if run.port.is_audio_batch and run.stage != 'audio_repair':
         from .carrier import VERSION
         current_prices['carrier_recipe'] = VERSION
     if run.stage == 'vocabulary':
@@ -375,7 +383,7 @@ def approve(user, run_id):
 
 
 def clear_preview(item, message='This preview is no longer available.'):
-    if item.run.stage == 'homographs':
+    if item.run.stage in {'homographs', 'audio_repair', 'audio_review'}:
         from .homograph_experiments import erase_files
         erase_files(item)
         item.snapshot = {'words':[]}
@@ -503,8 +511,8 @@ def copy_component(source, entry, user, port, provenance=None):
 def save_item(user, item_id, values, *, automatic=False):
     locks()
     item = PortItem.objects.select_for_update(of=('self',)).select_related('run__port__user','run__port__source','run__port__destination').get(pk=item_id,run__port__user=user)
-    if item.run.stage == 'homographs':
-        raise Conflict('Experimental recordings cannot be published to the dictionary.')
+    if item.run.stage in {'homographs', 'audio_repair', 'audio_review'}:
+        raise Conflict('Use the dedicated audio review page for this result.')
     if automatic and (not item.run.options.get('automatic') or item.run.status != 'running'):
         raise Conflict('Automatic publication is not authorised.')
     if item.run.stage == 'descriptions':

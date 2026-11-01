@@ -40,10 +40,13 @@ RATINGS = [('', _('Not rated')), ('acceptable', _('Acceptable')),
 MAX_SELECTION = 20
 
 
-def candidate(part):
+def candidate(part, *, for_review=False):
     entry = part.entry
-    if (entry.archived or part.status != 'accepted' or
-            not carrier.homograph_eligible(part.word, entry.dictionary.language)):
+    from .pronunciation import homographs
+    code = tts.language_code(entry.dictionary.language)
+    eligible = (bool(code) and len(part.word) <= 255 and bool(homographs(part.word, code))
+                if for_review else carrier.homograph_eligible(part.word, entry.dictionary.language))
+    if (entry.archived or part.status != 'accepted' or not eligible):
         return None
     context_text = ''
     if part.kind == 'form':
@@ -70,11 +73,11 @@ def candidate(part):
             'digests':[[p.pk, content_digest(p)] for p in parts]}
 
 
-def candidates(dictionary):
+def candidates(dictionary, *, for_review=False):
     parts = Contribution.objects.filter(entry__dictionary=dictionary, entry__archived=False,
         status='accepted', kind__in=['text','form']).select_related(
             'entry__dictionary','entry__current_text','entry__current_meaning')
-    result = [row for part in parts if (row := candidate(part))]
+    result = [row for part in parts if (row := candidate(part, for_review=for_review))]
     return sorted(result, key=lambda r:(r['word'].casefold(), r['meaning'], r['id']))
 
 
@@ -159,12 +162,13 @@ def erase_files(item):
 
 
 def process(item_id):
+    # Experiments and reviewed repairs share private generation, never publication.
     # One clip, including bounded carrier retries, per queue task. Next clip gets
     # a fresh task. The durable item claim prevents duplicate broker delivery.
     with transaction.atomic():
         porting.locks()
         item = port_tasks.fetch(item_id, True)
-        if item.run.stage != STAGE or item.status != 'queued':
+        if item.run.stage not in {STAGE, 'audio_repair'} or item.status != 'queued':
             return
         try:
             key = port_tasks.credentials(item)
@@ -197,7 +201,7 @@ def process(item_id):
             port_tasks.credentials(live)
     try:
         common = dict(language=tts.language_code(run.port.language), model=tts.MODEL,
-                      voice=run.port.voice, api_key=key, report=report, before_request=gate)
+                      voice=word.get('voice', run.port.voice), api_key=key, report=report, before_request=gate)
         if method == 'carrier':
             prepared, duration = carrier.synthesize(word['word'], **common,
                 homograph_experiment=True, keep_full=lambda data:full.__setitem__(slice(None), [data]))
@@ -232,7 +236,7 @@ def process(item_id):
             live.uncertain_cost |= uncertain
             porting.record_usage(live, audio=True, cost_override=cost, suffix=':'+clip_id)
             try:
-                current_item(live)
+                porting.current_item(live)
                 active.update(status='failed' if failure else 'ready', failure=failure,
                               cost=str(cost), report=report)
                 if not failure:
@@ -255,7 +259,7 @@ def process(item_id):
 @transaction.atomic
 def resume(user, run_id):
     porting.locks()
-    run = PortRun.objects.select_for_update().get(pk=run_id, port__user=user, stage=STAGE)
+    run = PortRun.objects.select_for_update().get(pk=run_id, port__user=user, stage__in=[STAGE, 'audio_repair'])
     if run.status not in {'running','cancelled'}:
         return run
     cutoff = timezone.now()-timedelta(minutes=15)

@@ -17,5 +17,6 @@
 <a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">{% translate "Create an image-only copy" %}</a>
 </section>
 <section class="panel"><h2>{% translate "Forms used in sentences" %}</h2><p>{% translate "Add contextual translations and audio to existing sentence vocabulary. Completed forms and human corrections are kept." %}</p><a class="button secondary" href="{% url 'community_dictionary:forms-start' dictionary.pk %}">{% translate "Add missing sentence forms" %}</a></section>
+<section class="panel"><h2>{% translate "Review homograph audio" %}</h2><p>{% translate "Listen to words and sentence forms whose spelling also occurs in English. Mark problems, generate previews, and choose which recordings to replace." %}</p><a class="button secondary" href="{% url 'community_dictionary:audio-review' dictionary.pk %}">{% translate "Review homograph audio" %}</a></section>
 <section class="panel"><h2>{% translate "Homograph audio experiment" %}</h2><p>{% translate "Compare pronunciation guidance with carrier extraction. Listen, rate and export experimental recordings without replacing dictionary audio." %}</p><a class="button secondary" href="{% url 'community_dictionary:homographs-start' dictionary.pk %}">{% translate "Compare homograph audio" %}</a></section>
 {% endblock %}

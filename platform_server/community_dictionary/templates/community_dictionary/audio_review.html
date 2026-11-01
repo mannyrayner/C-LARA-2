@@ -1,0 +1,27 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block title %}{% translate "Review homograph audio" %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>{% translate "Review homograph audio" %}</h1>
+<p>{% translate "These spellings also occur in English. Listen for the intended language and meaning. Mark problems; regeneration uses pronunciation guidance and keeps existing audio until you accept a replacement." %}</p>
+<section class="panel">
+<p role="status">{% blocktranslate %}{{ total }} words / forms · {{ kept }} kept · {{ marked }} need regeneration · {{ unreviewed }} not reviewed{% endblocktranslate %}</p>
+<p>{% translate "Each decision is saved immediately. You can leave and return; changed text or recordings need a fresh review." %}</p>
+{% if marked %}<form method="post">{% csrf_token %}<input type="hidden" name="token" value="{{ token }}"><button name="action" value="quote">{% translate "Estimate regeneration of marked items" %}</button></form>{% endif %}
+</section>
+{% if runs %}<details><summary>{% translate "Regeneration jobs and previews" %}</summary><ul>{% for run in runs %}<li><a href="{% url 'community_dictionary:audio-review-run' dictionary.pk run.pk %}">{{ run.created_at }} · {{ run.status }}</a></li>{% endfor %}</ul></details>{% endif %}
+{% for row in rows %}<section class="panel audio-review-row" id="word-{{ row.word.id }}">
+<h2><a href="{% url 'community_dictionary:entry' dictionary.pk row.word.entry %}">{{ row.word.word }}</a></h2>
+<p>{{ row.word.meaning }} · {% if row.word.kind == 'form' %}{% translate "Form used in a sentence" %}{% else %}{% translate "Dictionary word" %}{% endif %}</p>
+{% if row.word.context or row.context %}<p class="help">{{ row.word.context|default:row.context }}</p>{% endif %}
+{% for audio in row.word.audio %}<audio controls preload="none" aria-label="{{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk row.word.id audio.id %}"></audio>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}
+{% if row.protected %}<p>{% translate "Human recording present: automatic replacement is disabled." %}</p>{% endif %}
+<p><strong>{% if row.decision == 'keep' %}{% translate "Keep" %}{% elif row.decision == 'replace' %}{% translate "Needs regeneration" %}{% else %}{% translate "Not reviewed" %}{% endif %}</strong></p>
+<form method="post">{% csrf_token %}<input type="hidden" name="part" value="{{ row.word.id }}"><input type="hidden" name="token" value="{{ row.token }}"><input type="hidden" name="previous" value="{{ row.decision }}"><input type="hidden" name="page" value="{{ rows.number }}">
+{% if row.word.audio %}<button name="action" value="keep" class="secondary">{% translate "Keep" %}</button>{% endif %}
+{% if not row.protected %}<button name="action" value="replace" class="secondary">{% translate "Needs regeneration" %}</button>{% endif %}
+{% if row.decision %}<button name="action" value="" class="quiet">{% translate "Clear decision" %}</button>{% endif %}
+</form></section>{% empty %}<p>{% translate "No eligible English-homograph words or sentence forms are currently available." %}</p>{% endfor %}
+{% if rows.has_other_pages %}<nav aria-label="{% translate 'Review pages' %}">{% if rows.has_previous %}<a class="button secondary" href="?page={{ rows.previous_page_number }}">{% translate "Previous" %}</a>{% endif %} {{ rows.number }} / {{ rows.paginator.num_pages }} {% if rows.has_next %}<a class="button secondary" href="?page={{ rows.next_page_number }}">{% translate "Next" %}</a>{% endif %}</nav>{% endif %}
+<p><a href="{% url 'community_dictionary:tools' dictionary.pk %}">{% translate "Tools" %}</a></p>
+<link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}" defer></script>
+{% endblock %}

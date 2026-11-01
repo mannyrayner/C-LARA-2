@@ -6580,3 +6580,157 @@ msgstr "Terminer le règlement"
 #: community_dictionary/templates/community_dictionary/homographs_run.html
 msgid "Finalising cancelled requests may take up to 15 minutes. This will not generate new recordings."
 msgstr "Le règlement des requêtes annulées peut prendre jusqu’à 15 minutes. Aucun nouvel enregistrement ne sera généré."
+
+#, python-format
+msgid "%(total)s words / forms · %(kept)s kept · %(marked)s need regeneration · %(unreviewed)s not reviewed"
+msgstr "%(total)s mots / formes · %(kept)s conservés · %(marked)s à régénérer · %(unreviewed)s non vérifiés"
+
+msgid "Approve the estimate and permission to send selected text to OpenAI."
+msgstr "Approuvez l’estimation et l’envoi des textes sélectionnés à OpenAI."
+
+msgid "Cancel generation"
+msgstr "Annuler la génération"
+
+msgid "Choose Keep or Needs regeneration."
+msgstr "Choisissez Conserver ou À régénérer."
+
+msgid "Clear decision"
+msgstr "Effacer la décision"
+
+msgid "Current dictionary audio"
+msgstr "Audio actuel du dictionnaire"
+
+msgid "Dictionary word"
+msgstr "Mot du dictionnaire"
+
+msgid "Each decision is saved immediately. You can leave and return; changed text or recordings need a fresh review."
+msgstr "Chaque décision est enregistrée immédiatement. Vous pouvez partir et revenir ; un texte ou un enregistrement modifié doit être vérifié à nouveau."
+
+msgid "Enable saved AI audio in dictionary settings before regenerating."
+msgstr "Activez l’audio généré par l’IA dans les paramètres du dictionnaire avant de régénérer."
+
+msgid "Estimate regeneration of marked items"
+msgstr "Estimer la régénération des éléments signalés"
+
+msgid "Estimates are not invoices or provider spending caps. Near-silent completed audio may be regenerated once; network failures are not automatically retried."
+msgstr "Les estimations ne sont ni des factures ni des plafonds de dépenses auprès du fournisseur. Un audio presque silencieux peut être régénéré une fois ; les erreurs réseau ne déclenchent pas de nouvelle tentative automatique."
+
+msgid "Finish or cancel the current audio repair before starting another."
+msgstr "Terminez ou annulez la réparation audio en cours avant d’en commencer une autre."
+
+msgid "Form used in a sentence"
+msgstr "Forme utilisée dans une phrase"
+
+msgid "Generate replacement previews"
+msgstr "Générer les aperçus de remplacement"
+
+msgid "Human recording present: automatic replacement is disabled."
+msgstr "Enregistrement humain présent : le remplacement automatique est désactivé."
+
+msgid "Human recordings are protected. Use the entry page to discuss changes."
+msgstr "Les enregistrements humains sont protégés. Utilisez la page de l’entrée pour discuter des modifications."
+
+msgid "Keep"
+msgstr "Conserver"
+
+msgid "Listen to words and sentence forms whose spelling also occurs in English. Mark problems, generate previews, and choose which recordings to replace."
+msgstr "Écoutez les mots et les formes dont l’orthographe existe aussi en anglais. Signalez les problèmes, générez des aperçus, puis choisissez les enregistrements à remplacer."
+
+msgid "Mark at least one current recording as Needs regeneration first."
+msgstr "Signalez d’abord au moins un enregistrement actuel comme À régénérer."
+
+msgid "Needs regeneration"
+msgstr "À régénérer"
+
+msgid "New preview"
+msgstr "Nouvel aperçu"
+
+msgid "No current recording."
+msgstr "Aucun enregistrement actuel."
+
+msgid "No eligible English-homograph words or sentence forms are currently available."
+msgstr "Aucun mot ni aucune forme homographe de l’anglais n’est actuellement disponible pour cette vérification."
+
+msgid "No usable recording was produced. Existing audio is unchanged. Return to the checklist for another estimate."
+msgstr "Aucun enregistrement utilisable n’a été produit. L’audio existant est inchangé. Revenez à la liste pour une nouvelle estimation."
+
+msgid "Not reviewed"
+msgstr "Non vérifié"
+
+msgid "Only selected text and meanings are sent to OpenAI. Existing voices are retained where supported. Regeneration does not guarantee correct pronunciation: listen before accepting."
+msgstr "Seuls les textes et les sens sélectionnés sont envoyés à OpenAI. Les voix existantes sont conservées lorsqu’elles sont disponibles. La régénération ne garantit pas une prononciation correcte : écoutez avant d’accepter."
+
+msgid "Preview rejected. Existing audio kept; this item is still marked for regeneration."
+msgstr "Aperçu refusé. L’audio existant est conservé ; cet élément reste à régénérer."
+
+msgid "Regenerate at most 100 marked words or forms in one batch."
+msgstr "Régénérez au maximum 100 mots ou formes signalés à la fois."
+
+msgid "Regeneration jobs and previews"
+msgstr "Régénérations et aperçus"
+
+msgid "Reject preview; keep current audio"
+msgstr "Refuser l’aperçu ; conserver l’audio actuel"
+
+msgid "Reload the review page."
+msgstr "Rechargez la page de vérification."
+
+msgid "Replacement accepted. The dictionary now uses the new audio."
+msgstr "Remplacement accepté. Le dictionnaire utilise maintenant le nouvel audio."
+
+msgid "Return to listening checklist"
+msgstr "Revenir à la liste d’écoute"
+
+msgid "Review homograph audio"
+msgstr "Vérifier l’audio des homographes"
+
+msgid "Review pages"
+msgstr "Pages de vérification"
+
+msgid "Review replacement audio"
+msgstr "Vérifier l’audio de remplacement"
+
+msgid "Review saved."
+msgstr "Vérification enregistrée."
+
+msgid "Some sources or recordings changed, or were withdrawn. Return to the checklist to review their current versions."
+msgstr "Certaines sources ou certains enregistrements ont changé ou ont été retirés. Revenez à la liste pour vérifier leurs versions actuelles."
+
+msgid "The dictionary languages changed. Prepare a new estimate."
+msgstr "Les langues du dictionnaire ont changé. Préparez une nouvelle estimation."
+
+msgid "The recording or its review changed. Reload before saving."
+msgstr "L’enregistrement ou sa vérification a changé. Rechargez la page avant d’enregistrer."
+
+msgid "The wording or recordings changed. Existing audio has been kept; start from the review page again."
+msgstr "Le texte ou les enregistrements ont changé. L’audio existant est conservé ; repartez de la page de vérification."
+
+msgid "There is no current recording to keep."
+msgstr "Il n’y a aucun enregistrement actuel à conserver."
+
+msgid "These spellings also occur in English. Listen for the intended language and meaning. Mark problems; regeneration uses pronunciation guidance and keeps existing audio until you accept a replacement."
+msgstr "Ces graphies existent aussi en anglais. Vérifiez la prononciation dans la langue et le sens voulus. Signalez les problèmes ; la régénération utilise des indications de prononciation et conserve l’audio existant jusqu’à votre acceptation d’un remplacement."
+
+msgid "This audio repair is no longer available."
+msgstr "Cette réparation audio n’est plus disponible."
+
+msgid "This estimate expired. Return to the checklist for a fresh estimate."
+msgstr "Cette estimation a expiré. Revenez à la liste pour une nouvelle estimation."
+
+msgid "This preview is not ready."
+msgstr "Cet aperçu n’est pas prêt."
+
+msgid "This word or form is no longer available. Reload the review page."
+msgstr "Ce mot ou cette forme n’est plus disponible. Rechargez la page de vérification."
+
+msgid "Unknown audio review action."
+msgstr "Action de vérification audio inconnue."
+
+msgid "Use this recording"
+msgstr "Utiliser cet enregistrement"
+
+msgid "Wait until generation finishes before choosing recordings."
+msgstr "Attendez la fin de la génération avant de choisir les enregistrements."
+
+msgid "You can leave and return through Review homograph audio. Existing dictionary audio remains available."
+msgstr "Vous pouvez partir et revenir par Vérifier l’audio des homographes. L’audio existant du dictionnaire reste disponible."

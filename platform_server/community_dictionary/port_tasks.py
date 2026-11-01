@@ -61,7 +61,7 @@ def fetch(item_id, lock=False):
 
 
 def credentials(item):
-    if item.run.port.is_audio_batch:
+    if item.run.port.is_audio_batch and item.run.stage != 'audio_repair':
         from .carrier import VERSION
         if item.run.prices.get('carrier_recipe') != VERSION:
             raise Conflict('Expression audio processing changed. Prepare a fresh estimate.')
@@ -88,7 +88,7 @@ def credentials(item):
 
 
 def process_item(item_id):
-    if fetch(item_id).run.stage == 'homographs':
+    if fetch(item_id).run.stage in {'homographs', 'audio_repair'}:
         from .homograph_experiments import process
         return process(item_id)
     if fetch(item_id).run.stage == 'forms':
@@ -325,7 +325,7 @@ def resume(user,run_id):
     """Safe broker recovery and explicit expiry, without repeating uncertain calls."""
     porting.locks()
     run = PortRun.objects.select_for_update(of=('self',)).select_related('port__user').get(pk=run_id,port__user=user)
-    if run.stage == 'homographs':
+    if run.stage in {'homographs', 'audio_repair'}:
         from .homograph_experiments import resume as resume_experiment
         return resume_experiment(user, run_id)
     if run.options.get('automatic_child'):

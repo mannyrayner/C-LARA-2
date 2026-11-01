@@ -22,6 +22,10 @@ from .views import context, fail, private_media_response
 
 
 def run_url(run):
+    if run.stage == 'audio_repair':
+        return reverse('community_dictionary:audio-review-run',args=[run.port.source_id,run.pk])
+    if run.stage == 'audio_review':
+        return reverse('community_dictionary:audio-review',args=[run.port.source_id])
     if run.stage == 'homographs':
         return reverse('community_dictionary:homographs-run',args=[run.port.source_id,run.pk])
     if run.stage == 'forms':
@@ -269,7 +273,7 @@ def action(request,pk,run_id):
 @require_http_methods(['GET','POST'])
 def review(request,pk,run_id,item_id):
     experiment = PortRun.objects.filter(pk=run_id, port__source_id=pk,
-        port__user=request.user, stage='homographs').select_related('port').first()
+        port__user=request.user, stage__in=['homographs','audio_repair','audio_review']).select_related('port').first()
     if experiment:
         return redirect(run_url(experiment))
     attention_only = request.GET.get('attention') == '1'

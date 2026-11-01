@@ -32,7 +32,7 @@ def context(request, dictionary=None, **extra):
         'writing_mode': personal_mode == 'writing', 'guided_mode': personal_mode == 'guided',
         'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
             'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',
-            'port-vocabulary', 'port-run', 'port-review', 'forms-start', 'forms-run', 'homographs-start', 'homographs-run'}, **extra}
+            'port-vocabulary', 'port-run', 'port-review', 'forms-start', 'forms-run', 'homographs-start', 'homographs-run', 'audio-review', 'audio-review-run'}, **extra}
 
 
 def fail(request, message, status=400):

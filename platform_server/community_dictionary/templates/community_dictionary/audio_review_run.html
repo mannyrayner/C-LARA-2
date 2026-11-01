@@ -1,0 +1,28 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block title %}{% translate "Review replacement audio" %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>{% translate "Review replacement audio" %}</h1>
+<section class="panel"><h2>{{ run.status|capfirst }}</h2>
+<p>{% translate "Rough API estimate:" %} <strong>US${{ run.estimated_usd }}</strong> · {% translate "Approved allowance:" %} US${{ run.allowance_usd }}</p>
+{% if run.payer == 'credits' %}<p>{% translate "Available credit: US$" %}{{ balance }} · {% translate "currently held: US$" %}{{ held }}</p>{% elif run.payer == 'personal' %}<p>{% translate "Billed to your personal OpenAI key. Its available balance cannot be checked here." %}</p>{% else %}<p>{% translate "Billed to the server operator; C-LARA credit charging is disabled." %}</p>{% endif %}
+<p>{% translate "Only selected text and meanings are sent to OpenAI. Existing voices are retained where supported. Regeneration does not guarantee correct pronunciation: listen before accepting." %}</p>
+<p class="help">{% translate "Estimates are not invoices or provider spending caps. Near-silent completed audio may be regenerated once; network failures are not automatically retried." %}</p>
+{% if run.status == 'estimate' %}
+{% if expired %}<p>{% translate "This estimate expired. Return to the checklist for a fresh estimate." %}</p>{% elif not enough_funds %}<p>{% translate "Insufficient C-LARA credit." %}</p>{% else %}<form method="post">{% csrf_token %}<label class="check"><input name="approve" type="checkbox" required> {% translate "I approve the displayed allowance and have permission to send the selected text and meanings to OpenAI." %}</label><button name="action" value="approve">{% translate "Generate replacement previews" %}</button></form>{% endif %}
+{% elif run.status == 'running' %}<p role="status">{% blocktranslate %}Finished: {{ finished }} / {{ total }} · Failed: {{ failures }}{% endblocktranslate %}</p><p>{% translate "You can leave and return through Review homograph audio. Existing dictionary audio remains available." %}</p><a class="button secondary" href="{% url 'community_dictionary:audio-review-run' dictionary.pk run.pk %}">{% translate "Refresh progress" %}</a>
+<form method="post">{% csrf_token %}<button name="action" value="resume" class="secondary">{% translate "Resume interrupted work" %}</button><p class="help">{% translate "After 15 minutes, interrupted requests are marked failed, not repeated. Unstarted recordings can continue." %}</p><button name="action" value="cancel" class="quiet danger">{% translate "Cancel generation" %}</button></form>
+{% elif run.status == 'cancelled' and not run.settled %}<form method="post">{% csrf_token %}<p>{% translate "Finalising cancelled requests may take up to 15 minutes. This will not generate new recordings." %}</p><button name="action" value="resume" class="secondary">{% translate "Finish accounting" %}</button></form>
+{% elif run.settled %}<p>{% translate "Settled cost estimate: US$" %}{{ run.charged_usd }} · {% translate "Failed recordings:" %} {{ failures }}</p>{% endif %}
+</section>
+{% if unavailable %}<p>{% translate "Some sources or recordings changed, or were withdrawn. Return to the checklist to review their current versions." %}</p>{% endif %}
+{% for row in rows %}<section class="panel audio-review-row" id="preview-{{ row.clip.id }}"><h2>{{ row.word.word }}</h2><p>{{ row.word.meaning }}</p>{% if row.word.context %}<p class="help">{{ row.word.context }}</p>{% endif %}
+{% if row.clip.decision == 'accept' %}<p><strong>{% translate "Replacement accepted. The dictionary now uses the new audio." %}</strong></p>
+{% elif row.clip.decision == 'reject' %}<p>{% translate "Preview rejected. Existing audio kept; this item is still marked for regeneration." %}</p>
+{% else %}
+<div class="audio-comparison"><div><h3>{% translate "Current dictionary audio" %}</h3>{% for audio in row.word.audio %}<audio controls preload="none" aria-label="{% translate 'Current dictionary audio' %}: {{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk row.word.id audio.id %}"></audio>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}</div>
+<div><h3>{% translate "New preview" %}</h3>{% if row.clip.status == 'ready' %}<audio controls preload="none" aria-label="{% translate 'New preview' %}: {{ row.word.word }}" src="{% url 'community_dictionary:audio-review-preview' dictionary.pk run.pk row.item.pk row.clip.id %}"></audio>{% elif row.clip.status == 'failed' %}<p>{% translate "No usable recording was produced. Existing audio is unchanged. Return to the checklist for another estimate." %}</p>{% else %}<p>{{ row.clip.status|capfirst }}</p>{% endif %}</div></div>
+{% if run.status == 'complete' and row.clip.status == 'ready' %}<form method="post">{% csrf_token %}<input type="hidden" name="item" value="{{ row.item.pk }}"><input type="hidden" name="clip" value="{{ row.clip.id }}"><button name="action" value="accept">{% translate "Use this recording" %}</button><button class="secondary" name="action" value="reject">{% translate "Reject preview; keep current audio" %}</button></form>{% endif %}
+{% endif %}</section>{% endfor %}
+<p><a class="button secondary" href="{% url 'community_dictionary:audio-review' dictionary.pk %}">{% translate "Return to listening checklist" %}</a></p>
+<link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}" defer></script>
+{% endblock %}

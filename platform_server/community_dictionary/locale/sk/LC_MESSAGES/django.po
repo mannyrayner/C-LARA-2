@@ -6487,3 +6487,157 @@ msgstr "Dokončiť vyúčtovanie"
 #: community_dictionary/templates/community_dictionary/homographs_run.html
 msgid "Finalising cancelled requests may take up to 15 minutes. This will not generate new recordings."
 msgstr "Dokončenie zrušených požiadaviek môže trvať až 15 minút. Nevytvoria sa žiadne nové nahrávky."
+
+#, python-format
+msgid "%(total)s words / forms · %(kept)s kept · %(marked)s need regeneration · %(unreviewed)s not reviewed"
+msgstr "%(total)s slov / tvarov · %(kept)s ponechaných · %(marked)s na opätovné vytvorenie · %(unreviewed)s neskontrolovaných"
+
+msgid "Approve the estimate and permission to send selected text to OpenAI."
+msgstr "Schváľte odhad a odoslanie vybraných textov do OpenAI."
+
+msgid "Cancel generation"
+msgstr "Zrušiť vytváranie"
+
+msgid "Choose Keep or Needs regeneration."
+msgstr "Vyberte Ponechať alebo Vytvoriť znova."
+
+msgid "Clear decision"
+msgstr "Vymazať rozhodnutie"
+
+msgid "Current dictionary audio"
+msgstr "Aktuálny zvuk v slovníku"
+
+msgid "Dictionary word"
+msgstr "Slovníkové slovo"
+
+msgid "Each decision is saved immediately. You can leave and return; changed text or recordings need a fresh review."
+msgstr "Každé rozhodnutie sa ihneď uloží. Môžete odísť a vrátiť sa; zmenený text alebo nahrávku treba skontrolovať znova."
+
+msgid "Enable saved AI audio in dictionary settings before regenerating."
+msgstr "Pred opätovným vytvorením zapnite zvuk generovaný AI v nastaveniach slovníka."
+
+msgid "Estimate regeneration of marked items"
+msgstr "Odhadnúť opätovné vytvorenie označených položiek"
+
+msgid "Estimates are not invoices or provider spending caps. Near-silent completed audio may be regenerated once; network failures are not automatically retried."
+msgstr "Odhady nie sú faktúry ani limity výdavkov u poskytovateľa. Takmer tichý zvuk možno vytvoriť ešte raz; sieťové chyby sa automaticky neopakujú."
+
+msgid "Finish or cancel the current audio repair before starting another."
+msgstr "Pred začatím ďalšej opravy zvuku dokončite alebo zrušte aktuálnu opravu."
+
+msgid "Form used in a sentence"
+msgstr "Tvar použitý vo vete"
+
+msgid "Generate replacement previews"
+msgstr "Vytvoriť ukážky náhradných nahrávok"
+
+msgid "Human recording present: automatic replacement is disabled."
+msgstr "Je prítomná ľudská nahrávka: automatické nahradenie je vypnuté."
+
+msgid "Human recordings are protected. Use the entry page to discuss changes."
+msgstr "Ľudské nahrávky sú chránené. O zmenách diskutujte na stránke položky."
+
+msgid "Keep"
+msgstr "Ponechať"
+
+msgid "Listen to words and sentence forms whose spelling also occurs in English. Mark problems, generate previews, and choose which recordings to replace."
+msgstr "Vypočujte si slová a tvary, ktorých pravopis sa vyskytuje aj v angličtine. Označte problémy, vytvorte ukážky a vyberte nahrávky na nahradenie."
+
+msgid "Mark at least one current recording as Needs regeneration first."
+msgstr "Najprv označte aspoň jednu aktuálnu nahrávku možnosťou Vytvoriť znova."
+
+msgid "Needs regeneration"
+msgstr "Vytvoriť znova"
+
+msgid "New preview"
+msgstr "Nová ukážka"
+
+msgid "No current recording."
+msgstr "Žiadna aktuálna nahrávka."
+
+msgid "No eligible English-homograph words or sentence forms are currently available."
+msgstr "Momentálne nie sú dostupné žiadne vhodné slová ani tvary s rovnakým pravopisom ako v angličtine."
+
+msgid "No usable recording was produced. Existing audio is unchanged. Return to the checklist for another estimate."
+msgstr "Nevznikla použiteľná nahrávka. Existujúci zvuk zostáva nezmenený. Vráťte sa k zoznamu a získajte nový odhad."
+
+msgid "Not reviewed"
+msgstr "Neskontrolované"
+
+msgid "Only selected text and meanings are sent to OpenAI. Existing voices are retained where supported. Regeneration does not guarantee correct pronunciation: listen before accepting."
+msgstr "Do OpenAI sa odosielajú len vybrané texty a významy. Existujúce hlasy sa zachovajú, ak sú podporované. Opätovné vytvorenie nezaručuje správnu výslovnosť: pred prijatím si nahrávku vypočujte."
+
+msgid "Preview rejected. Existing audio kept; this item is still marked for regeneration."
+msgstr "Ukážka odmietnutá. Existujúci zvuk bol ponechaný; položka zostáva označená na opätovné vytvorenie."
+
+msgid "Regenerate at most 100 marked words or forms in one batch."
+msgstr "V jednej dávke vytvorte znova najviac 100 označených slov alebo tvarov."
+
+msgid "Regeneration jobs and previews"
+msgstr "Úlohy opätovného vytvárania a ukážky"
+
+msgid "Reject preview; keep current audio"
+msgstr "Odmietnuť ukážku; ponechať aktuálny zvuk"
+
+msgid "Reload the review page."
+msgstr "Znovu načítajte stránku kontroly."
+
+msgid "Replacement accepted. The dictionary now uses the new audio."
+msgstr "Náhradná nahrávka bola prijatá. Slovník teraz používa nový zvuk."
+
+msgid "Return to listening checklist"
+msgstr "Späť na zoznam na počúvanie"
+
+msgid "Review homograph audio"
+msgstr "Skontrolovať zvuk homografov"
+
+msgid "Review pages"
+msgstr "Stránky kontroly"
+
+msgid "Review replacement audio"
+msgstr "Skontrolovať náhradný zvuk"
+
+msgid "Review saved."
+msgstr "Kontrola bola uložená."
+
+msgid "Some sources or recordings changed, or were withdrawn. Return to the checklist to review their current versions."
+msgstr "Niektoré zdroje alebo nahrávky sa zmenili alebo boli stiahnuté. Vráťte sa k zoznamu a skontrolujte ich aktuálne verzie."
+
+msgid "The dictionary languages changed. Prepare a new estimate."
+msgstr "Jazyky slovníka sa zmenili. Pripravte nový odhad."
+
+msgid "The recording or its review changed. Reload before saving."
+msgstr "Nahrávka alebo jej kontrola sa zmenila. Pred uložením znovu načítajte stránku."
+
+msgid "The wording or recordings changed. Existing audio has been kept; start from the review page again."
+msgstr "Text alebo nahrávky sa zmenili. Existujúci zvuk bol ponechaný; začnite znova na stránke kontroly."
+
+msgid "There is no current recording to keep."
+msgstr "Nie je k dispozícii žiadna aktuálna nahrávka na ponechanie."
+
+msgid "These spellings also occur in English. Listen for the intended language and meaning. Mark problems; regeneration uses pronunciation guidance and keeps existing audio until you accept a replacement."
+msgstr "Tieto pravopisné podoby sa vyskytujú aj v angličtine. Počúvajte so zreteľom na zamýšľaný jazyk a význam. Označte problémy; opätovné vytvorenie využije pokyny na výslovnosť a zachová existujúci zvuk, kým neprijmete náhradu."
+
+msgid "This audio repair is no longer available."
+msgstr "Táto oprava zvuku už nie je dostupná."
+
+msgid "This estimate expired. Return to the checklist for a fresh estimate."
+msgstr "Platnosť odhadu vypršala. Vráťte sa k zoznamu a získajte nový odhad."
+
+msgid "This preview is not ready."
+msgstr "Táto ukážka nie je pripravená."
+
+msgid "This word or form is no longer available. Reload the review page."
+msgstr "Toto slovo alebo tvar už nie je dostupný. Znovu načítajte stránku kontroly."
+
+msgid "Unknown audio review action."
+msgstr "Neznáma akcia kontroly zvuku."
+
+msgid "Use this recording"
+msgstr "Použiť túto nahrávku"
+
+msgid "Wait until generation finishes before choosing recordings."
+msgstr "Pred výberom nahrávok počkajte na dokončenie vytvárania."
+
+msgid "You can leave and return through Review homograph audio. Existing dictionary audio remains available."
+msgstr "Môžete odísť a vrátiť sa cez Skontrolovať zvuk homografov. Existujúci zvuk slovníka zostáva dostupný."
