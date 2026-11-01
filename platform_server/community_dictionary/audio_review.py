@@ -22,7 +22,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from projects.billing import get_user_balance_usd
-from . import homograph_experiments as experiments, photo_ai, port_costs, porting, tts
+from . import carrier, homograph_experiments as experiments, photo_ai, port_costs, porting, tts
 from . import sentence_forms as sf
 from .collections import content_digest
 from .evaluation_views import page
@@ -41,6 +41,22 @@ MAX_REPAIR = 100
 DEFAULT_CANDIDATES = 3
 MAX_CANDIDATES = 5
 DECISIONS = {'': _('Not reviewed'), 'keep': _('Keep'), 'replace': _('Needs regeneration')}
+GENERATION_METHODS = {'mixed': _('Both methods'), **experiments.METHODS}
+
+
+def method_choices(dictionary):
+    if tts.language_code(dictionary.language) in carrier.AUTOMATIC_LANGUAGES - {'en'}:
+        return list(GENERATION_METHODS.items())
+    return [('guidance', GENERATION_METHODS['guidance'])]
+
+
+def candidate_methods(row, count, method):
+    supported = carrier.homograph_eligible(row['word'], row['language'])
+    if method == 'carrier' and not supported:
+        raise Conflict(_('Carrier extraction is unavailable for some selected items. Choose Both methods or pronunciation guidance.'))
+    if method == 'mixed' and supported:
+        return ['guidance' if n % 2 == 0 else 'carrier' for n in range(count)]
+    return [method if method != 'mixed' else 'guidance'] * count
 
 
 def authority(port):
@@ -274,7 +290,7 @@ def check_approval(run):
 
 @transaction.atomic
 def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, selected_ids=None, previous_run=None,
-          include_expressions=False):
+          include_expressions=False, generation_method='guidance'):
     porting.locks(); require_owner(user, dictionary)
     existing = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, stage=STAGE).first()
     if existing:
@@ -283,6 +299,10 @@ def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, select
         raise Conflict(_('Reload the review page.'))
     if type(candidate_count) is not int or not 1 <= candidate_count <= MAX_CANDIDATES:
         raise Conflict(_('Choose between one and five candidates per word or form.'))
+    if generation_method not in GENERATION_METHODS:
+        raise Conflict(_('Choose a generation method.'))
+    if generation_method == 'mixed' and candidate_count < 2:
+        raise Conflict(_('Choose at least two candidates to use both methods.'))
     chosen = []
     for old, decision in decisions(user, dictionary).values():
         if decision != 'replace':
@@ -302,14 +322,18 @@ def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, select
     audio_groups = group_words(dictionary, chosen)
     if len(audio_groups) > MAX_REPAIR:
         raise Conflict(_('Regenerate at most 100 marked words or forms in one batch.'))
+    plans = {members[0]['id']:candidate_methods(members[0], candidate_count, generation_method)
+             for members in audio_groups}
+    has_carrier = any('carrier' in methods for methods in plans.values())
     model, _key, _personal, prices = photo_ai.configuration(user)
     port = LanguagePort.objects.create(source=dictionary, user=user, is_audio_batch=True,
         name='Review homograph audio', language=dictionary.language, explanation_language=dictionary.explanation_language)
     authority(port)
     run = PortRun.objects.create(pk=token, port=port, stage=STAGE, model=model,
         source_language=dictionary.language, source_explanation_language=dictionary.explanation_language,
-        prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION},
-        options={'review_version':VERSION, 'candidate_count':candidate_count,
+        prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION,
+                **({'carrier_recipe':carrier.VERSION} if has_carrier else {})},
+        options={'review_version':VERSION, 'candidate_count':candidate_count, 'generation_method':generation_method,
                  'previous_run':str(previous_run) if previous_run else ''}, payer=porting.payer_now(user),
         expires_at=timezone.now()+timedelta(hours=1))
     grouped = {}
@@ -320,10 +344,14 @@ def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, select
         clips = []
         for members in groups:
             row = members[0]
-            estimated = porting.money(port_costs.speech(row['word'], dictionary.language, prices))
-            allowance = port_costs.allowance(estimated)
-            for number in range(1, candidate_count + 1):
-                clips.append({'id':uuid.uuid4().hex, 'word_id':row['id'], 'method':'guidance', 'candidate':number,
+            for number, method in enumerate(plans[row['id']], 1):
+                if method == 'carrier':
+                    estimated = porting.money(carrier.estimate(row['word'], dictionary.language))
+                    allowance = experiments.clip_allowance(row['word'], dictionary.language, prices, method)
+                else:
+                    estimated = porting.money(port_costs.speech(row['word'], dictionary.language, prices))
+                    allowance = port_costs.allowance(estimated)
+                clips.append({'id':uuid.uuid4().hex, 'word_id':row['id'], 'method':method, 'candidate':number,
                     'status':'waiting', 'allowance':str(allowance), 'estimate':str(estimated), 'cost':'0', 'report':{}})
         item = PortItem.objects.create(run=run, source_entry_id=entry_id,
             snapshot={'words':words, 'audio_groups':{str(g[0]['id']):[r['id'] for r in g] for g in groups}}, result={'clips':clips},
@@ -337,7 +365,7 @@ def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, select
 
 
 @transaction.atomic
-def quote_more(user, dictionary, run_id, item_id, part_id, token, candidate_count):
+def quote_more(user, dictionary, run_id, item_id, part_id, token, candidate_count, *, generation_method='guidance'):
     """A new approved batch for one still-marked word; existing previews survive."""
     porting.locks(); require_owner(user, dictionary)
     item = get_object_or_404(PortItem.objects.select_related('run__port__source','run__port__user'),
@@ -355,13 +383,17 @@ def quote_more(user, dictionary, run_id, item_id, part_id, token, candidate_coun
     if any(c['word_id'] == part_id and c.get('decision') == 'accept' for c in item.result.get('clips', [])):
         raise Conflict(_('A replacement was already accepted for this item. Return to the checklist to review it again.'))
     return quote(user, dictionary, token, candidate_count,
-        selected_ids={r['id'] for r in targets(item, part_id)}, previous_run=run_id, include_expressions=True)
+        selected_ids={r['id'] for r in targets(item, part_id)}, previous_run=run_id,
+        include_expressions=True, generation_method=generation_method)
 
 
 def current_item(item):
     authority(item.run.port)
     if item.invalidated or item.run.status == 'cancelled' or item.run.options.get('review_version') != VERSION:
         raise Conflict(_('This audio repair is no longer available.'))
+    if any(c.get('method') == 'carrier' for c in item.result.get('clips', [])):
+        if item.run.prices.get('carrier_recipe') != carrier.VERSION:
+            raise Conflict(_('Carrier processing changed. Prepare and approve a fresh estimate.'))
     for expected in item.snapshot['words']:
         row = live_row(item.run.port.source, expected['id'])
         if protected(row) or row != expected:
@@ -398,7 +430,9 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
         previous_ids = [a['id'] for a in row['audio']]
         provenance = {'origin':'synthetic', 'provider':'openai', 'model':tts.MODEL,
             'voice':row['voice'], 'language':row['language'], 'source_text':row['word'], 'source_text_id':part.pk,
-            'instructions_version':tts.INSTRUCTIONS_VERSION, 'synthesis':clip['report'],
+            'instructions_version':clip['report'].get('instructions_version',
+                carrier.VERSION if clip['method']=='carrier' else tts.INSTRUCTIONS_VERSION),
+            'generation_method':clip['method'], 'synthesis':clip['report'],
             'homograph_repair_run':str(run.pk), 'replaces_audio_ids':previous_ids,
             'pronunciation_approved':True, 'reviewed_by':user.pk, 'reviewed_at':timezone.now().isoformat()}
         if row['kind'] == 'form':
@@ -452,7 +486,11 @@ def quote_input(request):
         raise Conflict(_('Choose between one and five candidates per word or form.'))
     if not 1 <= count <= MAX_CANDIDATES:
         raise Conflict(_('Choose between one and five candidates per word or form.'))
-    return token, count
+    # Old tabs did not send a method; preserve their guidance-only scope.
+    method = request.POST.get('generation_method', 'guidance')
+    if method not in GENERATION_METHODS:
+        raise Conflict(_('Choose a generation method.'))
+    return token, count, method
 
 
 @page(['GET','POST'])
@@ -462,8 +500,9 @@ def home(request, pk):
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'quote':
-            token, count = quote_input(request)
-            run = quote(request.user, dictionary, token, count, include_expressions=include_expressions)
+            token, count, method = quote_input(request)
+            run = quote(request.user, dictionary, token, count, include_expressions=include_expressions,
+                        generation_method=method)
             return redirect('community_dictionary:audio-review-run', pk=pk, run_id=run.pk)
         if action not in DECISIONS and action != 'reuse':
             raise Conflict(_('Choose Keep or Needs regeneration.'))
@@ -524,6 +563,7 @@ def home(request, pk):
     return render(request, 'community_dictionary/audio_review.html', context(request, dictionary,
         rows=paging, total=len(rows), kept=counts['keep'], marked=counts['replace'], unreviewed=counts[''], token=uuid.uuid4(),
         include_expressions=include_expressions, pending_rows=pending_rows,
+        generation_methods=method_choices(dictionary), default_method=method_choices(dictionary)[0][0],
         candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
         runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user)[:10]))
 
@@ -534,12 +574,13 @@ def detail(request, pk, run_id):
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'more':
-            token, count = quote_input(request)
+            token, count, method = quote_input(request)
             try:
                 item_id, part_id = int(request.POST.get('item','0')), int(request.POST.get('part','0'))
             except ValueError:
                 raise Http404
-            next_run = quote_more(request.user, dictionary, run.pk, item_id, part_id, token, count)
+            next_run = quote_more(request.user, dictionary, run.pk, item_id, part_id, token, count,
+                                  generation_method=method)
             return redirect('community_dictionary:audio-review-run', pk=pk, run_id=next_run.pk)
         elif action == 'approve':
             if request.POST.get('approve') != 'on':
@@ -577,16 +618,21 @@ def detail(request, pk, run_id):
                 continue  # Group members share their representative's candidates.
             for number, clip in enumerate(clips, 1):
                 clip.setdefault('candidate', number)  # Existing single-preview jobs remain usable.
+                clip['method_label'] = experiments.METHODS.get(clip['method'], clip['method'])
             rows.append({'word':row, 'members':targets(item, row['id']), 'clips':clips, 'item':item, 'token':uuid.uuid4(),
                          'accepted':any(c.get('decision')=='accept' for c in clips)})
     clips = [c for row in rows for c in row['clips']]
     form_labels(rows)
     progress = Counter(c['status'] for c in clips)
+    methods = Counter(c['method'] for c in clips)
     balance = get_user_balance_usd(request.user) if run.payer=='credits' else None
     return render(request, 'community_dictionary/audio_review_run.html', context(request, dictionary,
         run=run, rows=rows, words=len(rows), total=len(clips), finished=progress['ready']+progress['failed'],
         failures=progress['failed'], unavailable=unavailable, balance=balance,
         candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
+        generation_methods=method_choices(dictionary),
+        default_method=run.options.get('generation_method', method_choices(dictionary)[0][0]),
+        guidance_count=methods['guidance'], carrier_count=methods['carrier'],
         previous_run=run.options.get('previous_run'),
         later_runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user,
                                          options__previous_run=str(run.pk)).order_by('created_at'),
@@ -610,6 +656,12 @@ def preview_media(request, pk, run_id, item_id, clip_id):
     item = get_object_or_404(PortItem, pk=item_id, run=run)
     item.run = run; current_item(item)
     clip = next((c for c in item.result.get('clips', []) if c['id']==clip_id), None)
-    if not clip or clip['status'] != 'ready' or not clip.get('path') or clip.get('decision'):
+    if not clip or clip.get('decision'):
+        raise Http404
+    if request.GET.get('full') == '1':
+        if clip['method'] != 'carrier' or clip['status'] not in {'ready','failed'} or not clip.get('full_path'):
+            raise Http404
+        return private_media_response(request, clip['full_path'], 'audio/wav', 'carrier.wav')
+    if clip['status'] != 'ready' or not clip.get('path'):
         raise Http404
     return private_media_response(request, clip['path'], 'audio/wav', 'preview.wav')

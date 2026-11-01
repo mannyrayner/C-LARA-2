@@ -6718,3 +6718,52 @@ msgstr "Prijatím návrhu sa nahradí zvuk vytvorený AI pre všetky uvedené v�
 #. Grouped homograph audio review
 msgid "This recording is no longer available for reuse."
 msgstr "Táto nahrávka už nie je dostupná na opätovné použitie."
+
+#. Mixed homograph audio regeneration
+msgid "Both methods"
+msgstr "Obe metódy"
+
+#. Mixed homograph audio regeneration
+msgid "Generation method"
+msgstr "Spôsob generovania"
+
+#. Mixed homograph audio regeneration
+msgid "Carrier extraction is unavailable for some selected items. Choose Both methods or pronunciation guidance."
+msgstr "Extrakcia z nosnej frázy nie je dostupná pre niektoré vybrané položky. Vyberte obe metódy alebo pokyny k výslovnosti."
+
+#. Mixed homograph audio regeneration
+msgid "Choose a generation method."
+msgstr "Vyberte spôsob generovania."
+
+#. Mixed homograph audio regeneration
+msgid "Choose at least two candidates to use both methods."
+msgstr "Ak chcete použiť obe metódy, vyberte aspoň dva varianty."
+
+#. Mixed homograph audio regeneration
+msgid "Carrier processing changed. Prepare and approve a fresh estimate."
+msgstr "Spracovanie nosných fráz sa zmenilo. Pripravte a schváľte nový odhad."
+
+#. Mixed homograph audio regeneration
+msgid "With Both methods, the count is a total: three candidates means two with pronunciation guidance and one with carrier extraction; five means three and two. Items without carrier support use pronunciation guidance only."
+msgstr "Pri voľbe Obe metódy ide o celkový počet: tri varianty znamenajú dva s pokynmi k výslovnosti a jeden extrahovaný z nosnej frázy; päť znamená tri a dva. Položky bez podpory nosných fráz používajú iba pokyny k výslovnosti."
+
+#. Mixed homograph audio regeneration
+#, python-format
+msgid "Pronunciation guidance: %(guidance_count)s · Carrier extraction: %(carrier_count)s"
+msgstr "Pokyny k výslovnosti: %(guidance_count)s · Extrakcia z nosných fráz: %(carrier_count)s"
+
+#. Mixed homograph audio regeneration
+msgid "Estimates are not invoices or provider spending caps. Pronunciation-guided audio may retry a near-silent result once. A carrier candidate allows up to five completed attempts to obtain a usable extract; its allowance includes these attempts. Network failures are not automatically retried."
+msgstr "Odhady nie sú faktúrami ani limitmi výdavkov u poskytovateľa. Generovanie s pokynmi k výslovnosti sa môže pri takmer tichom výsledku zopakovať raz. Variant s nosnou frázou umožňuje až päť dokončených pokusov na získanie použiteľného úseku; rezerva tieto pokusy zahŕňa. Sieťové chyby sa automaticky neopakujú."
+
+#. Mixed homograph audio regeneration
+msgid "Carrier audio could not be cleanly extracted. Existing audio is unchanged."
+msgstr "Zvuk sa nepodarilo čisto extrahovať z nosnej frázy. Existujúca nahrávka sa nezmenila."
+
+#. Mixed homograph audio regeneration
+msgid "Hear the full carrier recording"
+msgstr "Vypočuť celú nahrávku s nosnými frázami"
+
+#. Mixed homograph audio regeneration
+msgid "These spellings also occur in English. Listen for the intended language and meaning. Mark problems, compare new candidates, and keep existing audio until you accept a replacement."
+msgstr "Tieto slová sa rovnako píšu aj v angličtine. Pri počúvaní sledujte zamýšľaný jazyk a význam. Označte problémy a porovnajte nové varianty; existujúca nahrávka zostane zachovaná, kým neprijmete náhradu."

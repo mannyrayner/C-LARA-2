@@ -325,7 +325,7 @@ def approve(user, run_id):
         raise Conflict('This estimate expired or the payment account changed. Prepare a new estimate.')
     model, _, _, prices = photo_ai.configuration(user)
     current_prices = {**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION}
-    if run.port.is_audio_batch and run.stage != 'audio_repair':
+    if run.port.is_audio_batch and (run.stage != 'audio_repair' or 'carrier_recipe' in run.prices):
         from .carrier import VERSION
         current_prices['carrier_recipe'] = VERSION
     if run.stage == 'vocabulary':
