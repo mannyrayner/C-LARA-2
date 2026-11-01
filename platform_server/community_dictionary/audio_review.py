@@ -313,7 +313,8 @@ def home(request, pk):
     paging = Paginator(rows, 20).get_page(request.GET.get('page'))
     # Lemma context is display-only, never included in a generation prompt.
     for row in paging:
-        if not row['word']['context']:
+        row['context'] = row['word']['context']
+        if not row['context']:
             links = SentenceWord.objects.filter(word_text_id=row['word']['id'],
                 sentence_text__entry__dictionary=dictionary).select_related('sentence_text__entry')
             for link in links:
