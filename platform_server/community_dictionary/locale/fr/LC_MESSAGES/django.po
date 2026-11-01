@@ -6811,3 +6811,52 @@ msgstr "Accepter une proposition remplace l’audio généré par l’IA pour to
 #. Grouped homograph audio review
 msgid "This recording is no longer available for reuse."
 msgstr "Cet enregistrement n’est plus disponible pour être réutilisé."
+
+#. Mixed homograph audio regeneration
+msgid "Both methods"
+msgstr "Les deux méthodes"
+
+#. Mixed homograph audio regeneration
+msgid "Generation method"
+msgstr "Méthode de génération"
+
+#. Mixed homograph audio regeneration
+msgid "Carrier extraction is unavailable for some selected items. Choose Both methods or pronunciation guidance."
+msgstr "L’extraction à partir de phrases porteuses n’est pas disponible pour certains éléments sélectionnés. Choisissez Les deux méthodes ou les indications de prononciation."
+
+#. Mixed homograph audio regeneration
+msgid "Choose a generation method."
+msgstr "Choisissez une méthode de génération."
+
+#. Mixed homograph audio regeneration
+msgid "Choose at least two candidates to use both methods."
+msgstr "Choisissez au moins deux propositions pour utiliser les deux méthodes."
+
+#. Mixed homograph audio regeneration
+msgid "Carrier processing changed. Prepare and approve a fresh estimate."
+msgstr "Le traitement des phrases porteuses a changé. Préparez et approuvez une nouvelle estimation."
+
+#. Mixed homograph audio regeneration
+msgid "With Both methods, the count is a total: three candidates means two with pronunciation guidance and one with carrier extraction; five means three and two. Items without carrier support use pronunciation guidance only."
+msgstr "Avec Les deux méthodes, le nombre indiqué est un total : trois propositions donnent deux enregistrements avec indications de prononciation et un extrait de phrase porteuse ; cinq en donnent trois et deux. Les éléments sans prise en charge des phrases porteuses utilisent uniquement les indications de prononciation."
+
+#. Mixed homograph audio regeneration
+#, python-format
+msgid "Pronunciation guidance: %(guidance_count)s · Carrier extraction: %(carrier_count)s"
+msgstr "Indications de prononciation : %(guidance_count)s · Extraction de phrases porteuses : %(carrier_count)s"
+
+#. Mixed homograph audio regeneration
+msgid "Estimates are not invoices or provider spending caps. Pronunciation-guided audio may retry a near-silent result once. A carrier candidate allows up to five completed attempts to obtain a usable extract; its allowance includes these attempts. Network failures are not automatically retried."
+msgstr "Les estimations ne sont ni des factures ni des plafonds de dépense chez le fournisseur. La génération avec indications de prononciation peut être répétée une fois si le résultat est presque silencieux. Une proposition avec phrase porteuse autorise jusqu’à cinq tentatives achevées pour obtenir un extrait utilisable ; la provision inclut ces tentatives. Les échecs réseau ne sont pas relancés automatiquement."
+
+#. Mixed homograph audio regeneration
+msgid "Carrier audio could not be cleanly extracted. Existing audio is unchanged."
+msgstr "Le mot n’a pas pu être extrait proprement de la phrase porteuse. L’audio existant est inchangé."
+
+#. Mixed homograph audio regeneration
+msgid "Hear the full carrier recording"
+msgstr "Écouter l’enregistrement complet avec les phrases porteuses"
+
+#. Mixed homograph audio regeneration
+msgid "These spellings also occur in English. Listen for the intended language and meaning. Mark problems, compare new candidates, and keep existing audio until you accept a replacement."
+msgstr "Ces graphies existent aussi en anglais. Écoutez en tenant compte de la langue et du sens attendus. Signalez les problèmes et comparez de nouvelles propositions ; l’audio existant reste en place jusqu’à l’acceptation d’un remplacement."
