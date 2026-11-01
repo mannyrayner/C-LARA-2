@@ -12,7 +12,7 @@
 {% for row in rows %}<section class="panel audio-review-row" id="word-{{ row.word.id }}">
 <h2><a href="{% url 'community_dictionary:entry' dictionary.pk row.word.entry %}">{{ row.word.word }}</a></h2>
 <p>{{ row.word.meaning }} · {% if row.word.kind == 'form' %}{% translate "Form used in a sentence" %}{% else %}{% translate "Dictionary word" %}{% endif %}</p>
-{% if row.word.context or row.context %}<p class="help">{{ row.word.context|default:row.context }}</p>{% endif %}
+{% if row.context %}<p class="help">{{ row.context }}</p>{% endif %}
 {% for audio in row.word.audio %}<audio controls preload="none" aria-label="{{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk row.word.id audio.id %}"></audio>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}
 {% if row.protected %}<p>{% translate "Human recording present: automatic replacement is disabled." %}</p>{% endif %}
 <p><strong>{% if row.decision == 'keep' %}{% translate "Keep" %}{% elif row.decision == 'replace' %}{% translate "Needs regeneration" %}{% else %}{% translate "Not reviewed" %}{% endif %}</strong></p>

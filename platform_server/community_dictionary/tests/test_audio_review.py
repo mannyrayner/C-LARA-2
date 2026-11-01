@@ -63,6 +63,25 @@ class ReviewTests(TestCase):
         self.old_audio(entry)
         self.assertEqual(review.rows_for(self.owner,self.dictionary)[0]['decision'],'')
 
+    def test_checklist_renders_forms_and_lemmas_with_and_without_context(self):
+        verb = self.seed('courir', 'run')
+        word = self.seed('queue', 'tail')
+        self.seed('pain', 'bread')
+        sentence = self.seed('Il court, la queue levée.', 'He runs with his tail raised.', kind='sentence')
+        link = SentenceWord.objects.create(sentence_text=sentence.current_text,
+            word_entry=verb, word_text=verb.current_text, surface='court')
+        form = sf.publish(link, 'runs', self.owner, {'origin':'synthetic'})
+        SentenceWord.objects.create(sentence_text=sentence.current_text,
+            word_entry=word, word_text=word.current_text, surface='queue')
+        self.old_audio(sentence, form)
+        with patch.object(exp.tts, 'synthesize') as api:
+            response = self.client.get(self.url())
+        self.assertContains(response, 'court')
+        self.assertContains(response, 'queue')
+        self.assertContains(response, 'pain')
+        self.assertContains(response, sentence.word, count=2)
+        api.assert_not_called()
+
     def test_stale_tab_csrf_and_access_controls(self):
         entry=self.seed();audio=self.old_audio(entry);row=review.live_row(self.dictionary,entry.current_text_id)
         data={'action':'keep','part':row['id'],'token':review.fingerprint(row),'previous':''}
