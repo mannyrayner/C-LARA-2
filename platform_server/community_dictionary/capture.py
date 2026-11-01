@@ -275,7 +275,33 @@ def failed_audio(study):
     return failed
 
 
+def reuse_form_audio(clip_id):
+    paths = []
+    try:
+        with transaction.atomic():
+            locks()
+            clip = CaptureSpeech.objects.select_for_update().select_related('capture__dictionary','capture__user').get(pk=clip_id)
+            if clip.status != 'waiting' or clip.kind != 'form':
+                return False
+            speech_allowed(clip)  # Local reuse has no API cost or payment requirement.
+            from .sentence_forms import reuse_audio
+            part = Contribution.objects.select_related('entry__dictionary').get(pk=clip.text_id)
+            reused = reuse_audio(part, clip.capture.voice, paths)
+            if not reused:
+                return False
+            clip.contribution, clip.status = reused, 'ready'
+            clip.report = {'reused_audio':reused.pk}
+            clip.save(update_fields=['contribution','status','report'])
+            return True
+    except Exception:
+        for path in paths:
+            delete_file(path)
+        raise
+
+
 def speak(clip_id):
+    if reuse_form_audio(clip_id):
+        return
     with transaction.atomic():
         locks()
         clip=CaptureSpeech.objects.select_for_update().select_related('capture__dictionary','capture__user').get(pk=clip_id)

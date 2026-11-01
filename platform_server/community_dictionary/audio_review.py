@@ -9,6 +9,7 @@ from datetime import timedelta
 from decimal import Decimal
 import hashlib
 import json
+import re
 import uuid
 
 from django.contrib import messages
@@ -93,6 +94,115 @@ def protected(row):
     return any(not a['synthetic'] for a in row['audio'])
 
 
+def single_word(row):
+    # The broad detector remains useful for synthesis guidance. The listening
+    # checklist defaults to whole single words, not tokens inside expressions.
+    return bool(re.fullmatch(r"[^\W\d_]+(?:['’][^\W\d_]+)*", row['word'].strip()))
+
+
+def group_words(dictionary, rows):
+    parts = Contribution.objects.filter(pk__in=[r['id'] for r in rows if r['kind']=='form'],
+        entry__dictionary=dictionary).select_related('entry__dictionary').in_bulk()
+    grouped = {}
+    for row in rows:
+        key = ('single', row['id'])
+        if row['kind']=='form' and not protected(row):
+            key = ('form', *sf.audio_key(parts[row['id']], row['voice']))
+        grouped.setdefault(key, []).append(row)
+    return [sorted(members, key=lambda r:r['id']) for members in grouped.values()]
+
+
+def review_groups(user, dictionary, *, include_expressions=False, parts=None):
+    rows = rows_for(user, dictionary, parts=parts, include_expressions=include_expressions)
+    by_id = {r['word']['id']:r for r in rows}
+    result = []
+    for members in group_words(dictionary, [r['word'] for r in rows
+            if include_expressions or single_word(r['word'])]):
+        values = [by_id[r['id']]['decision'] for r in members]
+        result.append({'word':members[0], 'members':members,
+            'decision':values[0] if len(set(values))==1 else '', 'mixed':len(set(values))>1,
+            'protected':any(protected(r) for r in members),
+            'token':fingerprint({'members':members, 'decisions':values})})
+    return sorted(result, key=lambda r:(r['word']['word'].casefold(), r['word']['meaning'], r['word']['id']))
+
+
+def group_now(user, dictionary, part_id, token):
+    part = get_object_or_404(Contribution, pk=part_id, entry__dictionary=dictionary)
+    parts = Contribution.objects.filter(pk=part_id)
+    if part.kind == 'form':
+        parts = Contribution.objects.filter(kind='form',
+            provenance__form_basis__word_entry=part.provenance.get('form_basis', {}).get('word_entry'))
+    group = next((g for g in review_groups(user, dictionary, include_expressions=True, parts=parts)
+                  if g['word']['id']==part_id), None)
+    if not group or group['token'] != token:
+        raise Conflict(_('The recording or its review changed. Reload before saving.'))
+    return group
+
+
+def record_decision(user, dictionary, row, decision):
+    # Approval follows the exact recording; changing the decision removes it.
+    for audio in Contribution.objects.filter(pk__in=[a['id'] for a in row['audio'] if a['synthetic']]):
+        if bool(sf.pronunciation_approved(audio)) != (decision=='keep'):
+            audio.provenance = {**audio.provenance, 'pronunciation_approved':decision=='keep',
+                'reviewed_by':user.pk, 'reviewed_at':timezone.now().isoformat()}
+            audio.save(update_fields=['provenance'])
+    remember(user, dictionary, live_row(dictionary, row['id']), decision)
+
+
+@transaction.atomic
+def mark_group(user, dictionary, part_id, token, decision):
+    porting.locks(); require_owner(user, dictionary)
+    group = group_now(user, dictionary, part_id, token)
+    if decision not in DECISIONS or (decision=='replace' and group['protected']):
+        raise Conflict(_('Human recordings are protected. Use the entry page to discuss changes.'))
+    if decision=='keep' and any(not r['audio'] for r in group['members']):
+        raise Conflict(_('There is no current recording to keep.'))
+    for row in group['members']:
+        record_decision(user, dictionary, row, decision)
+
+
+@transaction.atomic
+def use_existing(user, dictionary, part_id, token, audio_id, paths):
+    """One explicit choice repairs the displayed group without an API request."""
+    porting.locks(); require_owner(user, dictionary)
+    group = group_now(user, dictionary, part_id, token)
+    if group['protected'] or audio_id not in source_ids(group['members']) or not any(
+            a['id']==audio_id for row in group['members'] for a in row['audio']):
+        raise Conflict(_('This recording is no longer available for reuse.'))
+    source = Contribution.objects.get(pk=audio_id)
+    # Make this reviewed clip a new reuse root, even if it was itself copied.
+    source.provenance = {**source.provenance, 'pronunciation_approved':True,
+        'reviewed_by':user.pk, 'reviewed_at':timezone.now().isoformat()}
+    source.provenance.pop('audio_reuse_source', None)
+    source.save(update_fields=['provenance'])
+    for row in group['members']:
+        old_ids = [a['id'] for a in row['audio']]
+        if audio_id not in old_ids:
+            part = Contribution.objects.select_related('entry__dictionary').get(pk=row['id'])
+            new = sf.copy_audio(part, source, paths, provenance={'replaces_audio_ids':old_ids})
+            event(dictionary, user, 'homograph_audio_reuse', part.entry, f'Audio {new.pk}; source {source.pk}')
+        Contribution.objects.filter(pk__in=old_ids, status='accepted').exclude(pk=audio_id).update(status='superseded')
+        remember(user, dictionary, live_row(dictionary, row['id']), 'keep')
+
+
+def targets(item, part_id):
+    ids = item.snapshot.get('audio_groups', {}).get(str(part_id), [part_id])
+    return [r for r in item.snapshot['words'] if r['id'] in ids]
+
+
+def form_labels(rows):
+    """Display why identical spellings can still belong to different groups."""
+    parts = Contribution.objects.filter(pk__in=[r['word']['id'] for r in rows if r['word']['kind']=='form']).in_bulk()
+    bases = {pk:p.provenance.get('form_basis', {}) for pk,p in parts.items()}
+    sources = Contribution.objects.filter(pk__in={b.get(k) for b in bases.values()
+        for k in ('word_text','word_meaning') if b.get(k)}).in_bulk()
+    for row in rows:
+        basis = bases.get(row['word']['id'], {})
+        lemma, meaning = sources.get(basis.get('word_text')), sources.get(basis.get('word_meaning'))
+        row['lemma'] = lemma.word if lemma else ''
+        row['lemma_meaning'] = meaning.meaning if meaning else ''
+
+
 def review_run(user, dictionary):
     return PortRun.objects.filter(stage=REVIEW, port__source=dictionary, port__user=user,
         port__language=dictionary.language, port__explanation_language=dictionary.explanation_language,
@@ -137,15 +247,17 @@ def mark(user, dictionary, part_id, token, previous, decision):
         raise Conflict(_('Human recordings are protected. Use the entry page to discuss changes.'))
     if decision == 'keep' and not row['audio']:
         raise Conflict(_('There is no current recording to keep.'))
-    remember(user, dictionary, row, decision)
+    record_decision(user, dictionary, row, decision)
 
 
-def rows_for(user, dictionary):
+def rows_for(user, dictionary, *, parts=None, include_expressions=True):
     saved = decisions(user, dictionary)
     rows = []
-    parts = Contribution.objects.filter(entry__dictionary=dictionary, entry__archived=False,
+    parts = (parts if parts is not None else Contribution.objects.all()).filter(entry__dictionary=dictionary, entry__archived=False,
         status='accepted', kind__in=['text','form']).select_related('entry__dictionary','entry__current_text','entry__current_meaning')
     for part in parts:
+        if not include_expressions and not single_word({'word':part.word}):
+            continue
         row = row_for(part)
         if row:
             old, decision = saved.get(row['id'], (None, ''))
@@ -161,7 +273,8 @@ def check_approval(run):
 
 
 @transaction.atomic
-def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, selected_ids=None, previous_run=None):
+def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, selected_ids=None, previous_run=None,
+          include_expressions=False):
     porting.locks(); require_owner(user, dictionary)
     existing = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, stage=STAGE).first()
     if existing:
@@ -180,13 +293,14 @@ def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, select
             row = live_row(dictionary, old['id'])
         except Conflict:
             continue
-        if row == old and not protected(row):
+        if row == old and not protected(row) and (include_expressions or single_word(row)):
             chosen.append(row)
     if not chosen:
         raise Conflict(_('Mark at least one current recording as Needs regeneration first.'))
     if selected_ids is not None and {row['id'] for row in chosen} != set(selected_ids):
         raise Conflict(_('The recording or its review changed. Reload before saving.'))
-    if len(chosen) > MAX_REPAIR:
+    audio_groups = group_words(dictionary, chosen)
+    if len(audio_groups) > MAX_REPAIR:
         raise Conflict(_('Regenerate at most 100 marked words or forms in one batch.'))
     model, _key, _personal, prices = photo_ai.configuration(user)
     port = LanguagePort.objects.create(source=dictionary, user=user, is_audio_batch=True,
@@ -199,17 +313,20 @@ def quote(user, dictionary, token, candidate_count=DEFAULT_CANDIDATES, *, select
                  'previous_run':str(previous_run) if previous_run else ''}, payer=porting.payer_now(user),
         expires_at=timezone.now()+timedelta(hours=1))
     grouped = {}
-    for row in chosen:
-        grouped.setdefault(row['entry'], []).append(row)
-    for entry_id, words in grouped.items():
+    for members in audio_groups:
+        grouped.setdefault(members[0]['entry'], []).append(members)
+    for entry_id, groups in grouped.items():
+        words = [row for members in groups for row in members]
         clips = []
-        for row in words:
+        for members in groups:
+            row = members[0]
             estimated = porting.money(port_costs.speech(row['word'], dictionary.language, prices))
             allowance = port_costs.allowance(estimated)
             for number in range(1, candidate_count + 1):
                 clips.append({'id':uuid.uuid4().hex, 'word_id':row['id'], 'method':'guidance', 'candidate':number,
                     'status':'waiting', 'allowance':str(allowance), 'estimate':str(estimated), 'cost':'0', 'report':{}})
-        item = PortItem.objects.create(run=run, source_entry_id=entry_id, snapshot={'words':words}, result={'clips':clips},
+        item = PortItem.objects.create(run=run, source_entry_id=entry_id,
+            snapshot={'words':words, 'audio_groups':{str(g[0]['id']):[r['id'] for r in g] for g in groups}}, result={'clips':clips},
             estimated_usd=sum(Decimal(c['estimate']) for c in clips),
             allowance_usd=sum(Decimal(c['allowance']) for c in clips))
         item.sources.set(source_ids(words))
@@ -237,7 +354,8 @@ def quote_more(user, dictionary, run_id, item_id, part_id, token, candidate_coun
         raise Conflict(_('Wait until generation finishes before requesting more candidates.'))
     if any(c['word_id'] == part_id and c.get('decision') == 'accept' for c in item.result.get('clips', [])):
         raise Conflict(_('A replacement was already accepted for this item. Return to the checklist to review it again.'))
-    return quote(user, dictionary, token, candidate_count, selected_ids={part_id}, previous_run=run_id)
+    return quote(user, dictionary, token, candidate_count,
+        selected_ids={r['id'] for r in targets(item, part_id)}, previous_run=run_id, include_expressions=True)
 
 
 def current_item(item):
@@ -269,9 +387,11 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
     if any(c['word_id'] == clip['word_id'] and c.get('decision') == 'accept' for c in item.result['clips']):
         raise Conflict(_('A replacement was already accepted for this item. Return to the checklist to review it again.'))
     row = next(r for r in item.snapshot['words'] if r['id']==clip['word_id'])
+    members = targets(item, row['id'])
     if decision == 'reject':
         clip['decision'] = 'reject'
-        remember(user, run.port.source, row, 'replace')
+        for member in members:
+            remember(user, run.port.source, member, 'replace')
     else:
         part = Contribution.objects.select_related('entry__dictionary','entry__current_meaning').get(pk=row['id'])
         prepared = (path_for(clip['path']).read_bytes(), 'audio/wav', '.wav')
@@ -280,7 +400,7 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
             'voice':row['voice'], 'language':row['language'], 'source_text':row['word'], 'source_text_id':part.pk,
             'instructions_version':tts.INSTRUCTIONS_VERSION, 'synthesis':clip['report'],
             'homograph_repair_run':str(run.pk), 'replaces_audio_ids':previous_ids,
-            'reviewed_by':user.pk, 'reviewed_at':timezone.now().isoformat()}
+            'pronunciation_approved':True, 'reviewed_by':user.pk, 'reviewed_at':timezone.now().isoformat()}
         if row['kind'] == 'form':
             provenance['sentence_form'] = part.pk
         elif part.entry.current_meaning_id:
@@ -294,12 +414,19 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
         ContributionDependency.objects.bulk_create([ContributionDependency(source_id=pk, derived=new) for pk in row['ids']])
         Contribution.objects.filter(pk__in=previous_ids, status='accepted').update(status='superseded')
         clip.update(decision='accept', accepted_audio_id=new.pk)
-        # Update only this row's audio basis so other forms in the same sentence
-        # can still be reviewed. Every subsequent request rechecks the new basis.
-        updated = live_row(run.port.source, row['id'])
-        item.snapshot['words'] = [updated if r['id']==row['id'] else r for r in item.snapshot['words']]
         item.sources.add(new)
-        remember(user, run.port.source, updated, 'keep')
+        accepted_ids = [new.pk]
+        for member in members:
+            if member['id'] != row['id']:
+                other = Contribution.objects.select_related('entry__dictionary').get(pk=member['id'])
+                old_ids = [a['id'] for a in member['audio']]
+                copied = sf.copy_audio(other, new, paths, provenance={'replaces_audio_ids':old_ids})
+                Contribution.objects.filter(pk__in=old_ids, status='accepted').update(status='superseded')
+                item.sources.add(copied); accepted_ids.append(copied.pk)
+            updated = live_row(run.port.source, member['id'])
+            item.snapshot['words'] = [updated if r['id']==member['id'] else r for r in item.snapshot['words']]
+            remember(user, run.port.source, updated, 'keep')
+        clip['accepted_audio_ids'] = accepted_ids
         event(run.port.source, user, 'homograph_audio_replace', part.entry, f'Audio {new.pk}; run {run.pk}')
     item.save(update_fields=['snapshot','result'])
 
@@ -331,29 +458,58 @@ def quote_input(request):
 @page(['GET','POST'])
 def home(request, pk):
     dictionary = owner(request, pk)
+    include_expressions = (request.POST if request.method=='POST' else request.GET).get('expressions') == '1'
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'quote':
             token, count = quote_input(request)
-            run = quote(request.user, dictionary, token, count)
+            run = quote(request.user, dictionary, token, count, include_expressions=include_expressions)
             return redirect('community_dictionary:audio-review-run', pk=pk, run_id=run.pk)
-        if action not in DECISIONS:
+        if action not in DECISIONS and action != 'reuse':
             raise Conflict(_('Choose Keep or Needs regeneration.'))
         try:
             part_id = int(request.POST.get('part', ''))
         except ValueError:
             raise Http404
-        mark(request.user, dictionary, part_id, request.POST.get('token'), request.POST.get('previous', ''), action)
+        if action == 'reuse':
+            paths = []
+            try:
+                try:
+                    audio_id = int(request.POST.get('audio', ''))
+                except ValueError:
+                    raise Http404
+                use_existing(request.user, dictionary, part_id, request.POST.get('token'), audio_id, paths)
+            except Exception:
+                for path in paths:
+                    delete_file(path)
+                raise
+        elif request.POST.get('scope') == 'group':
+            mark_group(request.user, dictionary, part_id, request.POST.get('token'), action)
+        else:  # Old tabs can still submit their per-occurrence checklist decision.
+            mark(request.user, dictionary, part_id, request.POST.get('token'), request.POST.get('previous', ''), action)
         messages.success(request, _('Review saved.'))
         # Only local numeric page and anchor values enter the redirect.
         number = request.POST.get('page','1')
         number = number if number.isdigit() else '1'
-        return redirect(reverse('community_dictionary:audio-review', args=[pk])+f'?page={number}#word-{part_id}')
-    rows = rows_for(request.user, dictionary)
+        return redirect(reverse('community_dictionary:audio-review', args=[pk])+f'?page={number}&expressions={int(include_expressions)}#word-{part_id}')
+    rows = review_groups(request.user, dictionary, include_expressions=include_expressions)
     counts = Counter(r['decision'] for r in rows)
     paging = Paginator(rows, 20).get_page(request.GET.get('page'))
+    form_labels(paging)
+    audio_by_id = Contribution.objects.filter(pk__in={a['id'] for r in paging
+        for member in r['members'] for a in member['audio']}).in_bulk()
     # Lemma context is display-only, never included in a generation prompt.
     for row in paging:
+        row['all_recorded'] = all(r['audio'] for r in row['members'])
+        row['recordings'] = []
+        seen = set()
+        for member in row['members']:
+            for clip in member['audio']:
+                recording = audio_by_id[clip['id']]
+                key = recording.provenance.get('audio_reuse_source', recording.pk)
+                if key not in seen:
+                    row['recordings'].append({**clip, 'part':member['id'], 'context':member['context']})
+                    seen.add(key)
         row['context'] = row['word']['context']
         if not row['context']:
             links = SentenceWord.objects.filter(word_text_id=row['word']['id'],
@@ -365,6 +521,7 @@ def home(request, pk):
                     break
     return render(request, 'community_dictionary/audio_review.html', context(request, dictionary,
         rows=paging, total=len(rows), kept=counts['keep'], marked=counts['replace'], unreviewed=counts[''], token=uuid.uuid4(),
+        include_expressions=include_expressions,
         candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
         runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user)[:10]))
 
@@ -414,11 +571,14 @@ def detail(request, pk, run_id):
             unavailable += 1; continue
         for row in item.snapshot['words']:
             clips = [dict(c) for c in item.result['clips'] if c['word_id']==row['id']]
+            if not clips:
+                continue  # Group members share their representative's candidates.
             for number, clip in enumerate(clips, 1):
                 clip.setdefault('candidate', number)  # Existing single-preview jobs remain usable.
-            rows.append({'word':row, 'clips':clips, 'item':item, 'token':uuid.uuid4(),
+            rows.append({'word':row, 'members':targets(item, row['id']), 'clips':clips, 'item':item, 'token':uuid.uuid4(),
                          'accepted':any(c.get('decision')=='accept' for c in clips)})
     clips = [c for row in rows for c in row['clips']]
+    form_labels(rows)
     progress = Counter(c['status'] for c in clips)
     balance = get_user_balance_usd(request.user) if run.payer=='credits' else None
     return render(request, 'community_dictionary/audio_review_run.html', context(request, dictionary,

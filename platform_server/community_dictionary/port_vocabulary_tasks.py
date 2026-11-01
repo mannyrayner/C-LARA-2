@@ -116,7 +116,34 @@ def speech_credentials(clip):
     return key
 
 
+def reuse_form_audio(pk):
+    paths = []
+    try:
+        with transaction.atomic():
+            porting.locks(); clip = speech_row(pk, True)
+            if clip.status != 'queued' or clip.text.kind != 'form' or clip.run.port.is_audio_batch:
+                return False
+            try:
+                speech_credentials(clip)
+            except (Conflict, Http404):
+                return False  # Ordinary worker handles stale requests.
+            from .sentence_forms import reuse_audio
+            reused = reuse_audio(clip.text, clip.run.port.voice, paths)
+            if not reused:
+                return False
+            clip.status, clip.report = 'ready', {'reused_audio':reused.pk}
+            clip.save(update_fields=['status','report'])
+            transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)))
+            return True
+    except Exception:
+        for path in paths:
+            delete_file(path)
+        raise
+
+
 def speak(pk):
+    if reuse_form_audio(pk):
+        return
     with transaction.atomic():
         porting.locks();clip=speech_row(pk,True)
         if clip.status!='queued':return

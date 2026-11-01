@@ -80,6 +80,37 @@ class SentenceFormTests(TestCase):
         self.assertNotEqual(sf.find(sf.links(entry).get(surface='ligger')).pk,
                             sf.find(sf.links(second).get(surface='ligger')).pk)
 
+    def test_new_capture_reuses_approved_form_audio_without_synthesis_or_charge(self):
+        from community_dictionary import audio_review
+        self.d.language = 'French'; self.d.save()
+        data = {'outcome':'ready','feedback':'Confirm?', 'sentence':'Le bonnet est vert.',
+            'translation':'The hat is green.', 'words':[
+                {'lemma':'être','meaning':'be','surface':'est','existing_id':0}]}
+        study, first = self.generated(data); self.complete_audio(study)
+        form = first.contributions.get(kind='form'); row = audio_review.live_row(self.d,form.pk)
+        audio_review.mark(self.owner,self.d,form.pk,audio_review.fingerprint(row),'','keep')
+        source = sf.audio(form)
+        data['sentence'], data['translation'] = 'Le ciel est rose.', 'The sky is pink.'
+        study, second = self.generated(data)
+        self.tts.reset_mock(); self.complete_audio(study)
+        self.assertEqual([c.args[0] for c in self.tts.call_args_list], ['Le ciel est rose.'])
+        clip = study.speech.get(kind='form')
+        self.assertEqual(clip.status,'ready')
+        self.assertEqual(clip.contribution.provenance['audio_copied_from'],source.pk)
+        self.assertNotIn('accounted',clip.report)
+        self.assertNotEqual(clip.contribution.file_path,source.file_path)
+
+    def test_backfill_reuses_existing_nonhomograph_form_audio_without_synthesis(self):
+        study, first = self.generated(); self.complete_audio(study)
+        second = self.publish(self.ready())
+        run = self.approve(form_jobs.quote(self.owner,self.d,uuid.uuid4()))
+        self.run_batch(run)
+        # Verify durable zero-cost results rather than the provider's output.
+        self.assertEqual(run.speech.count(),3)
+        self.assertTrue(all(c.status=='ready' and c.report.get('reused_audio') and c.cost_usd==0 for c in run.speech.all()))
+        for part in second.contributions.filter(kind='form'):
+            self.assertTrue(sf.audio(part).provenance.get('audio_copied_from'))
+
     def test_discontinuous_mwe_uses_sentence_recording(self):
         data = {'outcome':'ready','feedback':'Confirm?', 'sentence':'Der Mann zieht seine Jacke an.',
             'translation':'The man puts on his jacket.', 'words':[
