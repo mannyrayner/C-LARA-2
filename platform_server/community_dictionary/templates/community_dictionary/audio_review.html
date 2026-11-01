@@ -3,10 +3,13 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>{% translate "Review homograph audio" %}</h1>
 <p>{% translate "These spellings also occur in English. Listen for the intended language and meaning. Mark problems; regeneration uses pronunciation guidance and keeps existing audio until you accept a replacement." %}</p>
+<form method="get"><label class="check"><input type="checkbox" name="expressions" value="1"{% if include_expressions %} checked{% endif %}> {% translate "Include expressions containing homographs" %}</label><button class="secondary">{% translate "Update list" %}</button></form>
+<p class="help">{% translate "By default, only single words are listed. Equivalent sentence forms share a review group; different dictionary senses and voices stay separate." %}</p>
 <section class="panel">
 <p role="status">{% blocktranslate %}{{ total }} words / forms · {{ kept }} kept · {{ marked }} need regeneration · {{ unreviewed }} not reviewed{% endblocktranslate %}</p>
 <p>{% translate "Each decision is saved immediately. You can leave and return; changed text or recordings need a fresh review." %}</p>
 {% if marked %}<form method="post">{% csrf_token %}<input type="hidden" name="token" value="{{ token }}">
+<input type="hidden" name="expressions" value="{% if include_expressions %}1{% else %}0{% endif %}">
 <label>{% translate "Candidates per word or form" %} <select name="candidates">{% for number in candidate_choices %}<option value="{{ number }}"{% if number == default_candidates %} selected{% endif %}>{{ number }}</option>{% endfor %}</select></label>
 <p class="help">{% translate "Compare several attempts and choose the best. More candidates cost more; you approve the estimate before generation." %}</p>
 <button name="action" value="quote">{% translate "Estimate regeneration of marked items" %}</button></form>{% endif %}
@@ -15,16 +18,21 @@
 {% for row in rows %}<section class="panel audio-review-row" id="word-{{ row.word.id }}">
 <h2><a href="{% url 'community_dictionary:entry' dictionary.pk row.word.entry %}">{{ row.word.word }}</a></h2>
 <p>{{ row.word.meaning }} · {% if row.word.kind == 'form' %}{% translate "Form used in a sentence" %}{% else %}{% translate "Dictionary word" %}{% endif %}</p>
+<p class="help">{% if row.lemma %}{% translate "Dictionary form" %}: {{ row.lemma }} · {{ row.lemma_meaning }} · {% endif %}{% translate "Voice" %}: {{ row.word.voice }}</p>
 {% if row.context %}<p class="help">{{ row.context }}</p>{% endif %}
-{% for audio in row.word.audio %}<audio controls preload="none" aria-label="{{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk row.word.id audio.id %}"></audio>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}
+{% if row.members|length > 1 %}<details><summary>{% blocktranslate with count=row.members|length %}{{ count }} occurrences — show sentences and translations{% endblocktranslate %}</summary><ul>{% for member in row.members %}<li><a href="{% url 'community_dictionary:entry' dictionary.pk member.entry %}">{{ member.context }}</a> · {{ member.meaning }}</li>{% endfor %}</ul></details><p class="help">{% translate "A choice here applies to all these occurrences. Their sentence-specific translations are kept." %}</p>{% endif %}
+{% for audio in row.recordings %}<div class="audio-variant">{% if row.recordings|length > 1 %}<p>{% translate "Current recording" %} {{ forloop.counter }}{% if audio.context %} · {{ audio.context }}{% endif %}</p>{% endif %}
+<audio controls preload="none" aria-label="{{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk audio.part audio.id %}"></audio>
+{% if row.members|length > 1 and not row.protected %}<form method="post">{% csrf_token %}<input type="hidden" name="part" value="{{ row.word.id }}"><input type="hidden" name="token" value="{{ row.token }}"><input type="hidden" name="audio" value="{{ audio.id }}"><input type="hidden" name="page" value="{{ rows.number }}"><input type="hidden" name="expressions" value="{% if include_expressions %}1{% else %}0{% endif %}"><button name="action" value="reuse" class="secondary">{% translate "Use this recording for all these occurrences" %}</button></form>{% endif %}</div>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}
 {% if row.protected %}<p>{% translate "Human recording present: automatic replacement is disabled." %}</p>{% endif %}
-<p><strong>{% if row.decision == 'keep' %}{% translate "Keep" %}{% elif row.decision == 'replace' %}{% translate "Needs regeneration" %}{% else %}{% translate "Not reviewed" %}{% endif %}</strong></p>
+<p><strong>{% if row.mixed %}{% translate "Mixed earlier decisions — review this group" %}{% elif row.decision == 'keep' %}{% translate "Keep" %}{% elif row.decision == 'replace' %}{% translate "Needs regeneration" %}{% else %}{% translate "Not reviewed" %}{% endif %}</strong></p>
 <form method="post">{% csrf_token %}<input type="hidden" name="part" value="{{ row.word.id }}"><input type="hidden" name="token" value="{{ row.token }}"><input type="hidden" name="previous" value="{{ row.decision }}"><input type="hidden" name="page" value="{{ rows.number }}">
-{% if row.word.audio %}<button name="action" value="keep" class="secondary">{% translate "Keep" %}</button>{% endif %}
+<input type="hidden" name="scope" value="group"><input type="hidden" name="expressions" value="{% if include_expressions %}1{% else %}0{% endif %}">
+{% if row.all_recorded %}<button name="action" value="keep" class="secondary">{% translate "Keep" %}</button>{% endif %}
 {% if not row.protected %}<button name="action" value="replace" class="secondary">{% translate "Needs regeneration" %}</button>{% endif %}
-{% if row.decision %}<button name="action" value="" class="quiet">{% translate "Clear decision" %}</button>{% endif %}
+{% if row.decision or row.mixed %}<button name="action" value="" class="quiet">{% translate "Clear decision" %}</button>{% endif %}
 </form></section>{% empty %}<p>{% translate "No eligible English-homograph words or sentence forms are currently available." %}</p>{% endfor %}
-{% if rows.has_other_pages %}<nav aria-label="{% translate 'Review pages' %}">{% if rows.has_previous %}<a class="button secondary" href="?page={{ rows.previous_page_number }}">{% translate "Previous" %}</a>{% endif %} {{ rows.number }} / {{ rows.paginator.num_pages }} {% if rows.has_next %}<a class="button secondary" href="?page={{ rows.next_page_number }}">{% translate "Next" %}</a>{% endif %}</nav>{% endif %}
+{% if rows.has_other_pages %}<nav aria-label="{% translate 'Review pages' %}">{% if rows.has_previous %}<a class="button secondary" href="?page={{ rows.previous_page_number }}&amp;expressions={% if include_expressions %}1{% else %}0{% endif %}">{% translate "Previous" %}</a>{% endif %} {{ rows.number }} / {{ rows.paginator.num_pages }} {% if rows.has_next %}<a class="button secondary" href="?page={{ rows.next_page_number }}&amp;expressions={% if include_expressions %}1{% else %}0{% endif %}">{% translate "Next" %}</a>{% endif %}</nav>{% endif %}
 <p><a href="{% url 'community_dictionary:tools' dictionary.pk %}">{% translate "Tools" %}</a></p>
 <link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}" defer></script>
 {% endblock %}

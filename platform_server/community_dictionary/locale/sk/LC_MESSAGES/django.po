@@ -6678,3 +6678,43 @@ msgstr "Odhadnúť ďalšie možnosti"
 
 msgid "Earlier previews are kept. A new estimate must be approved before generating more audio."
 msgstr "Predchádzajúce ukážky sa zachovajú. Pred generovaním ďalšieho zvuku treba schváliť nový odhad."
+
+#. Grouped homograph audio review
+msgid "Include expressions containing homographs"
+msgstr "Zahrnúť výrazy obsahujúce homografy"
+
+#. Grouped homograph audio review
+msgid "Update list"
+msgstr "Aktualizovať zoznam"
+
+#. Grouped homograph audio review
+msgid "By default, only single words are listed. Equivalent sentence forms share a review group; different dictionary senses and voices stay separate."
+msgstr "Predvolene sa zobrazujú iba jednotlivé slová. Rovnaké tvary vo vetách sa posudzujú spolu; rôzne slovníkové významy a hlasy zostávajú oddelené."
+
+#. Grouped homograph audio review
+msgid "%(count)s occurrences — show sentences and translations"
+msgstr "%(count)s výskytov — zobraziť vety a preklady"
+
+#. Grouped homograph audio review
+msgid "A choice here applies to all these occurrences. Their sentence-specific translations are kept."
+msgstr "Táto voľba sa použije pre všetky tieto výskyty. Ich preklady v kontexte vety zostanú zachované."
+
+#. Grouped homograph audio review
+msgid "Current recording"
+msgstr "Aktuálna nahrávka"
+
+#. Grouped homograph audio review
+msgid "Use this recording for all these occurrences"
+msgstr "Použiť túto nahrávku pre všetky tieto výskyty"
+
+#. Grouped homograph audio review
+msgid "Mixed earlier decisions — review this group"
+msgstr "Predchádzajúce rozhodnutia sa líšia — skontrolujte túto skupinu"
+
+#. Grouped homograph audio review
+msgid "Accepting a candidate replaces AI audio for all listed occurrences. Their sentence-specific translations are kept."
+msgstr "Prijatím návrhu sa nahradí zvuk vytvorený AI pre všetky uvedené výskyty. Ich preklady v kontexte vety zostanú zachované."
+
+#. Grouped homograph audio review
+msgid "This recording is no longer available for reuse."
+msgstr "Táto nahrávka už nie je dostupná na opätovné použitie."

@@ -5,6 +5,7 @@ normal withdrawal/restore semantics; exact input revisions prevent stale use.
 No provider calls or writes happen during presentation.
 """
 import re
+import unicodedata
 from django.utils.translation import gettext_lazy as _
 from .models import Contribution, ContributionDependency, SentenceWord
 from .capture_vocabulary import aligned_surface, identity
@@ -80,6 +81,83 @@ def audio_current(clip):
     return bool(part.entry_id == clip.entry_id and current(part) and
         clip.provenance.get('source_text') == part.word and
         clip.provenance.get('language') == part.entry.dictionary.language)
+
+
+def audio_key(part, voice):
+    """Same isolated form of the same dictionary lemma/sense, in one voice.
+
+    Contextual glosses and occurrence records remain separate. Do not equate
+    different senses or dictionaries merely because their spellings coincide.
+    Callers must first validate the contribution with current().
+    """
+    source = part.provenance.get('form_basis', {})
+    surface = ' '.join(unicodedata.normalize('NFC', part.word).replace('’', "'").casefold().split())
+    return (part.entry.dictionary_id, part.entry.dictionary.language, surface,
+            source.get('word_entry'), source.get('word_text'), source.get('word_meaning'), voice)
+
+
+def copy_audio(part, source, paths, *, provenance=None):
+    """Independent file and contribution, retaining the original audio's custody."""
+    from .storage import path_for, write_upload
+    payload = path_for(source.file_path).read_bytes()
+    metadata = {**source.provenance, **(provenance or {}), 'sentence_form':part.pk,
+        'source_text':part.word, 'source_text_id':part.pk,
+        'audio_reuse_source':source.provenance.get('audio_reuse_source', source.pk),
+        'audio_copied_from':source.pk, 'language':part.entry.dictionary.language}
+    metadata.pop('source_meaning_id', None)
+    new = Contribution.objects.create(entry=part.entry, author_id=source.author_id,
+        controlled_by_id=source.controlled_by_id or source.author_id, kind='audio', status='accepted',
+        shared_from=part, provenance=metadata,
+        **write_upload((payload, source.mime_type, path_for(source.file_path).suffix), part.entry.dictionary_id, paths))
+    ContributionDependency.objects.bulk_create([
+        ContributionDependency(source=part, derived=new), ContributionDependency(source=source, derived=new)])
+    return new
+
+
+def pronunciation_approved(clip):
+    # Earlier accepted replacement previews already carried reviewer provenance.
+    return clip.provenance.get('pronunciation_approved', bool(
+        clip.provenance.get('homograph_repair_run') and clip.provenance.get('reviewed_by')))
+
+
+def reuse_audio(part, voice, paths):
+    """Reuse locally, under the caller's dictionary lock; never call a provider.
+
+    Homographs require an explicitly approved recording, so an unchecked English
+    pronunciation is not spread to later sentences. Other forms may reuse an
+    existing accepted synthetic recording. Human audio is never replaced/copied.
+    """
+    if not current(part) or separated(part.word):
+        return None
+    from .public_browsing import contributions
+    from .pronunciation import homographs
+    visible = contributions(part.entry.dictionary)
+    existing = visible.filter(entry=part.entry, kind='audio', status='accepted', shared_from=part).exclude(file_path='')
+    if existing.exists():
+        return next((a for a in existing if a.provenance.get('origin') != 'synthetic' or audio_current(a)), None)
+    wanted = audio_key(part, voice)
+    forms = Contribution.objects.filter(entry__dictionary_id=part.entry.dictionary_id, kind='form', status='accepted',
+        provenance__form_basis__word_entry=part.provenance['form_basis']['word_entry']).exclude(pk=part.pk).select_related('entry__dictionary')
+    needs_review = bool(homographs(part.word, part.entry.dictionary.language))
+    for other in forms.order_by('pk'):
+        if audio_key(other, voice) != wanted or not current(other):
+            continue
+        for source in visible.filter(entry=other.entry, kind='audio', status='accepted', shared_from=other,
+                provenance__origin='synthetic', provenance__voice=voice).exclude(file_path='').order_by('-pk'):
+            if not audio_current(source):
+                continue
+            if needs_review:
+                root = source
+                if source.provenance.get('audio_reuse_source'):
+                    root = visible.filter(pk=source.provenance['audio_reuse_source'], status='accepted').first()
+                if not pronunciation_approved(source) or not root or not pronunciation_approved(root):
+                    continue
+            # A missing old file should not prevent ordinary generation.
+            from .storage import path_for
+            if not path_for(source.file_path).is_file():
+                continue
+            return copy_audio(part, source, paths)
+    return None
 
 
 def publish(link, meaning, user, provenance, *, replace=None):
