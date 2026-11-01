@@ -6641,3 +6641,40 @@ msgstr "Pred výberom nahrávok počkajte na dokončenie vytvárania."
 
 msgid "You can leave and return through Review homograph audio. Existing dictionary audio remains available."
 msgstr "Môžete odísť a vrátiť sa cez Skontrolovať zvuk homografov. Existujúci zvuk slovníka zostáva dostupný."
+
+msgid "Choose between one and five candidates per word or form."
+msgstr "Vyberte jednu až päť možností pre každé slovo alebo tvar."
+
+msgid "Wait until generation finishes before requesting more candidates."
+msgstr "Pred vyžiadaním ďalších možností počkajte na dokončenie generovania."
+
+msgid "A replacement was already accepted for this item. Return to the checklist to review it again."
+msgstr "Pre túto položku už bola prijatá náhradná nahrávka. Vráťte sa do zoznamu a znova ju skontrolujte."
+
+msgid "Candidates per word or form"
+msgstr "Počet možností pre každé slovo alebo tvar"
+
+msgid "Compare several attempts and choose the best. More candidates cost more; you approve the estimate before generation."
+msgstr "Porovnajte viacero pokusov a vyberte najlepší. Viac možností stojí viac; pred generovaním schválite odhad."
+
+#, python-format
+msgid "%(words)s words / forms · %(total)s candidate recordings"
+msgstr "%(words)s slov / tvarov · %(total)s navrhovaných nahrávok"
+
+msgid "Earlier candidates"
+msgstr "Predchádzajúce možnosti"
+
+msgid "Further candidate batches"
+msgstr "Ďalšie skupiny možností"
+
+msgid "No usable recording was produced. Existing audio is unchanged."
+msgstr "Nevytvorila sa použiteľná nahrávka. Existujúci zvuk sa nezmenil."
+
+msgid "More candidates for this item"
+msgstr "Ďalšie možnosti pre túto položku"
+
+msgid "Estimate more candidates"
+msgstr "Odhadnúť ďalšie možnosti"
+
+msgid "Earlier previews are kept. A new estimate must be approved before generating more audio."
+msgstr "Predchádzajúce ukážky sa zachovajú. Pred generovaním ďalšieho zvuku treba schváliť nový odhad."

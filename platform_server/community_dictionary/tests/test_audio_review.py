@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from community_dictionary import audio_review as review, homograph_experiments as exp, port_tasks, porting, sentence_forms as sf
 from community_dictionary.collections import dependent_ids
-from community_dictionary.models import Contribution, SentenceWord
+from community_dictionary.models import Contribution, PortRun, SentenceWord
 from community_dictionary.participation import withdraw_all
 from community_dictionary.services import Conflict
 from community_dictionary.storage import write_upload, path_for
@@ -42,9 +42,9 @@ class ReviewTests(TestCase):
         old,previous=review.decisions(self.owner,self.dictionary).get(part.pk,(None,''))
         review.mark(self.owner,self.dictionary,part.pk,review.fingerprint(row),previous if old==row else '',decision)
 
-    def quote(self,entries=None):
+    def quote(self,entries=None,candidate_count=1):
         for entry in entries or [self.seed()]:self.mark(entry.current_text)
-        return review.quote(self.owner,self.dictionary,uuid.uuid4())
+        return review.quote(self.owner,self.dictionary,uuid.uuid4(),candidate_count)
 
     def choose(self,run,index=0,decision='accept'):
         item=run.items.get();clip=item.result['clips'][index]
@@ -140,9 +140,12 @@ class ReviewTests(TestCase):
         for word,surface,meaning in [(first,'court','runs'),(second,'repose','puts down')]:
             link=SentenceWord.objects.create(sentence_text=sentence.current_text,word_entry=word,word_text=word.current_text,surface=surface)
             form=sf.publish(link,meaning,self.owner,{'origin':'synthetic'});self.old_audio(sentence,form);self.mark(form)
-        run=review.quote(self.owner,self.dictionary,uuid.uuid4());self.assertEqual(run.items.count(),1)
+        run=review.quote(self.owner,self.dictionary,uuid.uuid4(),3);self.assertEqual(run.items.count(),1)
         self.assertEqual(len(run.items.get().snapshot['words']),2);self.approve(run);self.finish(run)
-        for index in range(2):
+        response = self.client.get(self.url('run', run.pk))
+        self.assertEqual(response.context['total'], 6)
+        self.assertEqual(len(response.context['rows']), 2)
+        for index in (2, 4):
             clip=self.choose(run,index);new=Contribution.objects.get(pk=clip['accepted_audio_id'])
             self.assertTrue(sf.audio_current(new));self.assertIn(new.pk,dependent_ids([sentence.current_text_id]))
         self.assertEqual(sentence.contributions.filter(kind='audio',status='accepted').count(),2)
@@ -219,3 +222,159 @@ class ReviewTests(TestCase):
         form=sf.publish(link,'runs',self.owner,{'origin':'synthetic'})
         audio=self.old_audio(sentence,form,human=True);audio.provenance={};audio.save()
         with self.assertRaises(Conflict):self.mark(form)
+
+    def test_candidate_counts_quotes_and_repeated_submissions(self):
+        entry = self.seed(); self.mark(entry.current_text)
+        baseline = review.quote(self.owner, self.dictionary, uuid.uuid4(), 1)
+        for count in (3, 5):
+            token = uuid.uuid4()
+            with patch.object(exp.tts, 'synthesize') as api:
+                run = review.quote(self.owner, self.dictionary, token, count)
+                repeated = review.quote(self.owner, self.dictionary, token, 1)
+            self.assertEqual(run.pk, repeated.pk)
+            self.assertEqual(run.options['candidate_count'], count)
+            self.assertEqual(run.estimated_usd, baseline.estimated_usd * count)
+            self.assertEqual(run.allowance_usd, baseline.allowance_usd * count)
+            clips = run.items.get().result['clips']
+            self.assertEqual(len({c['id'] for c in clips}), count)
+            self.assertEqual([c['candidate'] for c in clips], list(range(1, count + 1)))
+            api.assert_not_called()
+        self.assertFalse(CreditLedgerEntry.objects.exists())
+        previous_count = PortRun.objects.count()
+        for invalid in (0, 6, -1, True, '3', 2.5):
+            with self.assertRaises(Conflict):
+                review.quote(self.owner, self.dictionary, uuid.uuid4(), invalid)
+        self.assertEqual(PortRun.objects.count(), previous_count)
+
+    def test_default_and_invalid_candidate_counts_through_page(self):
+        entry = self.seed(); self.mark(entry.current_text)
+        self.assertContains(self.client.get(self.url()), '<option value="3" selected>3</option>', html=True)
+        token = uuid.uuid4()
+        response = self.client.post(self.url(), {'action':'quote', 'token':str(token)})
+        self.assertRedirects(response, self.url('run', token))
+        self.assertEqual(len(PortRun.objects.get(pk=token).items.get().result['clips']), 3)
+        for invalid in ('', '0', '6', 'three', '1.5'):
+            self.assertEqual(self.client.post(self.url(), {
+                'action':'quote', 'token':str(uuid.uuid4()), 'candidates':invalid}).status_code, 409)
+
+    def test_multiple_candidates_display_progress_and_single_acceptance(self):
+        entry = self.seed(); old = self.old_audio(entry)
+        run = self.quote([entry], candidate_count=3)
+        self.assertContains(self.client.get(self.url('run', run.pk)), '1 words / forms · 3 candidate recordings')
+        self.approve(run)
+        self.assertContains(self.client.get(self.url('run', run.pk)), 'Finished: 0 / 3')
+        carried, guided = self.finish(run)
+        carried.assert_not_called(); self.assertEqual(guided.call_count, 3)
+        self.assertEqual(run.charged_usd, Decimal('.003'))
+        old.refresh_from_db(); self.assertEqual(old.status, 'accepted')
+        response = self.client.get(self.url('run', run.pk))
+        self.assertEqual(len(response.context['rows']), 1)
+        self.assertEqual(len(response.context['rows'][0]['clips']), 3)
+        self.assertContains(response, '<button name="action" value="accept">Use this recording</button>', count=3, html=True)
+        self.assertContains(response, 'Estimate more candidates')
+        chosen = self.choose(run, index=1)
+        self.assertEqual(entry.contributions.filter(kind='audio', status='accepted').get().pk, chosen['accepted_audio_id'])
+        self.choose(run, index=1)  # Duplicate acceptance must not create another contribution.
+        for decision in ('accept', 'reject'):
+            with self.assertRaises(Conflict):self.choose(run, index=0, decision=decision)
+        self.assertEqual(review.rows_for(self.owner, self.dictionary)[0]['decision'], 'keep')
+        response = self.client.get(self.url('run', run.pk))
+        self.assertContains(response, 'Replacement accepted')
+        self.assertNotContains(response, 'value="accept"')
+        self.assertNotContains(response, 'Estimate more candidates')
+
+    def test_more_candidates_are_one_word_only_approved_separately_and_keep_previews(self):
+        first, second = self.seed(), self.seed('court', 'short')
+        self.old_audio(first); self.old_audio(second)
+        run = self.quote([first, second], candidate_count=2); self.approve(run); self.finish(run)
+        item = run.items.get(source_entry=first)
+        earlier_paths = [c['path'] for c in item.result['clips']]
+        token = uuid.uuid4()
+        data = {'action':'more', 'token':str(token), 'item':item.pk, 'part':first.current_text_id, 'candidates':'5'}
+        ledger_count = CreditLedgerEntry.objects.count()
+        with patch.object(exp.tts, 'synthesize') as api:
+            response = self.client.post(self.url('run', run.pk), data)
+            self.assertRedirects(response, self.url('run', token))
+            self.assertRedirects(self.client.post(self.url('run', run.pk), data), self.url('run', token))
+        api.assert_not_called()
+        self.assertEqual(CreditLedgerEntry.objects.count(), ledger_count)
+        next_run = PortRun.objects.get(pk=token)
+        self.assertEqual(next_run.status, 'estimate')
+        self.assertEqual(next_run.items.count(), 1)
+        self.assertEqual(next_run.items.get().source_entry_id, first.pk)
+        self.assertEqual(len(next_run.items.get().result['clips']), 5)
+        self.assertTrue(all(path_for(p).exists() for p in earlier_paths))
+        self.assertContains(self.client.get(self.url('run', token)), self.url('run', run.pk))
+        self.assertContains(self.client.get(self.url('run', run.pk)), self.url('run', token))
+        self.approve(next_run); self.finish(next_run); self.choose(next_run, index=4)
+        self.assertEqual(first.contributions.filter(kind='audio', status='accepted').count(), 1)
+        self.assertEqual(second.contributions.filter(kind='audio').count(), 1)
+        with self.assertRaises(Conflict):
+            review.choose(self.owner, run.pk, item.pk, item.result['clips'][0]['id'], 'accept', [])
+
+    def test_more_candidates_require_current_marked_sources_and_owner(self):
+        entry = self.seed(); self.old_audio(entry)
+        run = self.quote([entry]); self.approve(run); self.finish(run)
+        item = run.items.get()
+        def more():
+            return review.quote_more(self.owner, self.dictionary, run.pk, item.pk,
+                                     entry.current_text_id, uuid.uuid4(), 3)
+        self.mark(entry.current_text, 'keep')
+        with self.assertRaises(Conflict):more()
+        self.mark(entry.current_text)
+        self.old_audio(entry, human=True)
+        with self.assertRaises(Conflict):more()
+        data = {'action':'more', 'token':str(uuid.uuid4()), 'item':item.pk,
+                'part':entry.current_text_id, 'candidates':'3'}
+        self.client.force_login(self.member)
+        self.assertEqual(self.client.post(self.url('run', run.pk), data).status_code, 404)
+        csrf = Client(enforce_csrf_checks=True); csrf.force_login(self.owner)
+        self.assertEqual(csrf.post(self.url('run', run.pk), data).status_code, 403)
+
+    def test_more_candidates_validate_source_count_and_job_state(self):
+        entry = self.seed(); self.old_audio(entry)
+        unrelated = self.seed('pain', 'bread'); self.mark(unrelated.current_text)
+        # Scope the initial quote so the other marked word is not included.
+        self.mark(entry.current_text)
+        run = review.quote(self.owner, self.dictionary, uuid.uuid4(), 1, selected_ids={entry.current_text_id})
+        item = run.items.get()
+        data = {'action':'more', 'token':str(uuid.uuid4()), 'item':item.pk,
+                'part':entry.current_text_id, 'candidates':'3'}
+        self.assertEqual(self.client.post(self.url('run', run.pk), data).status_code, 409)
+        self.approve(run)
+        self.assertEqual(self.client.post(self.url('run', run.pk), data).status_code, 409)
+        self.finish(run)
+        self.assertEqual(self.client.post(self.url('run', run.pk), {**data,'candidates':'6'}).status_code, 409)
+        self.assertEqual(self.client.post(self.url('run', run.pk), {**data,'part':unrelated.current_text_id}).status_code, 404)
+        self.choose(run)
+        self.assertEqual(self.client.post(self.url('run', run.pk), data).status_code, 409)
+
+    def test_failed_candidate_does_not_prevent_other_candidates(self):
+        entry = self.seed(); old = self.old_audio(entry)
+        run = self.quote([entry], candidate_count=3); self.approve(run)
+        attempts = []
+        def generate(text, **kwargs):
+            attempts.append(text)
+            if len(attempts) == 2:
+                kwargs['before_request']()
+                raise TimeoutError
+            return self.synthesis(text, **kwargs)
+        self.finish(run, guidance_fn=generate)
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual([c['status'] for c in run.items.get().result['clips']], ['ready','failed','ready'])
+        response = self.client.get(self.url('run', run.pk))
+        self.assertEqual(response.context['total'], 3)
+        self.assertEqual(response.context['finished'], 3)
+        self.assertEqual(response.context['failures'], 1)
+        self.choose(run, index=0, decision='reject')
+        old.refresh_from_db(); self.assertEqual(old.status, 'accepted')
+        self.choose(run, index=2)
+        self.assertEqual(entry.contributions.filter(kind='audio', status='accepted').count(), 1)
+
+    def test_legacy_single_preview_job_still_renders_and_accepts(self):
+        run = self.quote(); run.options.pop('candidate_count'); run.options.pop('previous_run'); run.save()
+        item = run.items.get(); item.result['clips'][0].pop('candidate'); item.save()
+        self.approve(run); self.finish(run)
+        self.assertContains(self.client.get(self.url('run', run.pk)), 'New preview 1')
+        self.choose(run)
+        self.assertContains(self.client.get(self.url('run', run.pk)), 'Replacement accepted')

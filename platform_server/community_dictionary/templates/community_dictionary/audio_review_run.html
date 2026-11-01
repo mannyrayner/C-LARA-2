@@ -3,6 +3,7 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>{% translate "Review replacement audio" %}</h1>
 <section class="panel"><h2>{{ run.status|capfirst }}</h2>
+<p>{% blocktranslate %}{{ words }} words / forms · {{ total }} candidate recordings{% endblocktranslate %}</p>
 <p>{% translate "Rough API estimate:" %} <strong>US${{ run.estimated_usd }}</strong> · {% translate "Approved allowance:" %} US${{ run.allowance_usd }}</p>
 {% if run.payer == 'credits' %}<p>{% translate "Available credit: US$" %}{{ balance }} · {% translate "currently held: US$" %}{{ held }}</p>{% elif run.payer == 'personal' %}<p>{% translate "Billed to your personal OpenAI key. Its available balance cannot be checked here." %}</p>{% else %}<p>{% translate "Billed to the server operator; C-LARA credit charging is disabled." %}</p>{% endif %}
 <p>{% translate "Only selected text and meanings are sent to OpenAI. Existing voices are retained where supported. Regeneration does not guarantee correct pronunciation: listen before accepting." %}</p>
@@ -15,13 +16,21 @@
 {% elif run.settled %}<p>{% translate "Settled cost estimate: US$" %}{{ run.charged_usd }} · {% translate "Failed recordings:" %} {{ failures }}</p>{% endif %}
 </section>
 {% if unavailable %}<p>{% translate "Some sources or recordings changed, or were withdrawn. Return to the checklist to review their current versions." %}</p>{% endif %}
-{% for row in rows %}<section class="panel audio-review-row" id="preview-{{ row.clip.id }}"><h2>{{ row.word.word }}</h2><p>{{ row.word.meaning }}</p>{% if row.word.context %}<p class="help">{{ row.word.context }}</p>{% endif %}
-{% if row.clip.decision == 'accept' %}<p><strong>{% translate "Replacement accepted. The dictionary now uses the new audio." %}</strong></p>
-{% elif row.clip.decision == 'reject' %}<p>{% translate "Preview rejected. Existing audio kept; this item is still marked for regeneration." %}</p>
+{% if previous_run %}<p><a href="{% url 'community_dictionary:audio-review-run' dictionary.pk previous_run %}">{% translate "Earlier candidates" %}</a></p>{% endif %}
+{% if later_runs %}<details><summary>{% translate "Further candidate batches" %}</summary><ul>{% for later in later_runs %}<li><a href="{% url 'community_dictionary:audio-review-run' dictionary.pk later.pk %}">{{ later.created_at }} · {{ later.status }}</a></li>{% endfor %}</ul></details>{% endif %}
+{% for row in rows %}<section class="panel audio-review-row" id="word-{{ row.word.id }}"><h2>{{ row.word.word }}</h2><p>{{ row.word.meaning }}</p>{% if row.word.context %}<p class="help">{{ row.word.context }}</p>{% endif %}
+<h3>{% translate "Current dictionary audio" %}</h3>{% for audio in row.word.audio %}<audio controls preload="none" aria-label="{% translate 'Current dictionary audio' %}: {{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk row.word.id audio.id %}"></audio>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}
+{% if row.accepted %}<p><strong>{% translate "Replacement accepted. The dictionary now uses the new audio." %}</strong></p>
+{% else %}<div class="audio-candidates">
+{% for clip in row.clips %}<div class="audio-candidate" id="preview-{{ clip.id }}"><h3>{% translate "New preview" %} {{ clip.candidate }}</h3>
+{% if clip.decision == 'reject' %}<p>{% translate "Preview rejected. Existing audio kept; this item is still marked for regeneration." %}</p>
 {% else %}
-<div class="audio-comparison"><div><h3>{% translate "Current dictionary audio" %}</h3>{% for audio in row.word.audio %}<audio controls preload="none" aria-label="{% translate 'Current dictionary audio' %}: {{ row.word.word }}" src="{% url 'community_dictionary:audio-review-current' dictionary.pk row.word.id audio.id %}"></audio>{% empty %}<p>{% translate "No current recording." %}</p>{% endfor %}</div>
-<div><h3>{% translate "New preview" %}</h3>{% if row.clip.status == 'ready' %}<audio controls preload="none" aria-label="{% translate 'New preview' %}: {{ row.word.word }}" src="{% url 'community_dictionary:audio-review-preview' dictionary.pk run.pk row.item.pk row.clip.id %}"></audio>{% elif row.clip.status == 'failed' %}<p>{% translate "No usable recording was produced. Existing audio is unchanged. Return to the checklist for another estimate." %}</p>{% else %}<p>{{ row.clip.status|capfirst }}</p>{% endif %}</div></div>
-{% if run.status == 'complete' and row.clip.status == 'ready' %}<form method="post">{% csrf_token %}<input type="hidden" name="item" value="{{ row.item.pk }}"><input type="hidden" name="clip" value="{{ row.clip.id }}"><button name="action" value="accept">{% translate "Use this recording" %}</button><button class="secondary" name="action" value="reject">{% translate "Reject preview; keep current audio" %}</button></form>{% endif %}
+{% if clip.status == 'ready' %}<audio controls preload="none" aria-label="{% translate 'New preview' %} {{ clip.candidate }}: {{ row.word.word }}" src="{% url 'community_dictionary:audio-review-preview' dictionary.pk run.pk row.item.pk clip.id %}"></audio>{% elif clip.status == 'failed' %}<p>{% translate "No usable recording was produced. Existing audio is unchanged." %}</p>{% else %}<p>{{ clip.status|capfirst }}</p>{% endif %}
+{% if run.status == 'complete' and run.settled and clip.status == 'ready' %}<form method="post">{% csrf_token %}<input type="hidden" name="item" value="{{ row.item.pk }}"><input type="hidden" name="clip" value="{{ clip.id }}"><button name="action" value="accept">{% translate "Use this recording" %}</button><button class="secondary" name="action" value="reject">{% translate "Reject preview; keep current audio" %}</button></form>{% endif %}
+{% endif %}</div>{% endfor %}</div>
+{% if run.status == 'complete' and run.settled %}<form method="post" class="audio-more">{% csrf_token %}<input type="hidden" name="token" value="{{ row.token }}"><input type="hidden" name="item" value="{{ row.item.pk }}"><input type="hidden" name="part" value="{{ row.word.id }}">
+<label>{% translate "More candidates for this item" %} <select name="candidates">{% for number in candidate_choices %}<option value="{{ number }}"{% if number == default_candidates %} selected{% endif %}>{{ number }}</option>{% endfor %}</select></label>
+<button class="secondary" name="action" value="more">{% translate "Estimate more candidates" %}</button><p class="help">{% translate "Earlier previews are kept. A new estimate must be approved before generating more audio." %}</p></form>{% endif %}
 {% endif %}</section>{% endfor %}
 <p><a class="button secondary" href="{% url 'community_dictionary:audio-review' dictionary.pk %}">{% translate "Return to listening checklist" %}</a></p>
 <link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}" defer></script>

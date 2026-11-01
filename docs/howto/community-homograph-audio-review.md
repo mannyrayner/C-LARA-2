@@ -15,18 +15,26 @@ is wrong.
    Progress survives leaving the page. Text, meaning, language or audio changes
    invalidate the corresponding decision. Human recordings cannot be selected for
    automatic replacement.
-3. Choose **Estimate regeneration of marked items** (up to 100 per batch).
-   The estimate lists the selected items and states the payment source, estimated
+3. Choose one to five **Candidates per word or form** (default three), then
+   **Estimate regeneration of marked items** (up to 100 items per batch).
+   The estimate includes every requested recording and states the payment source, estimated
    API cost and refundable C-LARA allowance. Insufficient C-LARA credit blocks
    approval. A personal OpenAI key's balance cannot be checked by the app.
 4. Approve to generate private previews with the current enriched pronunciation
    guidance. Existing supported voices are preserved. No carrier phrases are
    used, and current dictionary audio remains available throughout generation.
-5. When processing finishes, compare **Current dictionary audio** with **New
-   preview**. **Use this recording** explicitly replaces the captured synthetic
-   recordings. **Reject preview; keep current audio** leaves the item marked for
-   another attempt. Failed attempts also remain marked; request a fresh estimate
-   to try again. Do not assume regeneration corrected the pronunciation.
+5. When processing finishes, each word shows its **Current dictionary audio** and
+   numbered **New preview** candidates. **Use this recording** accepts one
+   candidate and closes the other choices for that word. **Reject preview; keep
+   current audio** rejects just that candidate; the others remain available.
+   Failed candidates do not prevent successful ones being reviewed.
+6. If none is suitable, choose a count and **Estimate more candidates** under that
+   word. This prepares a separate estimate for that item only, requiring fresh
+   approval before any further calls. Earlier previews are kept and linked until
+   an accepted replacement or source edit makes them stale. You do not have to
+   reject every candidate before requesting more. Each new batch uses fresh
+   pronunciation guidance and synthesis attempts with the same supported voice;
+   repeated generation may still repeat the same error.
 
 Jobs and previews remain accessible from the checklist. **Refresh progress**
 reads fresh state. **Resume interrupted work** resumes unstarted tasks and, after
@@ -46,7 +54,10 @@ The saved review compares exact text/meaning and recording fingerprints. An edit
 withdrawal, new recording or loss of owner access makes stale previews unusable.
 Replacement rechecks these conditions under the same dictionary lock used by
 withdrawal. It never overwrites a human recording, including one added while a
-job is running. Each acceptance is idempotent.
+job is running. Each acceptance is idempotent. An old tab cannot accept or reject
+another candidate after a replacement was accepted for the same word. New
+candidate batches respect the checklist: items now marked Keep cannot be quoted
+from an older results page. Repeated quote submissions reuse their original quote.
 
 Only selected wording and meanings are sent to OpenAI, using the existing
 language-aware guidance adapter. Current audio, images, reviewer decisions and
@@ -67,12 +78,14 @@ Existing batch tables store zero-cost listening checklists (`audio_review`) and
 separate approved regeneration quotes (`audio_repair`). The latter reuse the
 bounded private-clip worker and settlement/recovery machinery from the homograph
 comparison experiment. They cannot be published through the generic port-review
-route. The experiment remains a separate Tools control.
+route. Existing single-preview jobs and saved decisions remain compatible. The
+experiment remains a separate Tools control.
 
 Deploy through **Install Community Dictionaries on laptop** on `main`. Try a
-synthetic homograph such as `queue`, mark it, approve one preview and compare it.
+synthetic homograph such as `queue`, mark it, approve three candidates and compare them.
 Check that the existing entry keeps its audio until explicit acceptance, that
 rejection preserves it, and that revisiting the checklist preserves decisions.
+Try requesting more candidates for just one item and check the new estimate.
 Then use **Accept laptop and deploy AWS** for the same release. This update also
 includes the preceding comparison experiment, so only one AWS deployment is
 needed after laptop acceptance.
@@ -80,4 +93,7 @@ needed after laptop acceptance.
 Offline regression tests cover selection, durable decisions, stale tabs, CSRF,
 owner access, cost approval/settlement, uncertain requests, cancellation,
 withdrawal, source edits, human recordings, exact-word guidance, forms sharing a
-sentence, private range playback, and explicit/idempotent replacement.
+sentence, private range playback, and explicit/idempotent replacement. Candidate
+coverage includes count validation, full-batch estimates, per-recording progress,
+mixed successful/failed candidates, fresh cost approval, legacy jobs, and stale
+choices both within a batch and between batches.

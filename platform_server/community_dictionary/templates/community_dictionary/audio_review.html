@@ -6,7 +6,10 @@
 <section class="panel">
 <p role="status">{% blocktranslate %}{{ total }} words / forms · {{ kept }} kept · {{ marked }} need regeneration · {{ unreviewed }} not reviewed{% endblocktranslate %}</p>
 <p>{% translate "Each decision is saved immediately. You can leave and return; changed text or recordings need a fresh review." %}</p>
-{% if marked %}<form method="post">{% csrf_token %}<input type="hidden" name="token" value="{{ token }}"><button name="action" value="quote">{% translate "Estimate regeneration of marked items" %}</button></form>{% endif %}
+{% if marked %}<form method="post">{% csrf_token %}<input type="hidden" name="token" value="{{ token }}">
+<label>{% translate "Candidates per word or form" %} <select name="candidates">{% for number in candidate_choices %}<option value="{{ number }}"{% if number == default_candidates %} selected{% endif %}>{{ number }}</option>{% endfor %}</select></label>
+<p class="help">{% translate "Compare several attempts and choose the best. More candidates cost more; you approve the estimate before generation." %}</p>
+<button name="action" value="quote">{% translate "Estimate regeneration of marked items" %}</button></form>{% endif %}
 </section>
 {% if runs %}<details><summary>{% translate "Regeneration jobs and previews" %}</summary><ul>{% for run in runs %}<li><a href="{% url 'community_dictionary:audio-review-run' dictionary.pk run.pk %}">{{ run.created_at }} · {{ run.status }}</a></li>{% endfor %}</ul></details>{% endif %}
 {% for row in rows %}<section class="panel audio-review-row" id="word-{{ row.word.id }}">
