@@ -48,6 +48,15 @@ class Dictionary(models.Model):
         return self.name
 
 
+class DictionaryWordAudioSettings(models.Model):
+    """Owner's explicit provider permission; existing recordings are unchanged."""
+    dictionary = models.OneToOneField(Dictionary, on_delete=models.CASCADE, related_name='word_audio_settings')
+    voice = models.CharField(max_length=100, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+    authorised_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    language = models.CharField(max_length=80)
+
+
 class DictionaryLearningSettings(models.Model):
     """Optional generation preferences; existing content is never rewritten."""
     dictionary = models.OneToOneField(Dictionary, on_delete=models.CASCADE, related_name='learning_settings')
@@ -581,6 +590,12 @@ class PortRun(models.Model):
     completed_at = models.DateTimeField(null=True)
     queue_error = models.BooleanField(default=False)
 
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            from .word_audio import quote_run
+            quote_run(self)
+        super().save(*args, **kwargs)
+
     class Meta:
         ordering = ['-created_at']
 
@@ -658,6 +673,14 @@ class PictureCapture(models.Model):
     sources = models.ManyToManyField(Contribution, related_name='+')
     usage = models.JSONField(default=dict)
     saved_entry = models.ForeignKey(Entry, null=True, on_delete=models.SET_NULL, related_name='+')
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            from .word_audio import policy
+            chosen = policy(self.dictionary)
+            if chosen:
+                self.usage = {**self.usage, 'word_audio_policy':chosen}
+        super().save(*args, **kwargs)
 
 
 class CaptureSpeech(models.Model):

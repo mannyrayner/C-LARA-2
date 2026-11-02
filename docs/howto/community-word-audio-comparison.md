@@ -1,14 +1,18 @@
 # Compare Google and OpenAI word audio
 
 Open **Tools → Compare word audio providers** in a dictionary you own, using a
-site-administrator account. This first comparison is for French and Swedish.
+site-administrator account. The comparison now supports configured Google voices
+for all app languages that Google supports. See [Google word audio](community-google-word-audio.md)
+for the current installation, voice selection and reversible batch conversion.
+The original French/Swedish pilot procedure is retained below.
 It generates private experimental audio only. Existing sentence, lemma, form
-and human recordings are unchanged. Provider defaults and bulk conversion await
-listening evidence; the older homograph experiment and repair tool still work.
+and human recordings are unchanged. Provider defaults and bulk conversion are now optional, separately approved operations; the older homograph experiment and repair tool still work.
 
 ## Laptop installation and first trial
 
-This is a code-only release. There are no migrations or new dependencies:
+For the original comparison-only release there were no migrations or new dependencies;
+**the newer provider/batch release requires migration 0028 and its separate runbook**.
+For the comparison-only installation:
 `google-cloud-texttospeech` is already in the project's requirements. Start a
 **new** `Install Community Dictionaries on laptop` workflow on `main` in
 `mannyrayner/clara-deployment-control`; leave the Windows runner listening.
@@ -73,7 +77,8 @@ for genuine within-language pronunciation ambiguity.
 
 The pilot deliberately uses explicit **user ADC**, not `google.auth.default()`.
 It ignores legacy `GOOGLE_APPLICATION_CREDENTIALS` and `GOOGLE_CREDENTIALS_JSON`.
-Only an `authorized_user` file with the configured quota project is accepted.
+User ADC must have the configured quota project. AWS can instead use the explicit,
+validated federation configuration described in the new runbook.
 Do not copy old service-account keys, or upload user ADC to the repository.
 
 Windows enables this administrator pilot by default. Optional host configuration:

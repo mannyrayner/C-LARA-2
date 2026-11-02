@@ -61,6 +61,7 @@
 <p class="help">{% translate "Review the estimate, then confirm. The new allowance applies to Picture descriptions; other AI tools have their own limits." %}</p>
 {% else %}<p>{% translate "The server administrator has paused new picture-description requests." %}</p>{% endif %}
 </section>
+<section class="panel"><h2>{% translate "Word audio" %}</h2><p>{% translate "Choose OpenAI or a Google voice for future words and sentence forms. Sentence audio keeps its current provider." %}</p><a class="button secondary" href="{% url 'community_dictionary:word-audio-settings' dictionary.pk %}">{% translate "Word audio settings" %}</a></section>
 <section class="panel"><h2>{% translate "Dictionary settings" %}</h2>
 <form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>{% translate "Save settings" %}</button></form>
 </section>

@@ -121,12 +121,15 @@ def input_data(item):
             'meaning':parts[ref['meaning']].meaning} for ref in item.snapshot.get('context',[])]}
 
 
-def estimate(entry, prices, extra):
+def estimate(entry, prices, extra, *, audio_policy=None):
     from . import port_costs
     analysis = port_costs.analysis(entry, prices, extra)
     # Plan three lemmas and three contextual forms; reuse/identical forms reduce this.
     # Actual edited/reused words determine speech work after human review.
-    estimate = analysis + 6*port_costs.speech('x'*12, '', prices, unknown=True)
+    from . import word_audio
+    policy = (word_audio.policy(entry.dictionary) if entry.dictionary_id else {}) if audio_policy is None else audio_policy
+    speech = word_audio.estimate('x'*12, policy) if policy else port_costs.speech('x'*12, '', prices, unknown=True)
+    estimate = analysis + 6*speech
     return porting.money(estimate), port_costs.allowance(estimate)
 
 

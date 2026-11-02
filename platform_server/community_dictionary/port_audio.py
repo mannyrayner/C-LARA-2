@@ -67,7 +67,9 @@ def quote(user, original, token):
         payer='personal' if personal else 'credits' if porting.credits_enabled() else 'server',
         expires_at=timezone.now()+timedelta(hours=1))
     for entry in entries:
-        estimate=port_costs.speech(entry.word,entry.dictionary.language,prices,sentence=entry.entry_type=='sentence')
+        from . import word_audio
+        policy = word_audio.run_policy(run)
+        estimate = word_audio.estimate(entry.word, policy) if policy and entry.entry_type=='word' else port_costs.speech(entry.word,entry.dictionary.language,prices,sentence=entry.entry_type=='sentence')
         item=PortItem.objects.create(run=run,source_entry=entry,saved_entry=entry,snapshot=fingerprint(entry),
             estimated_usd=porting.money(estimate),allowance_usd=port_costs.allowance(estimate))
         item.sources.set(item.snapshot['ids'])

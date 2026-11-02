@@ -40,7 +40,8 @@ RATINGS = [('', _('Not rated')), ('acceptable', _('Acceptable')),
 MAX_SELECTION = 20
 COMPARISON_VERSION = 'word-provider-comparison-1'
 COMPARISON_METHODS = {'openai': _('OpenAI current word-audio pipeline'),
-    'google_wavenet': _('Google WaveNet'), 'google_neural2': _('Google Neural2')}
+    'google_wavenet': _('Google WaveNet'), 'google_neural2': _('Google Neural2'),
+    'google_standard': _('Google Standard'), 'google_chirp3': _('Google Chirp 3 HD')}
 MAX_COMPARISON = 60
 
 
@@ -57,7 +58,7 @@ def comparison_recipes(run):
     if is_comparison(run):
         google_tts.require_access(run.port.user)
         if (run.options.get('comparison_version') != COMPARISON_VERSION or
-                any(run.prices.get(k) != v for k, v in google_tts.prices().items())):
+                any(run.prices.get(k) != v for k, v in google_tts.comparison_prices(run.port.source).items())):
             raise Conflict('Google comparison configuration changed. Create a fresh estimate.')
 
 
@@ -83,7 +84,7 @@ def candidate(part, *, for_review=False, comparison=False):
     eligible = (bool(code) and len(part.word) <= 255 and bool(homographs(part.word, code))
                 if for_review else carrier.homograph_eligible(part.word, entry.dictionary.language))
     if comparison:
-        eligible = code in google_tts.VOICES and 0 < len(part.word) <= 255
+        eligible = bool(code) and 0 < len(part.word) <= 255
     if (entry.archived or part.status != 'accepted' or not eligible):
         return None
     context_text = ''
@@ -162,6 +163,8 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comp
     if comparison:
         google_tts.require_access(user)
         google_tts.credentials()  # Local validation only; estimates send no API requests.
+        if not google_tts.voices_for(dictionary):
+            raise Conflict('Choose a Google voice in Word audio settings first.')
     selected = set(map(int, selected))
     available = {r['id']:r for r in candidates(dictionary, comparison=comparison)}
     population = len(available)
@@ -177,7 +180,7 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comp
     limit = MAX_COMPARISON if comparison else MAX_SELECTION
     if not 1 <= len(selected) <= limit or not selected.issubset(available):
         raise Conflict(f'Choose between 1 and {limit} currently available words or forms.')
-    if comparison and len(selected) * repeats * (1 + len(google_tts.VOICES[tts.language_code(dictionary.language)])) > 450:
+    if comparison and len(selected) * repeats * (1 + len(google_tts.voices_for(dictionary))) > 450:
         raise Conflict('Choose fewer items or takes: at most 450 recordings can be rated in one experiment.')
     model, key, personal, prices = photo_ai.configuration(user)
     port = LanguagePort.objects.create(source=dictionary, user=user, is_audio_batch=True,
@@ -191,9 +194,9 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comp
                 'repeats':repeats, 'revealed':False, 'ratings_revision':0},
         payer=porting.payer_now(user), expires_at=timezone.now()+timedelta(hours=1))
     if comparison:
-        run.prices.update(google_tts.prices())
+        run.prices.update(google_tts.comparison_prices(dictionary))
         run.options.update(suite='providers', comparison_version=COMPARISON_VERSION,
-            methods=['openai', *google_tts.VOICES[tts.language_code(dictionary.language)]],
+            methods=['openai', *google_tts.voices_for(dictionary)],
             sampling=sampling, population=population)
     grouped = {}
     for pk in sorted(selected):
@@ -275,7 +278,8 @@ def process(item_id):
                       voice=word.get('voice', run.port.voice), api_key=key, report=report, before_request=gate)
         if method.startswith('google_'):
             prepared, duration = google_tts.synthesize(word['word'], language=run.port.language,
-                method=method, report=report, before_request=gate)
+                method=method, report=report, before_request=gate,
+                selected_voice=run.prices['google_voices'][tts.language_code(run.port.language)][method])
         elif method == 'carrier' or (method == 'openai' and carrier.eligible(word['word'], run.port.language)):
             prepared, duration = carrier.synthesize(word['word'], **common,
                 homograph_experiment=method == 'carrier', keep_full=lambda data:full.__setitem__(slice(None), [data]))
@@ -414,7 +418,8 @@ def provider_start(request, pk):
                              initial={'token': uuid.uuid4()})
     if request.method == 'POST':
         if request.POST.get('action') == 'check':
-            google_tts.check_access(request.user, dictionary.language)
+            for name in google_tts.voices_for(dictionary).values():
+                google_tts.check_access(request.user, dictionary.language, selected_voice=name)
             messages.success(request, _('Google access checked. No audio was generated.'))
             return redirect('community_dictionary:word-audio-compare', pk=pk)
         if form.is_valid():
@@ -424,7 +429,7 @@ def provider_start(request, pk):
             return redirect('community_dictionary:homographs-run', pk=pk, run_id=run.pk)
     return render(request, 'community_dictionary/provider_comparison_start.html', context(request, dictionary,
         form=form, available=bool(rows), google_project=google_tts.project(),
-        google_voices=list(google_tts.VOICES.get(tts.language_code(dictionary.language), {}).values()),
+        google_voices=list(google_tts.voices_for(dictionary).values()),
         runs=PortRun.objects.filter(stage=STAGE, options__suite='providers',
                                    port__source=dictionary, port__user=request.user)[:20]))
 

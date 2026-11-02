@@ -28,11 +28,15 @@ def context(request, dictionary=None, **extra):
     from .learning import mode
     personal_mode = mode(request, dictionary)
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
-    return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
+    google_voice = ''
+    if dictionary and page in {'capture-start','capture-image','guided-start','guided-image','contribution-setting','writing-start','writing-image','port-run','port-vocabulary','forms-start','port-start'}:
+        from .models import DictionaryWordAudioSettings
+        google_voice = DictionaryWordAudioSettings.objects.filter(dictionary=dictionary, language=dictionary.language, authorised_by_id=dictionary.owner_id).values_list('voice', flat=True).first() or ''
+    return {'google_word_voice':google_voice, 'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
         'writing_mode': personal_mode == 'writing', 'guided_mode': personal_mode == 'guided',
         'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
             'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',
-            'port-vocabulary', 'port-run', 'port-review', 'forms-start', 'forms-run', 'homographs-start', 'homographs-run', 'audio-review', 'audio-review-run'}, **extra}
+            'port-vocabulary', 'port-run', 'port-review', 'forms-start', 'forms-run', 'homographs-start', 'homographs-run', 'audio-review', 'audio-review-run', 'google-word-audio', 'word-audio-compare'}, **extra}
 
 
 def fail(request, message, status=400):

@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 def consent_values(user, dictionary):
     model, key, personal, prices = photo_ai.configuration(user)
-    from . import tts
+    from . import tts, word_audio
     # No credential values are stored. Changing provider rates/payer or policy
     # requires renewed consent before a further request.
     return {'version': guided_ai.VERSION, 'user': user.pk, 'dictionary': dictionary.pk,
@@ -25,7 +25,8 @@ def consent_values(user, dictionary):
         'model': model, 'personal': personal,
         'rates': {k: str(prices[k]) for k in ['input', 'output']},
         'speech_model': tts.MODEL, 'speech_recipe': tts.INSTRUCTIONS_VERSION,
-        'forms_recipe': 'sentence-forms-1'}
+        'forms_recipe': 'sentence-forms-1',
+        'word_audio_policy': word_audio.policy(dictionary)}
 
 
 def estimate(values):

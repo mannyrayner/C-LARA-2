@@ -85,7 +85,8 @@ def prepare_quote(run):
         if item.snapshot.get('entry_type') != 'sentence':
             continue
         entry = item.source_entry if run.stage != 'descriptions' else Entry(word='x'*180, meaning='x'*500)
-        value, maximum = vocabulary.estimate(entry, run.prices, extra)
+        from .word_audio import run_policy
+        value, maximum = vocabulary.estimate(entry, run.prices, extra, audio_policy=run_policy(run))
         estimate += value; reserve += maximum
     existing = []
     if run.port.target_id:

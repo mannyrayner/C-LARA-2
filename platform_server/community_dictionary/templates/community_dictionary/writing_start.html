@@ -1,6 +1,8 @@
 {% extends 'community_dictionary/base.html' %}{% load i18n %}
 {% block title %}{% translate "Writing practice" %}{% endblock %}
 {% block content %}
+{% if google_word_voice %}<p class="notice">{% translate "Word and sentence-form text is sent to Google for audio using the dictionary-selected voice. Google bills the configured project; your personal OpenAI key does not cover those charges. Sentence audio still uses OpenAI." %} {{ google_word_voice }}</p>{% endif %}
+
 <h1>{% translate "Writing practice" %} · {{ dictionary.language }}</h1>
 <p class="lead">{% translate "Save a picture, then write about it in the language you are learning." %}</p>
 <p>{% translate "Your picture and writing stay private until you approve sharing. Saving a draft is free. AI costs are shown before you request feedback." %}</p>

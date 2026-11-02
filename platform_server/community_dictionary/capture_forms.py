@@ -20,7 +20,7 @@ class CaptureForm(DescriptionModeForm):
     input_language=forms.ChoiceField(label=_('Language I am using'))
     audio=forms.FileField(required=False)
     voice=forms.ChoiceField(choices=VOICE_CHOICES,label=_('AI voice'))
-    ai_consent=forms.BooleanField(label=_('I have permission to send this picture, description and dictionary vocabulary to OpenAI and approve the estimated API costs shown here.'))
+    ai_consent=forms.BooleanField(label=_('I have permission to send this picture, description and dictionary vocabulary to OpenAI, and word text to Google if selected by the dictionary owner, and approve the estimated API costs shown here.'))
     def __init__(self,*args,dictionary,existing=False,**kwargs):
         # Ignore unused controls before validation. A recovered typed draft or
         # recording must not silently become input to the picture-only route.

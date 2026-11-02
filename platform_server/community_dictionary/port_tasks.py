@@ -61,6 +61,11 @@ def fetch(item_id, lock=False):
 
 
 def credentials(item):
+    from .word_audio import check_run
+    check_run(item.run)
+    if item.run.options.get('google_batch'):
+        from .google_word_audio import check_run as check_google_batch
+        check_google_batch(item.run)
     if item.run.stage == 'homographs' and item.run.options.get('suite') == 'providers':
         from .homograph_experiments import comparison_recipes
         comparison_recipes(item.run)
@@ -274,7 +279,9 @@ def process_audio(item_id):
             raise Conflict('This audio request is no longer authorized.')
 
     try:
-        prepared,duration = tts.synthesize(result['word'],language=tts.language_code(item.run.port.language),
+        from . import word_audio
+        prepared,duration = word_audio.synthesize(result['word'], dictionary=item.run.port.target,
+            expected=word_audio.run_policy(item.run),language=tts.language_code(item.run.port.language),
             model=tts.MODEL,voice=item.run.port.voice,api_key=key,
             meaning=result.get('meaning',''), meaning_language=item.run.port.explanation_language,
             report=speech_report, guidance_model=item.run.model, guidance_prices=item.run.prices,
@@ -292,7 +299,7 @@ def process_audio(item_id):
             if speech_report or prepared:
                 item.audio_cost = (tts.report_cost(speech_report) if speech_report else
                     tts.estimate_cost(item.result.get('word',result['word']),duration))
-                porting.record_usage(item,audio=True)
+                porting.record_usage(item,audio=True, provider=speech_report.get('provider','openai'), model=speech_report.get('model',tts.MODEL))
             if speech_report.get('uncertain_cost') or (not prepared and not speech_report):
                 item.uncertain_cost = True
             try:

@@ -1,6 +1,8 @@
-{% extends 'community_dictionary/base.html' %}{% load pronunciation_tags %}
+{% extends 'community_dictionary/base.html' %}{% load i18n pronunciation_tags %}
 {% block title %}{% if run.port.is_description_batch %}Picture descriptions{% else %}Language port{% endif %}{% endblock %}
 {% block content %}
+{% if run.options.word_audio_policy.voice %}<p class="notice">{% translate "Word and sentence-form text is sent to Google for audio using the dictionary-selected voice. Google bills the configured project; your personal OpenAI key does not cover those charges. Sentence audio still uses OpenAI." %} {{ run.options.word_audio_policy.voice }}</p>{% endif %}
+
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{{ run.port.name }}</h1>
 <p class="badge">{% if run.stage == 'audio' %}Recover missing audio{% elif run.stage == 'vocabulary' %}2. Review vocabulary from accepted sentences{% elif run.stage == 'descriptions' %}1. Suggest and review sentences{% elif run.stage == 'sentences' %}1. Translate and review sentences{% else %}Earlier conversion workflow{% endif %}</p>
 {% if run.stage != 'audio' and run.stage != 'vocabulary' and not run.port.is_description_batch %}<p>{{ run.source_language }} → {{ run.port.language }} · explanations: {{ run.source_explanation_language|default:'unspecified' }} → {{ run.port.explanation_language }}</p>{% endif %}

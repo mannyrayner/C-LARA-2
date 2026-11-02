@@ -70,8 +70,8 @@ def authority(port):
         raise Conflict(_('The dictionary languages changed. Prepare a new estimate.'))
 
 
-def row_for(part):
-    row = experiments.candidate(part, for_review=True)
+def row_for(part, *, all_words=False):
+    row = experiments.candidate(part, for_review=not all_words, comparison=all_words)
     if not row:
         return None
     if part.kind == 'form':
@@ -89,10 +89,10 @@ def row_for(part):
     return row
 
 
-def live_row(dictionary, part_id):
+def live_row(dictionary, part_id, *, all_words=False):
     part = Contribution.objects.select_related('entry__dictionary','entry__current_text','entry__current_meaning').filter(
         pk=part_id, entry__dictionary=dictionary).first()
-    row = row_for(part) if part else None
+    row = row_for(part, all_words=all_words) if part else None
     if not row:
         raise Conflict(_('This word or form is no longer available. Reload the review page.'))
     return row
@@ -395,14 +395,14 @@ def current_item(item):
         if item.run.prices.get('carrier_recipe') != carrier.VERSION:
             raise Conflict(_('Carrier processing changed. Prepare and approve a fresh estimate.'))
     for expected in item.snapshot['words']:
-        row = live_row(item.run.port.source, expected['id'])
+        row = live_row(item.run.port.source, expected['id'], all_words=bool(item.run.options.get('google_batch')))
         if protected(row) or row != expected:
             raise Conflict(_('The wording or recordings changed. Existing audio has been kept; start from the review page again.'))
     return item.source_entry
 
 
 @transaction.atomic
-def choose(user, run_id, item_id, clip_id, decision, paths):
+def choose(user, run_id, item_id, clip_id, decision, paths, *, bulk=False):
     porting.locks()
     item = get_object_or_404(PortItem.objects.select_for_update().select_related('run__port__source','run__port__user'),
         pk=item_id, run_id=run_id, run__stage=STAGE, run__port__user=user)
@@ -428,13 +428,14 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
         part = Contribution.objects.select_related('entry__dictionary','entry__current_meaning').get(pk=row['id'])
         prepared = (path_for(clip['path']).read_bytes(), 'audio/wav', '.wav')
         previous_ids = [a['id'] for a in row['audio']]
-        provenance = {'origin':'synthetic', 'provider':'openai', 'model':tts.MODEL,
-            'voice':row['voice'], 'language':row['language'], 'source_text':row['word'], 'source_text_id':part.pk,
+        provenance = {'origin':'synthetic', 'provider':clip['report'].get('provider','openai'),
+            'model':clip['report'].get('model',tts.MODEL),
+            'voice':clip['report'].get('voice',row['voice']), 'language':row['language'], 'source_text':row['word'], 'source_text_id':part.pk,
             'instructions_version':clip['report'].get('instructions_version',
                 carrier.VERSION if clip['method']=='carrier' else tts.INSTRUCTIONS_VERSION),
             'generation_method':clip['method'], 'synthesis':clip['report'],
             'homograph_repair_run':str(run.pk), 'replaces_audio_ids':previous_ids,
-            'pronunciation_approved':True, 'reviewed_by':user.pk, 'reviewed_at':timezone.now().isoformat()}
+            'pronunciation_approved':not bulk, 'bulk_accepted':bulk, 'reviewed_by':None if bulk else user.pk, 'reviewed_at':timezone.now().isoformat()}
         if row['kind'] == 'form':
             provenance['sentence_form'] = part.pk
         elif part.entry.current_meaning_id:
@@ -447,7 +448,7 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
             accept(new, user)
         ContributionDependency.objects.bulk_create([ContributionDependency(source_id=pk, derived=new) for pk in row['ids']])
         Contribution.objects.filter(pk__in=previous_ids, status='accepted').update(status='superseded')
-        clip.update(decision='accept', accepted_audio_id=new.pk)
+        clip.update(decision='accept', accepted_audio_id=new.pk, previous_rows=members)
         item.sources.add(new)
         accepted_ids = [new.pk]
         for member in members:
@@ -457,9 +458,10 @@ def choose(user, run_id, item_id, clip_id, decision, paths):
                 copied = sf.copy_audio(other, new, paths, provenance={'replaces_audio_ids':old_ids})
                 Contribution.objects.filter(pk__in=old_ids, status='accepted').update(status='superseded')
                 item.sources.add(copied); accepted_ids.append(copied.pk)
-            updated = live_row(run.port.source, member['id'])
+            updated = live_row(run.port.source, member['id'], all_words=bool(run.options.get('google_batch')))
             item.snapshot['words'] = [updated if r['id']==member['id'] else r for r in item.snapshot['words']]
-            remember(user, run.port.source, updated, 'keep')
+            if not run.options.get('google_batch'):
+                remember(user, run.port.source, updated, 'keep')
         clip['accepted_audio_ids'] = accepted_ids
         event(run.port.source, user, 'homograph_audio_replace', part.entry, f'Audio {new.pk}; run {run.pk}')
     item.save(update_fields=['snapshot','result'])
@@ -573,7 +575,13 @@ def detail(request, pk, run_id):
     dictionary, run = owner_run(request, pk, run_id)
     if request.method == 'POST':
         action = request.POST.get('action')
-        if action == 'more':
+        if run.options.get('google_batch') and action in {'accept_all','restore'}:
+            from .google_word_audio import apply_all, restore
+            done, skipped = (apply_all if action == 'accept_all' else restore)(request.user, run)
+            messages.success(request, f'{done} recordings changed; {skipped} changed or unavailable items kept.')
+        elif action == 'more':
+            if run.options.get('google_batch'):
+                raise Conflict('Return to the Google batch tool for a fresh estimate.')
             token, count, method = quote_input(request)
             try:
                 item_id, part_id = int(request.POST.get('item','0')), int(request.POST.get('part','0'))
@@ -618,7 +626,7 @@ def detail(request, pk, run_id):
                 continue  # Group members share their representative's candidates.
             for number, clip in enumerate(clips, 1):
                 clip.setdefault('candidate', number)  # Existing single-preview jobs remain usable.
-                clip['method_label'] = experiments.METHODS.get(clip['method'], clip['method'])
+                clip['method_label'] = {**experiments.METHODS, **experiments.COMPARISON_METHODS}.get(clip['method'], clip['method'])
             rows.append({'word':row, 'members':targets(item, row['id']), 'clips':clips, 'item':item, 'token':uuid.uuid4(),
                          'accepted':any(c.get('decision')=='accept' for c in clips)})
     clips = [c for row in rows for c in row['clips']]
@@ -627,7 +635,7 @@ def detail(request, pk, run_id):
     methods = Counter(c['method'] for c in clips)
     balance = get_user_balance_usd(request.user) if run.payer=='credits' else None
     return render(request, 'community_dictionary/audio_review_run.html', context(request, dictionary,
-        run=run, rows=rows, words=len(rows), total=len(clips), finished=progress['ready']+progress['failed'],
+        run=run, google_batch=run.options.get('google_batch'), rows=rows, words=len(rows), total=len(clips), finished=progress['ready']+progress['failed'],
         failures=progress['failed'], unavailable=unavailable, balance=balance,
         candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
         generation_methods=method_choices(dictionary),
@@ -643,7 +651,7 @@ def detail(request, pk, run_id):
 @page(['GET'])
 def current_media(request, pk, part_id, audio_id):
     dictionary = owner(request, pk)
-    row = live_row(dictionary, part_id)
+    row = live_row(dictionary, part_id, all_words=True)
     if audio_id not in [a['id'] for a in row['audio']]:
         raise Http404
     audio = get_object_or_404(Contribution, pk=audio_id)
