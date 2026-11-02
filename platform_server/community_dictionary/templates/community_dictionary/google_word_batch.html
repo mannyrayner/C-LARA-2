@@ -1,0 +1,12 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p><h1>{% translate "Convert word audio to Google" %}</h1>
+<p>{% translate "Generate replacements for dictionary words and inflected sentence forms together. This includes single words and expressions. Sentence audio is unchanged. Human recordings are always protected." %}</p>
+{% if policy %}<p>{% translate "Selected voice" %}: <strong>{{ policy.voice }}</strong> · {% translate "Google project" %}: {{ policy.project }}</p>
+<form method="post" class="panel stack">{% csrf_token %}<input type="hidden" name="token" value="{{ token }}">
+<label class="check"><input type="checkbox" name="reviewed">{% translate "Also replace AI recordings already approved by a listener" %}</label>
+<label class="check"><input type="checkbox" name="matching">{% translate "Also regenerate recordings already using this Google voice" %}</label>
+<p>{% translate "First prepare an estimate, then approve generation. Listen to previews individually or use all usable replacements together. Earlier recordings remain available for restoration. Changed or withdrawn content is protected. Identical compatible forms share one generated recording." %}</p>
+<button>{% translate "Estimate Google conversion" %}</button><p class="help">{% translate "An estimate sends no API requests and reserves no credit. Google generation is billed to the configured Google project; a personal OpenAI key covers no Google charges." %}</p></form>
+{% else %}<p>{% translate "Choose a Google voice before preparing a batch." %}</p>{% endif %}
+<p><a href="{% url 'community_dictionary:word-audio-settings' dictionary.pk %}">{% translate "Word audio settings" %}</a> · <a href="{% url 'community_dictionary:word-audio-compare' dictionary.pk %}">{% translate "Compare and annotate audio providers" %}</a></p>
+{% if runs %}<section class="panel"><h2>{% translate "Your batches" %}</h2><ul>{% for run in runs %}<li><a href="{% url 'community_dictionary:audio-review-run' dictionary.pk run.pk %}">{{ run.created_at }} · {{ run.status }}</a></li>{% endfor %}</ul></section>{% endif %}{% endblock %}

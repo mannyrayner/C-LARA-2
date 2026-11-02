@@ -21,6 +21,10 @@ def enabled(run):
 
 
 def speech_forecast(clip):
+    from . import word_audio
+    policy = word_audio.run_policy(clip.run)
+    if policy and (clip.text.kind == 'form' or clip.entry.entry_type == 'word'):
+        return word_audio.estimate(clip.text.word, policy)
     if clip.run.port.is_audio_batch:
         from .carrier import estimate
         return estimate(clip.text.word, clip.run.port.language, allowance=True)

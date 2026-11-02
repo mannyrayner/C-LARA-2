@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 from projects import account_views, email_reset_views
 from django.views.i18n import JavaScriptCatalog
-from . import localisation
+from . import localisation, google_word_audio
 from .deployment_health import health as deployment_health
 
 from . import evaluation_views, mwe_audio
@@ -14,6 +14,8 @@ from . import writing_views, guided_views, form_jobs, homograph_experiments, aud
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/settings/word-audio/', google_word_audio.settings, name='word-audio-settings'),
+    path('<int:pk>/tools/google-word-audio/', google_word_audio.start, name='google-word-audio'),
     path('<int:pk>/tools/review-homograph-audio/', audio_review.home, name='audio-review'),
     path('<int:pk>/tools/review-homograph-audio/recordings/<int:part_id>/<int:audio_id>/', audio_review.current_media, name='audio-review-current'),
     path('<int:pk>/tools/review-homograph-audio/<uuid:run_id>/', audio_review.detail, name='audio-review-run'),

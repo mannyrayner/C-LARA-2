@@ -10,7 +10,7 @@ from django.utils import timezone
 from projects.billing import (apply_credit_delta, credits_enabled, has_minimum_balance_for_compile,
     estimate_openai_token_cost_usd)
 from projects.models import AIUsageCharge, CreditLedgerEntry
-from . import capture_ai, photo_ai, tts
+from . import capture_ai, photo_ai, tts, word_audio
 from .models import (PictureCapture, CaptureSpeech, Contribution, ContributionDependency,
     Dictionary, Entry, ImageWordLink, SentenceWord, Participation, LanguageCheck, AttentionReport)
 from .permissions import get_dictionary, is_editor
@@ -46,6 +46,7 @@ def allowed(study, *, payment=False):
         (dictionary.explanation_language or 'English')!=study.explanation_language or
         study.status=='discarded' or study.expires_at<=timezone.now()):
         raise Conflict('The capture settings or your participation changed. Start again from the dictionary.')
+    word_audio.validate(dictionary, study.usage.get('word_audio_policy', {}))
     permitted_images=image_statuses(study.user,dictionary)
     if study.source_image_id and not Contribution.objects.filter(pk=study.source_image_id,
             entry__dictionary=dictionary,entry__archived=False,status__in=permitted_images,kind='image').exclude(file_path='').exists():
@@ -69,7 +70,7 @@ def allowed(study, *, payment=False):
                 raise Conflict('The AI prices, payment or dictionary settings changed. Renew the picture workflow in Settings and start a new attempt.')
         return key
 
-def charge(study, operation, cost, model, suffix):
+def charge(study, operation, cost, model, suffix, provider='openai'):
     if study.personal_key or cost is None:
         return
     cost=Decimal(cost).quantize(Decimal('.000001'))
@@ -77,11 +78,12 @@ def charge(study, operation, cost, model, suffix):
     if cost and credits_enabled():
         ledger=apply_credit_delta(user=study.user,amount_usd=-cost,entry_type=CreditLedgerEntry.ENTRY_USAGE,
             description='Community picture description: '+operation,
-            metadata={'operation':operation,'request_type':f'capture:{study.pk}:{suffix}','cost_usd':str(cost)})
-    AIUsageCharge.objects.create(user=study.user,provider=AIUsageCharge.PROVIDER_OPENAI,model=model,
+            metadata={'provider':provider,'model':model,'operation':operation,'request_type':f'capture:{study.pk}:{suffix}','cost_usd':str(cost)})
+    AIUsageCharge.objects.create(user=study.user,provider=provider,model=model,
         operation='community_capture',request_type=f'capture:{study.pk}:{suffix}',cost_usd=cost,
         status=AIUsageCharge.STATUS_CHARGED if ledger else AIUsageCharge.STATUS_SKIPPED,ledger_entry=ledger,
-        notes='Returned token usage, or estimated TTS duration/input cost; provider invoice is authoritative.')
+        notes=('Google character tariff estimate before free allowances and tax; provider invoice is authoritative.' if provider=='google' else
+               'Returned token usage, or estimated TTS duration/input cost; provider invoice is authoritative.'))
 
 def account(study_id, stage, response, *, transcription=False):
     with transaction.atomic():
@@ -286,7 +288,7 @@ def reuse_form_audio(clip_id):
             speech_allowed(clip)  # Local reuse has no API cost or payment requirement.
             from .sentence_forms import reuse_audio
             part = Contribution.objects.select_related('entry__dictionary').get(pk=clip.text_id)
-            reused = reuse_audio(part, clip.capture.voice, paths)
+            reused = reuse_audio(part, clip.capture.usage.get('word_audio_policy', {}).get('voice',clip.capture.voice), paths)
             if not reused:
                 return False
             clip.contribution, clip.status = reused, 'ready'
@@ -316,7 +318,8 @@ def speak(clip_id):
         if fresh.status!='running': raise Conflict('This audio attempt was cancelled.')
         speech_allowed(fresh,payment=True)
     try:
-        prepared,_=tts.synthesize(clip.text,language=tts.language_code(clip.language),model=tts.MODEL,
+        prepared,_=word_audio.synthesize(clip.text, dictionary=clip.capture.dictionary,
+            expected=clip.capture.usage.get('word_audio_policy', {}),language=tts.language_code(clip.language),model=tts.MODEL,
             voice=clip.capture.voice,api_key=key,meaning=clip.meaning,meaning_language=clip.capture.explanation_language,
             report=report,before_request=check,
             speech_kind='sentence' if clip.kind=='feedback' or (clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
@@ -330,7 +333,7 @@ def speak(clip_id):
             locks()
             current=CaptureSpeech.objects.select_for_update().select_related('capture__dictionary','capture__user').get(pk=clip_id)
             if not current.report:
-                charge(current.capture,'speech',tts.report_cost(report),tts.MODEL,f'speech:{clip_id}')
+                charge(current.capture,'speech',tts.report_cost(report),report.get('model',tts.MODEL),f'speech:{clip_id}', provider=report.get('provider','openai'))
                 current.report={'accounted':True,**report} if current.status!='discarded' else {'accounted':True}
             try: speech_allowed(current)
             except (Conflict,Http404): prepared=None
@@ -339,15 +342,14 @@ def speak(clip_id):
                     if current.kind == 'form':
                         from .sentence_forms import publish_audio
                         current.contribution = publish_audio(Contribution.objects.select_related('entry__dictionary').get(pk=current.text_id),
-                            current.capture.user, prepared, paths, {'provider':'openai', 'model':tts.MODEL,
-                            'voice':current.capture.voice, 'synthesis':report, 'capture_id':str(current.capture_id)})
+                            current.capture.user, prepared, paths, {**word_audio.metadata(report,current.capture.voice), 'synthesis':report, 'capture_id':str(current.capture_id)})
                     elif current.entry_id:
                         media=write_upload(prepared,current.capture.dictionary_id,paths)
                         entry=Entry.objects.get(pk=current.entry_id)
                         audio=Contribution.objects.create(entry=entry,author=current.capture.user,controlled_by=current.capture.user,
-                            kind='audio',status='accepted',provenance={'origin':'synthetic','provider':'openai','model':tts.MODEL,
+                            kind='audio',status='accepted',provenance={'origin':'synthetic',**word_audio.metadata(report,current.capture.voice),
                             'source_text':current.text,'source_meaning_id':current.meaning_id,'language':current.language,
-                            'voice':current.capture.voice,'capture_id':str(current.capture_id),
+                            'voice':report.get('voice',current.capture.voice),'capture_id':str(current.capture_id),
                             'instructions_version':report.get('instructions_version',''),
                             'speech_kind':report.get('speech_kind',''),
                             'pronunciation_guidance':report.get('guidance',{}),'english_homographs':report.get('english_homographs',[])},**media)

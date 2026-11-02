@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from projects.billing import apply_credit_delta, credits_enabled, get_user_balance_usd
 from projects.models import AIUsageCharge, CreditAccount, CreditLedgerEntry
-from . import photo_ai, tts, port_categories, port_ai, port_sentences
+from . import word_audio, photo_ai, tts, port_categories, port_ai, port_sentences
 from .collections import content_digest, controller
 from .lexicon import outdated_tts, pictures_for_word
 from .models import (Contribution, ContributionDependency, Dictionary, Entry, LanguagePort,
@@ -64,7 +64,7 @@ def _authority(port):
         if (port.destination.language, port.destination.explanation_language) != (port.language, port.explanation_language):
             raise Conflict('The destination languages changed. Use a new language version.')
     if port.is_audio_batch:
-        from .mwe_audio import authority
+        from .audio_review import authority
         return authority(port)
     if port.is_description_batch:
         from .batch_descriptions import authority
@@ -317,7 +317,8 @@ def approve(user, run_id):
         authority(run.port)
     if run.status != 'estimate':
         return run  # retrying the same approval never sends again
-    from . import automatic
+    from . import automatic, word_audio
+    word_audio.check_run(run)
     automatic.check_quote(run)
     if run.stage in {'audio', 'forms'} and run.port.runs.filter(status='running').exists():
         raise Conflict('Finish the current job before approving audio recovery.')
@@ -343,7 +344,11 @@ def approve(user, run_id):
     if run.stage == 'homographs' and run.options.get('suite') == 'providers':
         from . import google_tts, homograph_experiments
         homograph_experiments.comparison_recipes(run)
-        current_prices.update(google_tts.prices())
+        current_prices.update(google_tts.comparison_prices(run.port.source))
+    if run.options.get('google_batch'):
+        from . import google_word_audio
+        google_word_audio.check_run(run)
+        current_prices.update(google_word_audio.prices(run.port.source))
     if model != run.model or current_prices != run.prices:
         raise Conflict('The model or configured prices changed. Prepare a new estimate.')
     if not run.items.exists() and not run.options.get('automatic_existing'):
@@ -604,8 +609,8 @@ def save_item(user, item_id, values, *, automatic=False):
         part = Contribution.objects.create(entry=entry,author=user,kind='audio',file_path=item.file_path,
             mime_type='audio/wav',file_size=path_for(item.file_path).stat().st_size,shared_from=entry.current_text,
             provenance={'origin':'synthetic','source_text':entry.word,'language':port.language,
-                'voice':port.voice,'model':tts.MODEL,'language_port':port.pk,
-                'instructions_version':item.result.get('tts_instructions_version',''),
+                **word_audio.metadata(item.result.get('tts_synthesis',{}), port.voice),'language_port':port.pk,
+                'instructions_version':item.result.get('tts_synthesis',{}).get('instructions_version',item.result.get('tts_instructions_version','')),
                 'synthesis':item.result.get('tts_synthesis',{}), **(automatic_metadata(run) if automatic else {})})
         if item.result.get('tts_synthesis', {}).get('english_homographs') and entry.current_meaning_id:
             part.provenance['source_meaning_id'] = entry.current_meaning_id

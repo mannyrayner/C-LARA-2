@@ -6,6 +6,7 @@ from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
 from . import porting, port_tasks, port_vocabulary as vocabulary, port_vocabulary_ai, tts, port_budget, port_costs
+from . import word_audio
 from .models import PortItem, PortRun, PortSpeech, Contribution
 from .services import Conflict, accept
 from .storage import path_for, write_upload, delete_file
@@ -128,7 +129,8 @@ def reuse_form_audio(pk):
             except (Conflict, Http404):
                 return False  # Ordinary worker handles stale requests.
             from .sentence_forms import reuse_audio
-            reused = reuse_audio(clip.text, clip.run.port.voice, paths)
+            from .word_audio import run_policy
+            reused = reuse_audio(clip.text, run_policy(clip.run).get('voice', clip.run.port.voice), paths)
             if not reused:
                 return False
             clip.status, clip.report = 'ready', {'reused_audio':reused.pk}
@@ -177,7 +179,9 @@ def speak(pk):
                 model=tts.MODEL,voice=clip.item.snapshot['voice'],api_key=key,report=report,before_request=still_allowed,
                 explicit_selection=clip.run.options.get('carrier_explicit_selection', False))
         else:
-            prepared,duration=tts.synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
+            from . import word_audio
+            prepared,duration=word_audio.synthesize(clip.text.word, dictionary=clip.run.port.target,
+                expected=word_audio.run_policy(clip.run),language=tts.language_code(clip.run.port.language),
                 model=tts.MODEL,voice=clip.run.port.voice,api_key=key,
                 meaning=clip.meaning.meaning if clip.meaning else '',meaning_language=clip.run.port.explanation_language,
                 speech_kind='sentence' if clip.text.kind != 'form' and clip.entry.entry_type=='sentence' else 'entry',
@@ -196,7 +200,7 @@ def speak(pk):
             item.audio_cost+=cost
             item.uncertain_cost=item.uncertain_cost or bool(report.get('uncertain_cost')) or not (prepared or report)
             item.save(update_fields=['audio_cost','uncertain_cost'])
-            if report or prepared:porting.record_usage(item,audio=True,cost_override=cost,suffix=f':{clip.pk}')
+            if report or prepared:porting.record_usage(item,audio=True,cost_override=cost,suffix=f':{clip.pk}', provider=report.get('provider','openai'), model=report.get('model',tts.MODEL))
             try:speech_credentials(clip)
             except (Conflict,Http404):
                 clip.status='discarded';clip.report={}
@@ -213,14 +217,14 @@ def speak(pk):
                 elif prepared and clip.text.kind == 'form':
                     from .sentence_forms import publish_audio
                     publish_audio(clip.text, clip.run.port.user, prepared, paths,
-                        {'provider':'openai', 'voice':clip.run.port.voice, 'model':tts.MODEL,
+                        {**word_audio.metadata(report, clip.run.port.voice),
                          'synthesis':report, 'run':str(clip.run_id)})
                 elif prepared:
                     from .lexicon import recordings
                     if not recordings(clip.entry,clip.run.port.target):
                         media=write_upload(prepared,clip.entry.dictionary_id,paths)
                         provenance={'origin':'synthetic','source_text':clip.text.word,'language':clip.run.port.language,
-                            'voice':clip.run.port.voice,'model':tts.MODEL,'instructions_version':port_tasks.port_ai.speech_version({'entry_type':clip.entry.entry_type}),
+                            **word_audio.metadata(report, clip.run.port.voice),
                             'language_port':clip.run.port_id,'synthesis':report}
                         if clip.run.options.get('automatic'):
                             from .automatic import metadata

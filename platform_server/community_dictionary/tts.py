@@ -209,9 +209,9 @@ def record_charge(study):
     """Called once under the attempt's row lock, including known failed-call costs."""
     if study.personal_key:
         return
-    metadata = {'provider': 'openai', 'model': study.model, 'operation': 'community_tts',
+    metadata = {'provider': study.synthesis.get('provider','openai'), 'model': study.synthesis.get('model',study.model), 'operation': 'community_tts',
                 'request_type': f'tts:{study.pk}', 'cost_usd': str(study.cost_usd),
-                'cost_basis': 'guidance_tokens_plus_speech_duration_and_input_bytes',
+                'cost_basis': 'google_character_tariff' if study.synthesis.get('provider') == 'google' else 'guidance_tokens_plus_speech_duration_and_input_bytes',
                 'synthesis_attempts': len(study.synthesis.get('attempts', [])),
                 'guidance_model': study.synthesis.get('guidance_model'),
                 'duration_seconds': study.duration_seconds, 'input_bytes': len(study.source_text.encode('utf-8'))}
@@ -220,7 +220,8 @@ def record_charge(study):
         ledger = apply_credit_delta(user=study.user, amount_usd=-study.cost_usd,
             entry_type=CreditLedgerEntry.ENTRY_USAGE, description='Community dictionary synthetic audio (estimated)',
             metadata=metadata)
-    AIUsageCharge.objects.create(user=study.user, provider=AIUsageCharge.PROVIDER_OPENAI,
-        model=study.model, operation='community_tts', request_type=f'tts:{study.pk}',
+    AIUsageCharge.objects.create(user=study.user, provider=metadata['provider'],
+        model=metadata['model'], operation='community_tts', request_type=f'tts:{study.pk}',
         cost_usd=study.cost_usd, status=AIUsageCharge.STATUS_CHARGED if ledger else AIUsageCharge.STATUS_SKIPPED,
-        notes='Includes returned pronunciation-guidance usage and estimated speech costs for all completed attempts; provider invoice is authoritative.', ledger_entry=ledger)
+        notes=('Google character tariff estimate before free allowances and tax; provider invoice is authoritative.' if metadata['provider']=='google' else
+               'Includes returned pronunciation-guidance usage and estimated speech costs for all completed attempts; provider invoice is authoritative.'), ledger_entry=ledger)

@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from projects.billing import credits_enabled, has_minimum_balance_for_compile
-from . import tts, pronunciation
+from . import tts, pronunciation, word_audio
 from .forms import AudioGenerateForm, AudioSaveForm
 from .models import AudioStudy, ContributionDependency, Dictionary, Entry, VoicePreference
 from .permissions import get_dictionary, is_editor
@@ -35,7 +35,8 @@ def get_study(request, dictionary, study_id, lock=False):
 
 def finish(study, api_key):
     prepared, duration = None, None
-    report = {}
+    policy = study.synthesis.get('word_audio_policy', {})
+    report = {'word_audio_policy': policy} if policy else {}
 
     def still_allowed():
         current = AudioStudy.objects.select_related('entry', 'dictionary', 'user').get(pk=study.pk)
@@ -46,7 +47,8 @@ def finish(study, api_key):
             raise Conflict('The wording, access or audio settings changed. Start again from the entry.')
 
     try:
-        prepared, duration = tts.synthesize(study.source_text, language=study.language_code,
+        prepared, duration = word_audio.synthesize(study.source_text, dictionary=study.dictionary,
+            expected=policy, language=study.language_code,
             model=study.model, voice=study.voice, api_key=api_key, meaning=study.source_meaning,
             meaning_language=study.dictionary.explanation_language, report=report, before_request=still_allowed,
             speech_kind='sentence' if study.entry.entry_type == 'sentence' else 'entry')
@@ -81,6 +83,9 @@ def finish(study, api_key):
 
 
 def stale_study(study):
+    if study.entry_id and study.entry.entry_type != 'sentence':
+        try: word_audio.validate(study.dictionary, study.synthesis.get('word_audio_policy', {}))
+        except Conflict: return True
     return (not study.entry_id or study.entry.text_version != study.source_text_version or
             study.entry.word != study.source_text or study.dictionary.language != study.language or
             (study.source_meaning_id is not None and
@@ -93,19 +98,25 @@ def start(request, pk, entry_id):
     entry = get_entry(dictionary, entry_id)
     if not dictionary.tts_enabled:
         return fail(request, 'The dictionary owner can enable saved spoken audio under Settings.', 403)
-    config, setup_error = None, ''
+    config, setup_error, policy = None, '', {}
     guidance_model, guidance_prices = '', {}
     try:
         config = tts.configuration(request.user, dictionary)
+        policy = word_audio.policy(dictionary) if entry.entry_type != 'sentence' else {}
+        word_audio.validate(dictionary, policy) if policy else None
         if not entry.word or not entry.current_text_id:
             raise Conflict('Add and accept the wording before creating audio. A dictionary editor can accept proposed words.')
-        if entry.entry_type != 'sentence' and pronunciation.homographs(entry.word, config[2]):
+        if not policy and entry.entry_type != 'sentence' and pronunciation.homographs(entry.word, config[2]):
             guidance_model, guidance_prices = tts.guidance_configuration()
     except Conflict as exc:
         setup_error = str(exc)
     preferred_voice = VoicePreference.objects.filter(user=request.user, dictionary=dictionary).values_list('voice', flat=True).first() or tts.VOICE
     form = AudioGenerateForm(request.POST or None, initial={
         'source_text_id': entry.current_text_id, 'source_text_version': entry.text_version, 'voice': preferred_voice})
+    if policy:
+        from django.forms import HiddenInput
+        form.fields['voice'].widget = HiddenInput()
+        form.fields['ai_consent'].label = 'I have permission to send this wording to Google and approve the costs shown above.'
     if request.method == 'POST' and not setup_error and form.is_valid():
         key, personal, code = config
         created = []
@@ -131,13 +142,14 @@ def start(request, pk, entry_id):
             study = AudioStudy.objects.create(dictionary=dictionary, entry=target, user=request.user,
                 expires_at=timezone.now()+timedelta(days=1), source_text=target.word,
                 source_text_id=target.current_text_id, source_text_version=target.text_version,
-                language=dictionary.language, language_code=code, model=tts.MODEL, voice=form.cleaned_data['voice'],
-                personal_key=personal,
+                language=dictionary.language, language_code=code, model=policy.get('voice',tts.MODEL), voice=policy.get('voice',form.cleaned_data['voice']),
+                personal_key=personal, synthesis={'word_audio_policy':policy} if policy else {},
                 source_meaning=target.meaning if target.entry_type != 'sentence' and pronunciation.homographs(target.word, code) and target.current_meaning_id else '',
                 source_meaning_id=target.current_meaning_id if target.entry_type != 'sentence' and pronunciation.homographs(target.word, code) else None)
-            VoicePreference.objects.update_or_create(user=request.user, dictionary=dictionary,
-                defaults={'voice': study.voice})
-            event(dictionary, request.user, 'audio_generation', target, f'OpenAI TTS consent; attempt {study.pk}')
+            if not policy:
+                VoicePreference.objects.update_or_create(user=request.user, dictionary=dictionary,
+                    defaults={'voice': study.voice})
+            event(dictionary, request.user, 'audio_generation', target, f'{"Google" if policy else "OpenAI"} TTS consent; attempt {study.pk}')
             created.append(study)
             return study_url(study)
         try:
@@ -152,6 +164,7 @@ def start(request, pk, entry_id):
         expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:5]
     return render(request, 'community_dictionary/audio_start.html', context(request, dictionary,
         entry=entry, form=form, setup_error=setup_error, recent=recent, model=tts.MODEL,
+        word_audio_policy=policy, google_estimate=word_audio.estimate(entry.word,policy) if policy else None,
         rate=tts.USD_PER_MINUTE, limit=settings.COMMUNITY_DICTIONARY_TTS_DAILY_LIMIT,
         personal=config[1] if config else False, charge_credits=credits_enabled(),
         guidance_model=guidance_model, guidance_prices=guidance_prices,
@@ -218,8 +231,7 @@ def action(request, pk, study_id):
                     'label': f'Synthetic voice: {study.source_text}'[:200]}
             contribution = add_contributions(target, request.user, data, paths,
                 publish=is_editor(request.user, dictionary) and form.cleaned_data.get('publish_now', False))[0]
-            contribution.provenance = {'origin': 'synthetic', 'provider': 'openai', 'model': study.model,
-                'voice': study.voice, 'language': study.language, 'source_text': study.source_text,
+            contribution.provenance = {'origin': 'synthetic', **word_audio.metadata(study.synthesis, study.voice), 'language': study.language, 'source_text': study.source_text,
                 'source_text_id': study.source_text_id, 'source_text_version': study.source_text_version,
                 'study_id': str(study.pk), 'generated_at': study.created_at.isoformat(),
                 'reviewed_by': request.user.pk, 'reviewed_at': timezone.now().isoformat()}

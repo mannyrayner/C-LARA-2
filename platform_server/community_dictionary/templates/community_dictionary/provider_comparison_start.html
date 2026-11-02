@@ -3,8 +3,8 @@
 <p>{% translate "Generate fresh recordings using the current OpenAI pipeline and Google voices. All methods receive the same words. OpenAI keeps its usual pronunciation guidance and expression processing; Google receives plain text and an explicit language. No dictionary recordings are replaced." %}</p>
 <p>{% translate "Method labels are hidden and their order is shuffled for each item and take. Voice differences may still reveal a provider. Save your ratings before revealing methods." %}</p>
 <p>{% translate "Start with a random sample to estimate typical quality. Run homographs or expressions as separate challenge samples. Repeated occurrences with identical text, meaning and word/form type are sampled once." %}</p>
-<p>{% translate "Google voices:" %} {{ google_voices|join:", " }} · {% translate "Google billing project:" %} {{ google_project }}</p>
-<p class="help">{% translate "This administrator pilot uses the host's Google user credentials. Google charges go to its configured project. A personal OpenAI key covers only OpenAI requests. Normal C-LARA credit accounting applies when that payment mode is selected. Estimates exclude Google free allowances and tax." %}</p>
+<p><a href="{% url 'community_dictionary:word-audio-settings' dictionary.pk %}">{% translate "Choose or discover Google voices" %}</a></p><p>{% translate "Google voices:" %} {{ google_voices|join:", " }} · {% translate "Google billing project:" %} {{ google_project }}</p>
+<p class="help">{% translate "This administrator pilot uses the host's configured Google credentials. Google charges go to its configured project. A personal OpenAI key covers only OpenAI requests. Normal C-LARA credit accounting applies when that payment mode is selected. Estimates exclude Google free allowances and tax." %}</p>
 <form method="post">{% csrf_token %}<button name="action" value="check" class="secondary">{% translate "Check Google access (no audio)" %}</button></form>
 {% if available %}<form method="post">{% csrf_token %}
 {{ form.non_field_errors }}{{ form.token }}{{ form.token.errors }}

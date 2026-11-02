@@ -63,11 +63,14 @@ def source_ids(entry):
 
 
 def estimate(entry, prices):
+    from . import word_audio
+    policy = word_audio.policy(entry.dictionary)
     rows = needed(entry)
     amount = port_costs.analysis(entry, prices, 1000) if any(not p for _, p in rows) else Decimal('0')
     for link, part in rows:
         if not sf.separated(link.surface):
-            amount += port_costs.speech(link.surface or link.word_text.word, entry.dictionary.language, prices)
+            text = link.surface or link.word_text.word
+            amount += word_audio.estimate(text,policy) if policy else port_costs.speech(text, entry.dictionary.language, prices)
     return porting.money(amount), port_costs.allowance(amount)
 
 
