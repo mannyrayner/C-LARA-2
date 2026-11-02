@@ -353,8 +353,12 @@ def approve(user, run_id):
         raise Conflict('The model or configured prices changed. Prepare a new estimate.')
     if not run.items.exists() and not run.options.get('automatic_existing'):
         raise Conflict('There are no new or changed entries to port.')
-    for item in run.items.all():
-        current_item(item)
+    if run.stage == 'audio_repair':
+        from .audio_review import validate_batch
+        validate_batch(run, list(run.items.all()))
+    else:
+        for item in run.items.all():
+            current_item(item)
     if run.payer == 'credits':
         account, _ = CreditAccount.objects.select_for_update(of=('self',)).get_or_create(user=user)
         if account.balance_usd < run.allowance_usd:

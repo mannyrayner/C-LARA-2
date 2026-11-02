@@ -10,7 +10,7 @@ from . import evaluation_views, mwe_audio
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
-from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review
+from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review, audio_review_pages
 
 app_name = 'community_dictionary'
 urlpatterns = [
@@ -19,6 +19,7 @@ urlpatterns = [
     path('<int:pk>/tools/review-homograph-audio/', audio_review.home, name='audio-review'),
     path('<int:pk>/tools/review-homograph-audio/recordings/<int:part_id>/<int:audio_id>/', audio_review.current_media, name='audio-review-current'),
     path('<int:pk>/tools/review-homograph-audio/<uuid:run_id>/', audio_review.detail, name='audio-review-run'),
+    path('<int:pk>/tools/review-homograph-audio/<uuid:run_id>/download/<str:format>/', audio_review_pages.download, name='audio-review-download'),
     path('<int:pk>/tools/review-homograph-audio/<uuid:run_id>/<int:item_id>/<str:clip_id>/', audio_review.preview_media, name='audio-review-preview'),
     path('<int:pk>/tools/homograph-audio/', homograph_experiments.start, name='homographs-start'),
     path('<int:pk>/tools/compare-word-audio/', homograph_experiments.provider_start, name='word-audio-compare'),

@@ -70,16 +70,25 @@ def authority(port):
         raise Conflict(_('The dictionary languages changed. Prepare a new estimate.'))
 
 
-def row_for(part, *, all_words=False):
-    row = experiments.candidate(part, for_review=not all_words, comparison=all_words)
+def row_for(part, *, all_words=False, loaded=None):
+    row = experiments.candidate(part, for_review=not all_words, comparison=all_words, loaded=loaded)
     if not row:
         return None
-    if part.kind == 'form':
+    if loaded is not None:
+        from .lexicon import outdated_tts
+        audio = loaded.by_entry[part.entry_id]
+        if part.kind == 'form':
+            audio = [a for a in audio if a.shared_from_id == part.pk and
+                     (a.provenance.get('origin') != 'synthetic' or sf.audio_current(a, loaded=loaded))]
+        else:
+            audio = [a for a in audio if not outdated_tts(a, part.entry, part.entry.dictionary)]
+    elif part.kind == 'form':
         audio = [c for c in part.entry.contributions.filter(kind='audio', status='accepted', shared_from=part)
                  .exclude(file_path='') if c.provenance.get('origin') != 'synthetic' or sf.audio_current(c)]
     else:
         audio = recordings(part.entry, part.entry.dictionary)
-    permitted = set(contributions(part.entry.dictionary).filter(pk__in=[a.pk for a in audio]).values_list('pk', flat=True))
+    permitted = (loaded.audio.keys() if loaded is not None else
+        set(contributions(part.entry.dictionary).filter(pk__in=[a.pk for a in audio]).values_list('pk', flat=True)))
     audio = sorted((a for a in audio if a.pk in permitted), key=lambda a:a.pk)
     row['audio'] = [{'id':a.pk, 'digest':content_digest(a), 'synthetic':a.provenance.get('origin') == 'synthetic'} for a in audio]
     row['language'] = part.entry.dictionary.language
@@ -89,10 +98,11 @@ def row_for(part, *, all_words=False):
     return row
 
 
-def live_row(dictionary, part_id, *, all_words=False):
-    part = Contribution.objects.select_related('entry__dictionary','entry__current_text','entry__current_meaning').filter(
-        pk=part_id, entry__dictionary=dictionary).first()
-    row = row_for(part, all_words=all_words) if part else None
+def live_row(dictionary, part_id, *, all_words=False, loaded=None):
+    part = (loaded.selected.get(part_id) if loaded is not None else
+        Contribution.objects.select_related('entry__dictionary','entry__current_text','entry__current_meaning').filter(
+        pk=part_id, entry__dictionary=dictionary).first())
+    row = row_for(part, all_words=all_words, loaded=loaded) if part else None
     if not row:
         raise Conflict(_('This word or form is no longer available. Reload the review page.'))
     return row
@@ -116,9 +126,10 @@ def single_word(row):
     return bool(re.fullmatch(r"[^\W\d_]+(?:['’][^\W\d_]+)*", row['word'].strip()))
 
 
-def group_words(dictionary, rows):
-    parts = Contribution.objects.filter(pk__in=[r['id'] for r in rows if r['kind']=='form'],
-        entry__dictionary=dictionary).select_related('entry__dictionary').in_bulk()
+def group_words(dictionary, rows, *, loaded=None):
+    parts = (loaded.selected if loaded is not None else
+        Contribution.objects.filter(pk__in=[r['id'] for r in rows if r['kind']=='form'],
+        entry__dictionary=dictionary).select_related('entry__dictionary').in_bulk())
     grouped = {}
     for row in rows:
         key = ('single', row['id'])
@@ -387,18 +398,29 @@ def quote_more(user, dictionary, run_id, item_id, part_id, token, candidate_coun
         include_expressions=True, generation_method=generation_method)
 
 
-def current_item(item):
-    authority(item.run.port)
+def current_item(item, *, loaded=None, authority_checked=False):
+    if not authority_checked:
+        authority(item.run.port)
     if item.invalidated or item.run.status == 'cancelled' or item.run.options.get('review_version') != VERSION:
         raise Conflict(_('This audio repair is no longer available.'))
     if any(c.get('method') == 'carrier' for c in item.result.get('clips', [])):
         if item.run.prices.get('carrier_recipe') != carrier.VERSION:
             raise Conflict(_('Carrier processing changed. Prepare and approve a fresh estimate.'))
     for expected in item.snapshot['words']:
-        row = live_row(item.run.port.source, expected['id'], all_words=bool(item.run.options.get('google_batch')))
+        row = live_row(item.run.port.source, expected['id'], all_words=bool(item.run.options.get('google_batch')), loaded=loaded)
         if protected(row) or row != expected:
             raise Conflict(_('The wording or recordings changed. Existing audio has been kept; start from the review page again.'))
-    return item.source_entry
+    return loaded.entries.get(item.source_entry_id) if loaded is not None else item.source_entry
+
+
+def validate_batch(run, items):
+    """One request-local read of sources; callers retain the dictionary lock."""
+    from .audio_review_data import ReviewData
+    authority(run.port)
+    loaded = ReviewData(run.port.source, [r['id'] for item in items for r in item.snapshot.get('words', [])])
+    for item in items:
+        item.run = run
+        current_item(item, loaded=loaded, authority_checked=True)
 
 
 @transaction.atomic
@@ -572,6 +594,7 @@ def home(request, pk):
 
 @page(['GET','POST'])
 def detail(request, pk, run_id):
+    from . import audio_review_pages
     dictionary, run = owner_run(request, pk, run_id)
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -598,6 +621,13 @@ def detail(request, pk, run_id):
             experiments.resume(request.user, run.pk)
         elif action == 'cancel':
             porting.cancel(request.user, run.pk)
+        elif action == 'note':
+            try:
+                item_id, part_id = int(request.POST.get('item', '0')), int(request.POST.get('part', '0'))
+            except ValueError:
+                raise Http404
+            save_note(request.user, run.pk, item_id, part_id, request.POST.get('note', ''))
+            messages.success(request, _('Review note saved.'))
         elif action in {'accept','reject'}:
             try:
                 item_id = int(request.POST.get('item','0'))
@@ -612,40 +642,38 @@ def detail(request, pk, run_id):
                 raise
         else:
             raise Conflict(_('Unknown audio review action.'))
-        return redirect('community_dictionary:audio-review-run', pk=pk, run_id=run.pk)
-    rows, unavailable = [], 0
-    for item in run.items.all():
-        item.run = run
-        try:
-            current_item(item)
-        except (Conflict, Http404):
-            unavailable += 1; continue
-        for row in item.snapshot['words']:
-            clips = [dict(c) for c in item.result['clips'] if c['word_id']==row['id']]
-            if not clips:
-                continue  # Group members share their representative's candidates.
-            for number, clip in enumerate(clips, 1):
-                clip.setdefault('candidate', number)  # Existing single-preview jobs remain usable.
-                clip['method_label'] = {**experiments.METHODS, **experiments.COMPARISON_METHODS}.get(clip['method'], clip['method'])
-            rows.append({'word':row, 'members':targets(item, row['id']), 'clips':clips, 'item':item, 'token':uuid.uuid4(),
-                         'accepted':any(c.get('decision')=='accept' for c in clips)})
-    clips = [c for row in rows for c in row['clips']]
-    form_labels(rows)
-    progress = Counter(c['status'] for c in clips)
-    methods = Counter(c['method'] for c in clips)
+        return redirect(audio_review_pages.return_url(request, dictionary, run))
+    display = audio_review_pages.presentation(request, run)
     balance = get_user_balance_usd(request.user) if run.payer=='credits' else None
     return render(request, 'community_dictionary/audio_review_run.html', context(request, dictionary,
-        run=run, google_batch=run.options.get('google_batch'), rows=rows, words=len(rows), total=len(clips), finished=progress['ready']+progress['failed'],
-        failures=progress['failed'], unavailable=unavailable, balance=balance,
+        run=run, google_batch=run.options.get('google_batch'), **display, balance=balance,
         candidate_choices=range(1, MAX_CANDIDATES + 1), default_candidates=DEFAULT_CANDIDATES,
         generation_methods=method_choices(dictionary),
         default_method=run.options.get('generation_method', method_choices(dictionary)[0][0]),
-        guidance_count=methods['guidance'], carrier_count=methods['carrier'],
         previous_run=run.options.get('previous_run'),
         later_runs=PortRun.objects.filter(stage=STAGE, port__source=dictionary, port__user=request.user,
                                          options__previous_run=str(run.pk)).order_by('created_at'),
         enough_funds=balance is None or balance>=run.allowance_usd,
         expired=run.expires_at<=timezone.now(), held=0 if run.settled else run.reserved_usd-run.released_usd))
+
+
+@transaction.atomic
+def save_note(user, run_id, item_id, part_id, note):
+    porting.locks()
+    item = get_object_or_404(PortItem.objects.select_for_update().select_related('run__port__source', 'run__port__user'),
+        pk=item_id, run_id=run_id, run__stage=STAGE, run__port__user=user)
+    require_owner(user, item.run.port.source)
+    current_item(item)
+    if not item.run.settled or item.run.status != 'complete':
+        raise Conflict(_('Wait until generation finishes before saving review notes.'))
+    if not any(c['word_id'] == part_id for c in item.result.get('clips', [])):
+        raise Http404
+    if len(note) > 1000:
+        raise Conflict(_('Keep review notes within 1,000 characters.'))
+    notes = dict(item.review_values.get('audio_notes', {}))
+    notes[str(part_id)] = note.strip()
+    item.review_values = {**item.review_values, 'audio_notes':notes}
+    item.save(update_fields=['review_values'])
 
 
 @page(['GET'])

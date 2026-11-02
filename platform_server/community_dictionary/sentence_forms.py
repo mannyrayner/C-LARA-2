@@ -44,18 +44,21 @@ def basis(link):
         'explanation_language': sentence.dictionary.explanation_language}
 
 
-def current(part):
+def current(part, *, loaded=None):
     if part.kind != 'form' or part.status != 'accepted' or part.entry.archived:
         return None
     source = part.provenance.get('form_basis', {})
-    link = links(part.entry).filter(word_entry_id=source.get('word_entry')).first()
+    link = (loaded.links.get((part.entry.current_text_id, source.get('word_entry'))) if loaded is not None
+            else links(part.entry).filter(word_entry_id=source.get('word_entry')).first())
     if not link or basis(link) != source or part.word != link.surface:
         return None
     ids = [pk for name, pk in source.items() if name in {
         'sentence', 'sentence_meaning', 'word_text', 'word_meaning'} and pk]
     from .public_browsing import contributions
     # Same accepted/contributor/withdrawal checks for private and public readers.
-    if contributions(part.entry.dictionary).filter(pk__in=[part.pk, *ids]).distinct().count() != len(set([part.pk, *ids])):
+    visible = (set([part.pk, *ids]) <= loaded.parts.keys() if loaded is not None else
+        contributions(part.entry.dictionary).filter(pk__in=[part.pk, *ids]).distinct().count() == len(set([part.pk, *ids])))
+    if not visible:
         return None
     return link
 
@@ -74,11 +77,11 @@ def audio(part):
         shared_from=part, provenance__sentence_form=part.pk).exclude(file_path='').first()
 
 
-def audio_current(clip):
+def audio_current(clip, *, loaded=None):
     if not clip.shared_from_id or clip.provenance.get('sentence_form') != clip.shared_from_id:
         return False
-    part = clip.shared_from
-    return bool(part.entry_id == clip.entry_id and current(part) and
+    part = loaded.selected.get(clip.shared_from_id) if loaded is not None else clip.shared_from
+    return bool(part and part.entry_id == clip.entry_id and current(part, loaded=loaded) and
         clip.provenance.get('source_text') == part.word and
         clip.provenance.get('language') == part.entry.dictionary.language)
 
