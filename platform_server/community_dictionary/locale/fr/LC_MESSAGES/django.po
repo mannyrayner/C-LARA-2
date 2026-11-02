@@ -6860,3 +6860,117 @@ msgstr "Écouter l’enregistrement complet avec les phrases porteuses"
 #. Mixed homograph audio regeneration
 msgid "These spellings also occur in English. Listen for the intended language and meaning. Mark problems, compare new candidates, and keep existing audio until you accept a replacement."
 msgstr "Ces graphies existent aussi en anglais. Écoutez en tenant compte de la langue et du sens attendus. Signalez les problèmes et comparez de nouvelles propositions ; l’audio existant reste en place jusqu’à l’acceptation d’un remplacement."
+
+msgid "All recordings are newly generated. OpenAI uses its normal word-audio pipeline, including bounded retries for silence or carrier extraction. Google uses plain text, with no automatic retry. Failed clips remain in the results."
+msgstr "Tous les enregistrements sont nouveaux. OpenAI utilise son traitement habituel des mots, avec des tentatives supplémentaires limitées en cas de silence ou d’échec d’extraction. Google reçoit du texte brut, sans nouvelle tentative automatique. Les échecs figurent dans les résultats."
+
+msgid "Both acceptable:"
+msgstr "Les deux acceptables :"
+
+msgid "Check Google access (no audio)"
+msgstr "Vérifier l’accès Google (sans audio)"
+
+msgid "Choose at most 60 words or forms."
+msgstr "Choisissez au plus 60 mots ou formes."
+
+msgid "Choose items manually below"
+msgstr "Choisir les éléments ci-dessous"
+
+msgid "Compare fresh OpenAI and Google recordings for French or Swedish words, sentence forms and expressions. Rate hidden methods and export the results."
+msgstr "Comparer de nouveaux enregistrements OpenAI et Google pour des mots, formes et expressions en français ou en suédois. Évaluez les méthodes masquées et exportez les résultats."
+
+msgid "Compare word audio providers"
+msgstr "Comparer les fournisseurs audio des mots"
+
+msgid "Counts compare the same item and take. Cannot judge and missing ratings are excluded from scored pairs; generation failures are shown separately."
+msgstr "Les nombres comparent le même élément et la même prise. Les réponses « Impossible à juger » et les évaluations manquantes sont exclues des paires évaluées ; les échecs de génération sont affichés séparément."
+
+msgid "Eligible population:"
+msgstr "Population admissible :"
+
+msgid "English homographs"
+msgstr "Homographes anglais"
+
+msgid "Failed pair:"
+msgstr "Paire avec échec :"
+
+msgid "Generate fresh recordings using the current OpenAI pipeline and Google voices. All methods receive the same words. OpenAI keeps its usual pronunciation guidance and expression processing; Google receives plain text and an explicit language. No dictionary recordings are replaced."
+msgstr "Générer de nouveaux enregistrements avec le traitement OpenAI actuel et les voix Google. Toutes les méthodes reçoivent les mêmes mots. OpenAI conserve ses indications de prononciation et son traitement des expressions ; Google reçoit du texte brut et une langue explicite. Aucun enregistrement du dictionnaire n’est remplacé."
+
+msgid "Google Neural2"
+msgstr "Google Neural2"
+
+msgid "Google WaveNet"
+msgstr "Google WaveNet"
+
+msgid "Google access checked. No audio was generated."
+msgstr "Accès Google vérifié. Aucun audio n’a été généré."
+
+msgid "Google billing project:"
+msgstr "Projet de facturation Google :"
+
+msgid "Google charges go to the configured Google project; a personal OpenAI key covers only OpenAI. With C-LARA credits, the combined estimated cost is settled through the normal reservation."
+msgstr "Les frais Google sont imputés au projet Google configuré ; une clé OpenAI personnelle ne couvre qu’OpenAI. Avec les crédits C-LARA, le coût estimé combiné est réglé via la réservation habituelle."
+
+msgid "Google voices:"
+msgstr "Voix Google :"
+
+msgid "I approve the displayed allowance and Google project charges, and have permission to send selected words to Google and selected words and meanings to OpenAI."
+msgstr "J’approuve le montant affiché et les frais du projet Google, et j’ai l’autorisation d’envoyer les mots sélectionnés à Google et les mots et leurs sens à OpenAI."
+
+msgid "Manual item selection"
+msgstr "Sélection manuelle des éléments"
+
+msgid "Method labels are hidden and their order is shuffled for each item and take. Voice differences may still reveal a provider. Save your ratings before revealing methods."
+msgstr "Les noms des méthodes sont masqués et leur ordre est mélangé pour chaque élément et chaque prise. Les différences de voix peuvent néanmoins révéler le fournisseur. Enregistrez vos évaluations avant de révéler les méthodes."
+
+msgid "Multi-word expressions"
+msgstr "Expressions polylexicales"
+
+msgid "Neither acceptable:"
+msgstr "Aucun acceptable :"
+
+msgid "Number of items to sample"
+msgstr "Nombre d’éléments à échantillonner"
+
+msgid "Only Google acceptable:"
+msgstr "Google seul acceptable :"
+
+msgid "Only OpenAI acceptable:"
+msgstr "OpenAI seul acceptable :"
+
+msgid "Only used for manual selection. Choose up to 60 items."
+msgstr "Utilisé uniquement pour la sélection manuelle. Choisissez au plus 60 éléments."
+
+msgid "OpenAI current word-audio pipeline"
+msgstr "Traitement OpenAI actuel pour l’audio des mots"
+
+msgid "OpenAI requests are billed to your personal OpenAI key. Its available balance cannot be checked here."
+msgstr "Les requêtes OpenAI sont facturées sur votre clé OpenAI personnelle. Son solde disponible ne peut pas être vérifié ici."
+
+msgid "OpenAI voice"
+msgstr "Voix OpenAI"
+
+msgid "Paired comparison with OpenAI"
+msgstr "Comparaison par paires avec OpenAI"
+
+msgid "Random vocabulary sample"
+msgstr "Échantillon aléatoire du vocabulaire"
+
+msgid "Sample to compare"
+msgstr "Échantillon à comparer"
+
+msgid "Sample:"
+msgstr "Échantillon :"
+
+msgid "Sentence forms"
+msgstr "Formes dans les phrases"
+
+msgid "Start with a random sample to estimate typical quality. Run homographs or expressions as separate challenge samples. Repeated occurrences with identical text, meaning and word/form type are sampled once."
+msgstr "Commencez par un échantillon aléatoire pour estimer la qualité habituelle. Testez les homographes ou les expressions dans des échantillons difficiles distincts. Les occurrences répétées ayant le même texte, le même sens et le même type mot/forme sont échantillonnées une seule fois."
+
+msgid "This administrator pilot uses the host's Google user credentials. Google charges go to its configured project. A personal OpenAI key covers only OpenAI requests. Normal C-LARA credit accounting applies when that payment mode is selected. Estimates exclude Google free allowances and tax."
+msgstr "Ce pilote réservé aux administrateurs utilise les identifiants utilisateur Google de l’hôte. Les frais Google sont imputés au projet configuré. Une clé OpenAI personnelle ne couvre que les requêtes OpenAI. La comptabilité habituelle des crédits C-LARA s’applique lorsque ce mode de paiement est utilisé. Les estimations excluent les franchises Google et les taxes."
+
+msgid "Unscored pair:"
+msgstr "Paire non évaluée :"

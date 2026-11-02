@@ -19,6 +19,7 @@ urlpatterns = [
     path('<int:pk>/tools/review-homograph-audio/<uuid:run_id>/', audio_review.detail, name='audio-review-run'),
     path('<int:pk>/tools/review-homograph-audio/<uuid:run_id>/<int:item_id>/<str:clip_id>/', audio_review.preview_media, name='audio-review-preview'),
     path('<int:pk>/tools/homograph-audio/', homograph_experiments.start, name='homographs-start'),
+    path('<int:pk>/tools/compare-word-audio/', homograph_experiments.provider_start, name='word-audio-compare'),
     path('<int:pk>/tools/homograph-audio/<uuid:run_id>/', homograph_experiments.detail, name='homographs-run'),
     path('<int:pk>/tools/homograph-audio/<uuid:run_id>/export/', homograph_experiments.export, name='homographs-export'),
     path('<int:pk>/tools/homograph-audio/<uuid:run_id>/<int:item_id>/<str:clip_id>/', homograph_experiments.media, name='homographs-media'),

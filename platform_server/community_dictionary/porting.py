@@ -340,6 +340,10 @@ def approve(user, run_id):
         current_prices['description_recipe'] = VERSION
     if 'sentence_speech_recipe' in run.prices:
         current_prices['sentence_speech_recipe'] = port_ai.speech_version({'entry_type':'sentence'})
+    if run.stage == 'homographs' and run.options.get('suite') == 'providers':
+        from . import google_tts, homograph_experiments
+        homograph_experiments.comparison_recipes(run)
+        current_prices.update(google_tts.prices())
     if model != run.model or current_prices != run.prices:
         raise Conflict('The model or configured prices changed. Prepare a new estimate.')
     if not run.items.exists() and not run.options.get('automatic_existing'):
@@ -460,17 +464,18 @@ def settle(run):
     continue_workflow(run)
 
 
-def record_usage(item, *, audio=False, cost_override=None, suffix=''):
+def record_usage(item, *, audio=False, cost_override=None, suffix='', provider='openai', model=None):
     run = item.run
     cost = cost_override if cost_override is not None else (item.audio_cost if audio else item.translation_cost)
-    AIUsageCharge.objects.create(user=run.port.user, model=tts.MODEL if audio else run.model,
+    AIUsageCharge.objects.create(user=run.port.user, provider=provider, model=model or (tts.MODEL if audio else run.model),
         operation='community_port_tts' if audio else 'community_port_text',
         request_type=f'port:{item.pk}:{"audio" if audio else "text"}{suffix}',
         prompt_tokens=0 if audio else item.usage.get('input_tokens',0),
         completion_tokens=0 if audio else item.usage.get('output_tokens',0),
         total_tokens=0 if audio else sum(item.usage.values()), cost_usd=cost,
         status=AIUsageCharge.STATUS_CHARGED if run.payer == 'credits' else AIUsageCharge.STATUS_SKIPPED,
-        notes=('Includes pronunciation guidance token cost and all completed speech attempts estimated from duration/input bytes. ' if audio else 'Returned token usage. ') +
+        notes=('Google character tariff estimate before free allowances and tax. ' if provider == 'google' else
+               'Includes pronunciation guidance token cost and all completed speech attempts estimated from duration/input bytes. ' if audio else 'Returned token usage. ') +
               'Settlement is through the port reservation; individual rows are not debited again.')
 
 
