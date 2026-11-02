@@ -6881,3 +6881,92 @@ msgstr "Tento pilot pre administrátorov používa používateľské prihlasovac
 
 msgid "Unscored pair:"
 msgstr "Nehodnotená dvojica:"
+
+msgid "All"
+msgstr "Všetky"
+
+msgid "Apply filter"
+msgstr "Použiť filter"
+
+msgid "Audio review pages"
+msgstr "Stránky kontroly zvuku"
+
+msgid "Download CSV"
+msgstr "Stiahnuť CSV"
+
+msgid "Download JSON"
+msgstr "Stiahnuť JSON"
+
+msgid "Downloads cover the whole batch, including sentence contexts, candidates, decisions and notes. Changed or withdrawn items are omitted. Audio files are not included."
+msgstr "Súbory obsahujú celú dávku vrátane kontextu viet, návrhov, rozhodnutí a poznámok. Zmenené alebo stiahnuté položky sa vynechávajú. Zvukové súbory nie sú zahrnuté."
+
+msgid "Earlier audio restored."
+msgstr "Predchádzajúci zvuk bol obnovený."
+
+msgid "Failed"
+msgstr "Neúspešné"
+
+#, python-format
+msgid "Finished: %(finished)s / %(total)s · Failed: %(failures)s · Remaining: %(remaining)s"
+msgstr "Dokončené: %(finished)s / %(total)s · Neúspešné: %(failures)s · Zostáva: %(remaining)s"
+
+msgid "Google project charges apply to the configured project; a personal OpenAI key does not cover them."
+msgstr "Poplatky Google sa účtujú nakonfigurovanému projektu; osobný kľúč OpenAI ich nepokrýva."
+
+msgid "I approve the displayed allowance and Google project charges and have permission to send the selected word text to Google."
+msgstr "Schvaľujem zobrazenú sumu a poplatky projektu Google a mám oprávnenie odoslať vybrané slová do Google."
+
+msgid "Inspect selected words"
+msgstr "Pozrieť vybrané slová"
+
+msgid "Keep review notes within 1,000 characters."
+msgstr "Poznámky ku kontrole môžu mať najviac 1 000 znakov."
+
+msgid "Kept existing audio"
+msgstr "Ponechaný pôvodný zvuk"
+
+msgid "No words match this filter."
+msgstr "Tomuto filtru nezodpovedajú žiadne slová."
+
+msgid "Only word and form text is sent to Google. No images, meanings or human recordings are sent. Google charges are estimated by character count, before free allowances and tax. One request per item; no automatic retries. Existing audio stays available until you accept replacements."
+msgstr "Do Google sa posiela iba text slov a tvarov. Neposielajú sa obrázky, významy ani ľudské nahrávky. Poplatky Google sa odhadujú podľa počtu znakov, pred bezplatnými limitmi a daňou. Jedna požiadavka na položku, bez automatického opakovania. Pôvodný zvuk zostáva dostupný, kým neprijmete náhrady."
+
+#, python-format
+msgid "Page %(number)s of %(pages)s · %(count)s matching words / forms"
+msgstr "Strana %(number)s z %(pages)s · %(count)s zodpovedajúcich slov / tvarov"
+
+msgid "Restore earlier audio from this batch"
+msgstr "Obnoviť predchádzajúci zvuk z tejto dávky"
+
+msgid "Restores only unchanged replacements whose earlier material is still available. Later edits and withdrawals are respected."
+msgstr "Obnoví iba nezmenené náhrady, ktorých pôvodný materiál je stále dostupný. Neskoršie úpravy a stiahnutia sa rešpektujú."
+
+msgid "Return to Google word audio"
+msgstr "Späť na zvuk slov Google"
+
+msgid "Review note (optional)"
+msgstr "Poznámka ku kontrole (nepovinná)"
+
+msgid "Review note saved."
+msgstr "Poznámka ku kontrole bola uložená."
+
+msgid "Save note"
+msgstr "Uložiť poznámku"
+
+msgid "Show"
+msgstr "Zobraziť"
+
+msgid "This item changed or is no longer available. Its saved content is hidden."
+msgstr "Táto položka sa zmenila alebo už nie je dostupná. Jej uložený obsah je skrytý."
+
+msgid "Use all remaining usable previews without individual listening? This does not mark them as pronunciation-reviewed. Changed sources and human recordings remain protected."
+msgstr "Použiť všetky zostávajúce použiteľné ukážky bez jednotlivého vypočutia? Nebudú označené ako skontrolované z hľadiska výslovnosti. Zmenené zdroje a ľudské nahrávky zostávajú chránené."
+
+msgid "Use all usable replacements"
+msgstr "Použiť všetky použiteľné náhrady"
+
+msgid "Wait until generation finishes before saving review notes."
+msgstr "Pred uložením poznámok ku kontrole počkajte na dokončenie generovania."
+
+msgid "You can leave and return through Tools. Existing dictionary audio remains available."
+msgstr "Môžete odísť a vrátiť sa cez Nástroje. Existujúci zvuk v slovníku zostáva dostupný."

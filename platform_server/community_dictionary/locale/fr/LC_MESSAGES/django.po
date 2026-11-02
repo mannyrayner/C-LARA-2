@@ -6974,3 +6974,92 @@ msgstr "Ce pilote réservé aux administrateurs utilise les identifiants utilisa
 
 msgid "Unscored pair:"
 msgstr "Paire non évaluée :"
+
+msgid "All"
+msgstr "Tous"
+
+msgid "Apply filter"
+msgstr "Appliquer le filtre"
+
+msgid "Audio review pages"
+msgstr "Pages de révision audio"
+
+msgid "Download CSV"
+msgstr "Télécharger le CSV"
+
+msgid "Download JSON"
+msgstr "Télécharger le JSON"
+
+msgid "Downloads cover the whole batch, including sentence contexts, candidates, decisions and notes. Changed or withdrawn items are omitted. Audio files are not included."
+msgstr "Les téléchargements couvrent tout le lot : contextes des phrases, propositions, décisions et notes. Les éléments modifiés ou retirés sont omis. Les fichiers audio ne sont pas inclus."
+
+msgid "Earlier audio restored."
+msgstr "Audio précédent restauré."
+
+msgid "Failed"
+msgstr "En échec"
+
+#, python-format
+msgid "Finished: %(finished)s / %(total)s · Failed: %(failures)s · Remaining: %(remaining)s"
+msgstr "Terminés : %(finished)s / %(total)s · Échecs : %(failures)s · Restants : %(remaining)s"
+
+msgid "Google project charges apply to the configured project; a personal OpenAI key does not cover them."
+msgstr "Les frais Google sont imputés au projet configuré ; une clé OpenAI personnelle ne les couvre pas."
+
+msgid "I approve the displayed allowance and Google project charges and have permission to send the selected word text to Google."
+msgstr "J’approuve le montant affiché et les frais du projet Google, et j’ai l’autorisation d’envoyer les mots sélectionnés à Google."
+
+msgid "Inspect selected words"
+msgstr "Examiner les mots sélectionnés"
+
+msgid "Keep review notes within 1,000 characters."
+msgstr "Limitez les notes de révision à 1 000 caractères."
+
+msgid "Kept existing audio"
+msgstr "Audio existant conservé"
+
+msgid "No words match this filter."
+msgstr "Aucun mot ne correspond à ce filtre."
+
+msgid "Only word and form text is sent to Google. No images, meanings or human recordings are sent. Google charges are estimated by character count, before free allowances and tax. One request per item; no automatic retries. Existing audio stays available until you accept replacements."
+msgstr "Seul le texte des mots et des formes est envoyé à Google : aucune image, traduction ni voix humaine. Les frais sont estimés selon le nombre de caractères, avant franchises et taxes. Une requête par élément, sans nouvelle tentative automatique. L’audio existant reste disponible jusqu’à l’acceptation des remplacements."
+
+#, python-format
+msgid "Page %(number)s of %(pages)s · %(count)s matching words / forms"
+msgstr "Page %(number)s sur %(pages)s · %(count)s mots / formes correspondants"
+
+msgid "Restore earlier audio from this batch"
+msgstr "Restaurer l’audio antérieur de ce lot"
+
+msgid "Restores only unchanged replacements whose earlier material is still available. Later edits and withdrawals are respected."
+msgstr "Restaure uniquement les remplacements inchangés dont le matériel antérieur est encore disponible. Les modifications et retraits ultérieurs sont respectés."
+
+msgid "Return to Google word audio"
+msgstr "Revenir à l’audio des mots Google"
+
+msgid "Review note (optional)"
+msgstr "Note de révision (facultative)"
+
+msgid "Review note saved."
+msgstr "Note de révision enregistrée."
+
+msgid "Save note"
+msgstr "Enregistrer la note"
+
+msgid "Show"
+msgstr "Afficher"
+
+msgid "This item changed or is no longer available. Its saved content is hidden."
+msgstr "Cet élément a changé ou n’est plus disponible. Son contenu enregistré est masqué."
+
+msgid "Use all remaining usable previews without individual listening? This does not mark them as pronunciation-reviewed. Changed sources and human recordings remain protected."
+msgstr "Utiliser toutes les propositions restantes utilisables sans les écouter individuellement ? Elles ne seront pas marquées comme vérifiées pour la prononciation. Les sources modifiées et les enregistrements humains restent protégés."
+
+msgid "Use all usable replacements"
+msgstr "Utiliser tous les remplacements utilisables"
+
+msgid "Wait until generation finishes before saving review notes."
+msgstr "Attendez la fin de la génération pour enregistrer des notes de révision."
+
+msgid "You can leave and return through Tools. Existing dictionary audio remains available."
+msgstr "Vous pouvez quitter cette page et y revenir par Outils. L’audio existant du dictionnaire reste disponible."

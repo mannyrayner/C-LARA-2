@@ -1,0 +1,6 @@
+{% load i18n %}
+{% if paging %}<nav aria-label="{% translate 'Audio review pages' %}" class="panel">
+{% if paging.has_previous %}<a class="button secondary" href="?page={{ paging.previous_page_number }}&amp;filter={{ review_filter }}&amp;inspect={{ inspect }}">{% translate "Previous" %}</a>{% endif %}
+<span>{% blocktranslate with number=paging.number pages=paging.paginator.num_pages count=paging.paginator.count %}Page {{ number }} of {{ pages }} · {{ count }} matching words / forms{% endblocktranslate %}</span>
+{% if paging.has_next %}<a class="button secondary" href="?page={{ paging.next_page_number }}&amp;filter={{ review_filter }}&amp;inspect={{ inspect }}">{% translate "Next" %}</a>{% endif %}
+</nav>{% endif %}

@@ -77,7 +77,7 @@ def record_clip_usage(item, clip, cost):
 
 
 
-def candidate(part, *, for_review=False, comparison=False):
+def candidate(part, *, for_review=False, comparison=False, loaded=None):
     entry = part.entry
     from .pronunciation import homographs
     code = tts.language_code(entry.dictionary.language)
@@ -89,7 +89,7 @@ def candidate(part, *, for_review=False, comparison=False):
         return None
     context_text = ''
     if part.kind == 'form':
-        link = sf.current(part)
+        link = sf.current(part, loaded=loaded)
         if not link:
             return None
         ids = [part.pk] + [link.sentence_text_id, link.word_text_id]
@@ -104,7 +104,8 @@ def candidate(part, *, for_review=False, comparison=False):
     else:
         return None
     from .public_browsing import contributions
-    parts = list(contributions(entry.dictionary).filter(pk__in=ids).distinct().order_by('pk'))
+    parts = ([loaded.parts[pk] for pk in sorted(set(ids)) if pk in loaded.parts] if loaded is not None
+             else list(contributions(entry.dictionary).filter(pk__in=ids).distinct().order_by('pk')))
     if len(parts) != len(set(ids)):
         return None
     return {'id':part.pk, 'entry':entry.pk, 'word':part.word, 'meaning':meaning,

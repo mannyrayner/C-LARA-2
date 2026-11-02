@@ -74,18 +74,17 @@ def settings(request, pk):
 
 
 def groups(dictionary, *, include_reviewed=False, include_matching=False):
+    from .audio_review_data import ReviewData
     chosen = word_audio.policy(dictionary)
     if not chosen:
         raise Conflict('Choose a Google voice under Word audio settings first.')
     rows, skipped = [], 0
-    parts = Contribution.objects.filter(entry__dictionary=dictionary, entry__archived=False,
-        status='accepted', kind__in=['text','form']).select_related(
-            'entry__dictionary','entry__current_text','entry__current_meaning')
-    for part in parts:
-        row = review.row_for(part, all_words=True)
+    loaded = ReviewData(dictionary)
+    for part in loaded.selected.values():
+        row = review.row_for(part, all_words=True, loaded=loaded)
         if not row:
             continue
-        audio = list(Contribution.objects.filter(pk__in=[a['id'] for a in row['audio']]))
+        audio = [loaded.audio[a['id']] for a in row['audio']]
         if (review.protected(row) or
                 (not include_reviewed and any(a.provenance.get('pronunciation_approved') for a in audio)) or
                 (not include_matching and audio and all(a.provenance.get('provider') == 'google' and
@@ -94,7 +93,7 @@ def groups(dictionary, *, include_reviewed=False, include_matching=False):
             skipped += 1
         else:
             rows.append(row)
-    return review.group_words(dictionary, rows), skipped
+    return review.group_words(dictionary, rows, loaded=loaded), skipped
 
 
 @transaction.atomic
@@ -125,6 +124,7 @@ def quote(user, dictionary, token, *, include_reviewed=False, include_matching=F
     entries = {}
     for members in selected:
         entries.setdefault(members[0]['entry'], []).append(members)
+    items = []
     for entry_id, entry_groups in entries.items():
         words, clips = [], []
         for members in entry_groups:
@@ -133,11 +133,15 @@ def quote(user, dictionary, token, *, include_reviewed=False, include_matching=F
             clips.append({'id':uuid.uuid4().hex, 'word_id':members[0]['id'], 'method':policy['method'],
                 'candidate':1, 'status':'waiting', 'estimate':str(cost), 'allowance':str(cost), 'cost':'0', 'report':{}})
         total = sum((Decimal(c['estimate']) for c in clips), Decimal('0'))
-        item = PortItem.objects.create(run=run, source_entry_id=entry_id,
+        item = PortItem(run=run, source_entry_id=entry_id,
             snapshot={'words':words, 'audio_groups':{str(g[0]['id']):[r['id'] for r in g] for g in entry_groups}},
             result={'clips':clips}, estimated_usd=total, allowance_usd=total)
-        item.sources.set(review.source_ids(words))
+        items.append(item)
         run.estimated_usd += total; run.allowance_usd += total
+    PortItem.objects.bulk_create(items)
+    through = PortItem.sources.through
+    through.objects.bulk_create([through(portitem_id=item.pk, contribution_id=pk)
+        for item in items for pk in review.source_ids(item.snapshot['words'])])
     run.save()
     return run
 
