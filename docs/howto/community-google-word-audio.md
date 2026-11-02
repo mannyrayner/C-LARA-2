@@ -185,7 +185,11 @@ CLARA_GOOGLE_SERVICE="clara-tts@${CLARA_GOOGLE_PROJECT}.iam.gserviceaccount.com"
 
 Enable the required services, create the service account, and grant use of the
 billing/quota project. Ordinary synchronous Cloud TTS uses service-usage
-permission; do not grant Editor or Owner for speech synthesis.
+permission; do not grant Editor or Owner for speech synthesis. The application
+sets an explicit quota project, including during service-account impersonation.
+Grant Service Usage Consumer to both the service account and the exact federated
+EC2 principal: the latter authenticates the request to obtain the service-account
+token, before the service account can be used.
 
 ```bash
 gcloud services enable texttospeech.googleapis.com iam.googleapis.com \
@@ -201,6 +205,9 @@ gcloud iam workload-identity-pools providers create-aws clara-ec2 --location=glo
   --workload-identity-pool=clara-aws --project="$CLARA_GOOGLE_PROJECT" \
   --account-id="$CLARA_AWS_ACCOUNT" --attribute-mapping='google.subject=assertion.arn' \
   --attribute-condition="assertion.arn == '$CLARA_AWS_SUBJECT'" &&
+gcloud projects add-iam-policy-binding "$CLARA_GOOGLE_PROJECT" \
+  --member="principal://iam.googleapis.com/projects/$CLARA_GOOGLE_NUMBER/locations/global/workloadIdentityPools/clara-aws/subject/$CLARA_AWS_SUBJECT" \
+  --role=roles/serviceusage.serviceUsageConsumer --condition=None &&
 gcloud iam service-accounts add-iam-policy-binding "$CLARA_GOOGLE_SERVICE" \
   --project="$CLARA_GOOGLE_PROJECT" --role=roles/iam.workloadIdentityUser \
   --member="principal://iam.googleapis.com/projects/$CLARA_GOOGLE_NUMBER/locations/global/workloadIdentityPools/clara-aws/subject/$CLARA_AWS_SUBJECT" &&
@@ -273,5 +280,6 @@ References checked 2 November 2026:
 - [Google supported voices](https://docs.cloud.google.com/text-to-speech/docs/list-voices-and-types)
 - [Google TTS pricing](https://cloud.google.com/text-to-speech/pricing)
 - [TTS authentication](https://docs.cloud.google.com/text-to-speech/docs/authentication)
+- [Quota-project permissions](https://docs.cloud.google.com/docs/quotas/set-quota-project)
 - [AWS federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds)
 - [Credential configuration with IMDSv2](https://docs.cloud.google.com/sdk/gcloud/reference/iam/workload-identity-pools/create-cred-config)
