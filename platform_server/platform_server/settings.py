@@ -223,6 +223,11 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 COMMUNITY_DICTIONARY_PHOTO_MODEL = os.environ.get("C_LARA_COMMUNITY_PHOTO_MODEL", "gpt-6-sol")
 COMMUNITY_DICTIONARY_PHOTO_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_PHOTO_DAILY_LIMIT", "20"))
 COMMUNITY_DICTIONARY_TTS_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_TTS_DAILY_LIMIT", "20"))
+# Administrator-owned, non-publishing Google audio comparison pilot. Windows
+# uses the logged-in user's gcloud ADC; Linux hosts require explicit opt-in.
+COMMUNITY_DICTIONARY_GOOGLE_TTS_ENABLED = os.environ.get("C_LARA_GOOGLE_TTS_ENABLED", "1" if os.name == "nt" else "0").lower() in {"1", "true", "yes"}
+COMMUNITY_DICTIONARY_GOOGLE_TTS_PROJECT = os.environ.get("C_LARA_GOOGLE_TTS_PROJECT", "community-dictionaries-tts")
+COMMUNITY_DICTIONARY_GOOGLE_TTS_ADC_FILE = os.environ.get("C_LARA_GOOGLE_TTS_ADC_FILE", "")
 # Server ceiling: shared dictionary allowances default to 10 and are owner-configurable.
 # Also caps one account's combined picture descriptions across dictionaries in 24h.
 COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_CAPTURE_DAILY_LIMIT", "1000"))

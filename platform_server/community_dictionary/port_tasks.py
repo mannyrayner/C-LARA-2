@@ -61,6 +61,9 @@ def fetch(item_id, lock=False):
 
 
 def credentials(item):
+    if item.run.stage == 'homographs' and item.run.options.get('suite') == 'providers':
+        from .homograph_experiments import comparison_recipes
+        comparison_recipes(item.run)
     if item.run.port.is_audio_batch and item.run.stage != 'audio_repair':
         from .carrier import VERSION
         if item.run.prices.get('carrier_recipe') != VERSION:

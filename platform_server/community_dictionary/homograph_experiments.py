@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from projects.billing import get_user_balance_usd
-from . import carrier, photo_ai, port_costs, port_tasks, porting, sentence_forms as sf, tts
+from . import google_tts, carrier, photo_ai, port_costs, port_tasks, porting, sentence_forms as sf, tts
 from .collections import content_digest
 from .evaluation_views import page
 from .models import Contribution, LanguagePort, PortItem, PortRun
@@ -38,14 +38,52 @@ RATINGS = [('', _('Not rated')), ('acceptable', _('Acceptable')),
            ('minor', _('Minor problem')), ('major', _('Major problem')),
            ('cannot', _('Cannot judge'))]
 MAX_SELECTION = 20
+COMPARISON_VERSION = 'word-provider-comparison-1'
+COMPARISON_METHODS = {'openai': _('OpenAI current word-audio pipeline'),
+    'google_wavenet': _('Google WaveNet'), 'google_neural2': _('Google Neural2')}
+MAX_COMPARISON = 60
 
 
-def candidate(part, *, for_review=False):
+def is_comparison(run):
+    return run.options.get('suite') == 'providers'
+
+
+def methods_for(run):
+    return ({k: COMPARISON_METHODS[k] for k in run.options['methods']}
+            if is_comparison(run) else METHODS)
+
+
+def comparison_recipes(run):
+    if is_comparison(run):
+        google_tts.require_access(run.port.user)
+        if (run.options.get('comparison_version') != COMPARISON_VERSION or
+                any(run.prices.get(k) != v for k, v in google_tts.prices().items())):
+            raise Conflict('Google comparison configuration changed. Create a fresh estimate.')
+
+
+def comparison_homograph(row, language):
+    from .audio_review import single_word
+    from .pronunciation import homographs
+    return single_word(row) and bool(homographs(row['word'], tts.language_code(language)))
+
+
+def record_clip_usage(item, clip, cost):
+    method = clip.get('method', '')
+    google = method.startswith('google_')
+    porting.record_usage(item, audio=True, cost_override=cost, suffix=':'+clip['id'],
+        provider='google' if google else 'openai',
+        model=item.run.prices['google_voices'][tts.language_code(item.run.port.language)][method] if google else tts.MODEL)
+
+
+
+def candidate(part, *, for_review=False, comparison=False):
     entry = part.entry
     from .pronunciation import homographs
     code = tts.language_code(entry.dictionary.language)
     eligible = (bool(code) and len(part.word) <= 255 and bool(homographs(part.word, code))
                 if for_review else carrier.homograph_eligible(part.word, entry.dictionary.language))
+    if comparison:
+        eligible = code in google_tts.VOICES and 0 < len(part.word) <= 255
     if (entry.archived or part.status != 'accepted' or not eligible):
         return None
     context_text = ''
@@ -73,11 +111,17 @@ def candidate(part, *, for_review=False):
             'digests':[[p.pk, content_digest(p)] for p in parts]}
 
 
-def candidates(dictionary, *, for_review=False):
+def candidates(dictionary, *, for_review=False, comparison=False):
     parts = Contribution.objects.filter(entry__dictionary=dictionary, entry__archived=False,
         status='accepted', kind__in=['text','form']).select_related(
             'entry__dictionary','entry__current_text','entry__current_meaning')
-    result = [row for part in parts if (row := candidate(part, for_review=for_review))]
+    result = [row for part in parts if (row := candidate(part, for_review=for_review, comparison=comparison))]
+    if comparison:
+        # Sample lexical items, not repeated occurrences of the same form/sense.
+        unique = {}
+        for row in sorted(result, key=lambda r:r['id']):
+            unique.setdefault((row['word'], row['meaning'], row['kind']), row)
+        result = list(unique.values())
     return sorted(result, key=lambda r:(r['word'].casefold(), r['meaning'], r['id']))
 
 
@@ -90,34 +134,54 @@ def current_item(item):
         part = Contribution.objects.select_related('entry__dictionary','entry__current_text',
             'entry__current_meaning').filter(pk=expected['id'], entry_id=item.source_entry_id,
                 entry__dictionary_id=item.run.port.source_id).first()
-        if not part or candidate(part) != expected:
+        if not part or candidate(part, comparison=is_comparison(item.run)) != expected:
             raise Conflict('Source wording or access changed. Create a new experiment.')
     return item.source_entry
 
 
 def clip_allowance(word, language, prices, method):
-    if method == 'carrier':
+    if method.startswith('google_'):
+        return porting.money(google_tts.estimate(word, method))
+    if method == 'carrier' or (method == 'openai' and carrier.eligible(word, language)):
         return porting.money(carrier.estimate(word, language, allowance=True))
     return port_costs.allowance(port_costs.speech(word, language, prices))
 
 
 @transaction.atomic
-def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE):
+def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comparison=False, sampling='manual', sample_size=30):
     porting.locks(); require_owner(user, dictionary)
     old = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, stage=STAGE).first()
     if old:
+        if is_comparison(old) != comparison:
+            raise Conflict('Reload the experiment form.')
         return old
     if PortRun.objects.filter(pk=token).exists():
         raise Conflict('Reload the experiment form.')
     if not 1 <= repeats <= 3 or voice not in tts.VOICE_NAMES:
         raise Conflict('Choose one to three repetitions and a supported voice.')
+    if comparison:
+        google_tts.require_access(user)
+        google_tts.credentials()  # Local validation only; estimates send no API requests.
     selected = set(map(int, selected))
-    available = {r['id']:r for r in candidates(dictionary)}
-    if not 1 <= len(selected) <= MAX_SELECTION or not selected.issubset(available):
-        raise Conflict('Choose between 1 and 20 currently available words or forms.')
+    available = {r['id']:r for r in candidates(dictionary, comparison=comparison)}
+    population = len(available)
+    if comparison and sampling != 'manual':
+        if sampling not in {'random', 'homographs', 'expressions', 'forms'} or not 1 <= sample_size <= MAX_COMPARISON:
+            raise Conflict('Choose a listed sample type and between 1 and 60 items.')
+        pool = [r['id'] for r in available.values() if sampling == 'random' or
+            (sampling == 'homographs' and comparison_homograph(r, dictionary.language)) or
+            (sampling == 'expressions' and carrier.eligible(r['word'], dictionary.language)) or
+            (sampling == 'forms' and r['kind'] == 'form')]
+        population = len(pool)
+        selected = set(secrets.SystemRandom().sample(pool, min(sample_size, population)))
+    limit = MAX_COMPARISON if comparison else MAX_SELECTION
+    if not 1 <= len(selected) <= limit or not selected.issubset(available):
+        raise Conflict(f'Choose between 1 and {limit} currently available words or forms.')
+    if comparison and len(selected) * repeats * (1 + len(google_tts.VOICES[tts.language_code(dictionary.language)])) > 450:
+        raise Conflict('Choose fewer items or takes: at most 450 recordings can be rated in one experiment.')
     model, key, personal, prices = photo_ai.configuration(user)
     port = LanguagePort.objects.create(source=dictionary, user=user, is_audio_batch=True,
-        name='Homograph audio experiment', language=dictionary.language,
+        name='Word audio provider comparison' if comparison else 'Homograph audio experiment', language=dictionary.language,
         explanation_language=dictionary.explanation_language, voice=voice)
     porting.authority(port)
     run = PortRun.objects.create(pk=token, port=port, stage=STAGE, model=model,
@@ -126,6 +190,11 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE):
                 'carrier_recipe':carrier.VERSION}, options={'experiment_version':VERSION,
                 'repeats':repeats, 'revealed':False, 'ratings_revision':0},
         payer=porting.payer_now(user), expires_at=timezone.now()+timedelta(hours=1))
+    if comparison:
+        run.prices.update(google_tts.prices())
+        run.options.update(suite='providers', comparison_version=COMPARISON_VERSION,
+            methods=['openai', *google_tts.VOICES[tts.language_code(dictionary.language)]],
+            sampling=sampling, population=population)
     grouped = {}
     for pk in sorted(selected):
         row = available[pk]
@@ -134,12 +203,14 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE):
         clips, estimated, allowance = [], Decimal('0'), Decimal('0')
         for row in words:
             for repeat in range(1, repeats+1):
-                methods = list(METHODS)
+                methods = list(methods_for(run))
                 secrets.SystemRandom().shuffle(methods)
-                for label, method in zip('AB', methods):
+                for label, method in zip('ABCDEFGHIJKLMNOPQRSTUVWXYZ', methods):
                     reserve = clip_allowance(row['word'], dictionary.language, prices, method)
-                    estimated += (carrier.estimate(row['word'], dictionary.language) if method == 'carrier'
-                                  else port_costs.speech(row['word'], dictionary.language, prices))
+                    estimated += (google_tts.estimate(row['word'], method) if method.startswith('google_') else
+                                  carrier.estimate(row['word'], dictionary.language) if method == 'carrier' or
+                                  (method == 'openai' and carrier.eligible(row['word'], dictionary.language)) else
+                                  port_costs.speech(row['word'], dictionary.language, prices))
                     allowance += reserve
                     clips.append({'id':uuid.uuid4().hex, 'word_id':row['id'], 'repeat':repeat,
                         'label':label, 'method':method, 'status':'waiting', 'allowance':str(reserve),
@@ -185,7 +256,7 @@ def process(item_id):
         clip_id = clip['id']
         word = next(w for w in item.snapshot['words'] if w['id'] == clip['word_id'])
         item.status, item.started_at = 'running', timezone.now()
-        item.usage = {'homograph_claim': {'id':clip_id, 'allowance':clip['allowance']}}
+        item.usage = {'homograph_claim': {'id':clip_id, 'allowance':clip['allowance'], 'method':clip['method']}}
         item.save(update_fields=['status','started_at','result','usage'])
         run, method = item.run, clip['method']
 
@@ -202,14 +273,18 @@ def process(item_id):
     try:
         common = dict(language=tts.language_code(run.port.language), model=tts.MODEL,
                       voice=word.get('voice', run.port.voice), api_key=key, report=report, before_request=gate)
-        if method == 'carrier':
+        if method.startswith('google_'):
+            prepared, duration = google_tts.synthesize(word['word'], language=run.port.language,
+                method=method, report=report, before_request=gate)
+        elif method == 'carrier' or (method == 'openai' and carrier.eligible(word['word'], run.port.language)):
             prepared, duration = carrier.synthesize(word['word'], **common,
-                homograph_experiment=True, keep_full=lambda data:full.__setitem__(slice(None), [data]))
+                homograph_experiment=method == 'carrier', keep_full=lambda data:full.__setitem__(slice(None), [data]))
         else:
             prepared, duration = tts.synthesize(word['word'], **common, meaning=word['meaning'],
                 meaning_language=run.port.explanation_language, guidance_model=run.model,
                 guidance_prices=run.prices, speech_kind='entry')
     except Exception as exc:
+        tts.record_failure(report, exc)
         failure = ('extraction' if isinstance(exc, carrier.ExtractionFailed) else
                    'stopped' if isinstance(exc, (Conflict, Http404)) else 'generation')
     actual = tts.report_cost(report)
@@ -229,12 +304,12 @@ def process(item_id):
                     live.uncertain_cost |= uncertain
                     live.status, live.usage = 'discarded', {}
                     live.save(update_fields=['audio_cost','uncertain_cost','status','usage'])
-                    porting.record_usage(live, audio=True, cost_override=cost, suffix=':'+clip_id)
+                    record_clip_usage(live, clip, cost)
                 transaction.on_commit(lambda:port_tasks.dispatch(str(live.run_id)))
                 return
             live.audio_cost += cost
             live.uncertain_cost |= uncertain
-            porting.record_usage(live, audio=True, cost_override=cost, suffix=':'+clip_id)
+            record_clip_usage(live, clip, cost)
             try:
                 porting.current_item(live)
                 active.update(status='failed' if failure else 'ready', failure=failure,
@@ -269,13 +344,13 @@ def resume(user, run_id):
         if not active and claim:
             item.audio_cost += Decimal(claim['allowance'])
             item.uncertain_cost = True
-            porting.record_usage(item, audio=True, cost_override=Decimal(claim['allowance']), suffix=':'+claim['id'])
+            record_clip_usage(item, claim, Decimal(claim['allowance']))
         for clip in active:
             if clip['status'] == 'running':
                 clip.update(status='failed', failure='interrupted', cost=clip['allowance'])
                 item.audio_cost += Decimal(clip['allowance'])
                 item.uncertain_cost = True
-                porting.record_usage(item, audio=True, cost_override=Decimal(clip['allowance']), suffix=':'+clip['id'])
+                record_clip_usage(item, clip, Decimal(clip['allowance']))
         item.status = 'waiting' if any(c['status']=='waiting' for c in item.result.get('clips', [])) else 'ready'
         if item.invalidated:
             item.status = 'discarded'
@@ -305,6 +380,53 @@ class QuoteForm(forms.Form):
         if len(result) > MAX_SELECTION:
             raise forms.ValidationError(_('Choose at most 20 words or forms.'))
         return result
+
+
+class ProviderQuoteForm(QuoteForm):
+    sampling = forms.ChoiceField(label=_('Sample to compare'), initial='random', choices=[
+        ('random', _('Random vocabulary sample')), ('homographs', _('English homographs')),
+        ('expressions', _('Multi-word expressions')), ('forms', _('Sentence forms')),
+        ('manual', _('Choose items manually below'))])
+    sample_size = forms.IntegerField(label=_('Number of items to sample'), min_value=1,
+                                    max_value=MAX_COMPARISON, initial=30)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['words'].required = False
+        self.fields['words'].help_text = _('Only used for manual selection. Choose up to 60 items.')
+        self.fields['repeats'].initial = 1
+        self.fields['voice'].label = _('OpenAI voice')
+        self.order_fields(['token', 'sampling', 'sample_size', 'repeats', 'voice', 'words'])
+
+    def clean_words(self):
+        result = self.cleaned_data['words']
+        if len(result) > MAX_COMPARISON:
+            raise forms.ValidationError(_('Choose at most 60 words or forms.'))
+        return result
+
+
+@page(['GET', 'POST'])
+def provider_start(request, pk):
+    dictionary = get_dictionary(request.user, pk); require_owner(request.user, dictionary)
+    google_tts.require_access(request.user)
+    rows = candidates(dictionary, comparison=True)
+    form = ProviderQuoteForm(request.POST if request.method == 'POST' else None, rows=rows,
+                             initial={'token': uuid.uuid4()})
+    if request.method == 'POST':
+        if request.POST.get('action') == 'check':
+            google_tts.check_access(request.user, dictionary.language)
+            messages.success(request, _('Google access checked. No audio was generated.'))
+            return redirect('community_dictionary:word-audio-compare', pk=pk)
+        if form.is_valid():
+            v = form.cleaned_data
+            run = quote(request.user, dictionary, v['token'], v['words'], v['repeats'], v['voice'],
+                        comparison=True, sampling=v['sampling'], sample_size=v['sample_size'])
+            return redirect('community_dictionary:homographs-run', pk=pk, run_id=run.pk)
+    return render(request, 'community_dictionary/provider_comparison_start.html', context(request, dictionary,
+        form=form, available=bool(rows), google_project=google_tts.project(),
+        google_voices=list(google_tts.VOICES.get(tts.language_code(dictionary.language), {}).values()),
+        runs=PortRun.objects.filter(stage=STAGE, options__suite='providers',
+                                   port__source=dictionary, port__user=request.user)[:20]))
 
 
 @page(['GET','POST'])
@@ -370,7 +492,8 @@ def save_ratings(run_id, data, *, reveal=False):
 
 
 def table(run):
-    rows, summary = [], {method:Counter() for method in METHODS}
+    methods = methods_for(run)
+    rows, summary = [], {method:Counter() for method in methods}
     for item in visible_items(run):
         clips = item.result.get('clips', [])
         for word in item.snapshot['words']:
@@ -379,10 +502,32 @@ def table(run):
                 pair.sort(key=lambda c:c['label'])
                 for clip in pair:
                     summary[clip['method']][clip['rating'] or ('failed' if clip['status']=='failed' else 'unrated')] += 1
-                    clip['method_name'] = METHODS[clip['method']] if run.options['revealed'] else ''
+                    clip['method_name'] = methods[clip['method']] if run.options['revealed'] else ''
                 rows.append({'word':word, 'repeat':repeat, 'clips':pair, 'item':item})
-    return rows, [{'method':METHODS[m], **{k:c[k] for k in ['acceptable','minor','major','cannot','failed','unrated']}}
+    return rows, [{'method':methods[m], **{k:c[k] for k in ['acceptable','minor','major','cannot','failed','unrated']}}
                   for m,c in summary.items()]
+
+
+def paired_summary(run, rows):
+    if not is_comparison(run) or not run.options['revealed']:
+        return []
+    totals = {m: Counter() for m in methods_for(run) if m != 'openai'}
+    for row in rows:
+        clips = {c['method']: c for c in row['clips']}
+        baseline = clips.get('openai', {})
+        for method, counts in totals.items():
+            other = clips.get(method, {})
+            if any(c.get('status') != 'ready' for c in (baseline, other)):
+                key = 'failed'
+            elif any(c.get('rating') not in {'acceptable', 'minor', 'major'} for c in (baseline, other)):
+                key = 'unscored'
+            else:
+                good = tuple(c['rating'] == 'acceptable' for c in (baseline, other))
+                key = {(True, True): 'both', (False, True): 'google_only',
+                       (True, False): 'openai_only', (False, False): 'neither'}[good]
+            counts[key] += 1
+    return [{'method': COMPARISON_METHODS[m], **{k: c[k] for k in
+        ['both', 'google_only', 'openai_only', 'neither', 'failed', 'unscored']}} for m,c in totals.items()]
 
 
 @page(['GET','POST'])
@@ -392,7 +537,10 @@ def detail(request, pk, run_id):
         action = request.POST.get('action')
         if action == 'approve':
             if request.POST.get('approve') != 'on':
-                raise Conflict('Approve the estimate and permission to send selected text to OpenAI.')
+                raise Conflict('Approve the estimate and permission to send selected text to the listed providers.')
+            if is_comparison(run) and run.status == 'estimate':
+                comparison_recipes(run)
+                google_tts.check_access(request.user, run.port.language)
             porting.approve(request.user, run.pk)
         elif action in {'save', 'reveal'}:
             save_ratings(run.pk, request.POST, reveal=action=='reveal')
@@ -410,6 +558,8 @@ def detail(request, pk, run_id):
     balance = get_user_balance_usd(request.user) if run.payer == 'credits' else None
     return render(request, 'community_dictionary/homographs_run.html', context(request, dictionary,
         run=run, rows=rows, summary=summary, ratings=RATINGS, total=len(clips),
+        comparison=is_comparison(run), pairs=paired_summary(run, rows),
+        columns=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'[:len(methods_for(run))]),
         finished=progress['ready']+progress['failed'], failures=progress['failed'], balance=balance,
         unavailable=run.items.count()-len({row['item'].pk for row in rows}),
         enough_funds=balance is None or balance>=run.allowance_usd, expired=run.expires_at<=timezone.now(),
@@ -443,18 +593,32 @@ def export(request, pk, run_id):
     if not run.options['revealed']:
         raise Conflict('Save ratings and reveal methods before exporting.')
     response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = 'attachment; filename="homograph-audio-ratings.csv"'
+    response['Content-Disposition'] = ('attachment; filename="word-audio-comparison.csv"' if is_comparison(run)
+                                       else 'attachment; filename="homograph-audio-ratings.csv"')
     response.write('\ufeff')
     writer = csv.writer(response)
     writer.writerow(['experiment','language','voice','word','meaning','sentence','kind','take','label',
         'method','status','rating','note','cost_usd_estimate','attempts','failure','after_reveal',
-        'entry_id','text_contribution_id','speech_model','guidance_model','recipe'])
+        'entry_id','text_contribution_id','speech_model','guidance_model','recipe',
+        'provider','sampling','eligible_population','homograph','expression','strategy','google_project',
+        'synthesis_recipe','uncertain_cost','failure_code'])
     for row in table(run)[0]:
         for clip in row['clips']:
             word = row['word']
-            writer.writerow([csv_safe(v) for v in [run.pk,run.port.language,run.port.voice,
+            google = clip['method'].startswith('google_')
+            model = run.prices['google_voices'][tts.language_code(run.port.language)][clip['method']] if google else tts.MODEL
+            voice = model if google else run.port.voice
+            writer.writerow([csv_safe(v) for v in [run.pk,run.port.language,voice,
                 word['word'],word['meaning'],word['context'],word['kind'],row['repeat'],clip['label'],
                 clip['method'],clip['status'],clip['rating'],clip['note'],clip['cost'],
                 len(clip.get('report',{}).get('attempts', [])),clip.get('failure',''),
-                clip.get('edited_after_reveal',False),word['entry'],word['id'],tts.MODEL,run.model,VERSION]])
+                clip.get('edited_after_reveal',False),word['entry'],word['id'],model, clip.get('report',{}).get('guidance_model',''),
+                COMPARISON_VERSION if is_comparison(run) else VERSION,
+                'google' if google else 'openai', run.options.get('sampling','manual'),
+                run.options.get('population',''), comparison_homograph(word, run.port.language),
+                carrier.eligible(word['word'],run.port.language), clip.get('report',{}).get('strategy','direct'),
+                run.prices.get('google_project','') if google else '',
+                clip.get('report',{}).get('instructions_version',''),
+                clip.get('report',{}).get('uncertain_cost',clip.get('failure')=='interrupted'),
+                clip.get('report',{}).get('failure_code','')]])
     return response
