@@ -19,6 +19,18 @@ whereas `current_state.*` is the project-manager agent's derived assessment.
 
 ## Perform the local task
 
+For substantive Community Dictionaries changes, maintain the development study
+journal described in [`docs/howto/community-development-log.md`](docs/howto/community-development-log.md).
+Capture the first available clock checkpoint before substantial orientation where
+possible, then record requests, response intervals, milestones and attributed
+test reports. Keep operational events and exports in the private deployment
+control repository, not this public repository. Reuse the feature ID for revisions;
+include failures and unfinished work. Never invent request times or call elapsed
+response time internal reasoning-only time. Stop at the final recording checkpoint
+and synchronize the journal using a checked branch lease. If private access is
+unavailable, retain a local checkpoint and disclose that it is unsynced; do not
+block the requested product work. See the how-to for evidence and timing rules.
+
 Carry out the requested work normally while retaining its project-level context. If it appears to
 conflict with an important goal, urgent commitment, known constraint, or serious unresolved risk,
 make that tension visible and ask whether the human wants to reprioritize rather than silently
