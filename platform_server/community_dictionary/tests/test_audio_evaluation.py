@@ -73,6 +73,32 @@ class AudioStudyTests(TestCase):
             self.assertEqual(self.client.get(self.url('start')).status_code,200)
         quote.assert_not_called()
 
+    def test_google_check_and_failed_approval_stay_on_saved_study_without_charging(self):
+        run=self.run_quote()
+        problem=exp.google_tts.GoogleAccessError('sign_in','sign-in renewal')
+        with patch.object(exp.google_tts,'check_access',side_effect=problem), patch.object(exp.porting,'approve') as approve:
+            for action in ['check-google','approve']:
+                response=self.client.post(self.url('prepare',run.pk),{'action':action,'approve':'on'})
+                self.assertContains(response,'Google connection needs attention')
+                self.assertContains(response,'Your study is still saved')
+                self.assertContains(response,'sign-in renewal')
+                self.assertContains(response,'Check Google connection')
+            approve.assert_not_called()
+        self.assertFalse(CreditLedgerEntry.objects.exists())
+        run.refresh_from_db();self.assertEqual(run.status,'estimate')
+        with patch.object(exp.google_tts,'check_access') as check, patch.object(exp.porting,'approve') as approve:
+            response=self.client.post(self.url('prepare',run.pk),{'action':'check-google'})
+            self.assertContains(response,'Google connection is working')
+            check.assert_called_once_with(self.owner,'English',selected_voices=['en-GB-Wavenet-F','en-GB-Neural2-F'])
+            approve.assert_not_called()
+
+    def test_connection_check_requires_owner(self):
+        run=self.run_quote()
+        self.client.force_login(self.member)
+        with patch.object(exp.google_tts,'check_access') as check:
+            self.assertEqual(self.client.post(self.url('prepare',run.pk),{'action':'check-google'}).status_code,404)
+            check.assert_not_called()
+
     def test_freeze_idempotent_and_does_not_replace_dictionary_recordings(self):
         before=Contribution.objects.count()
         entry=self.seed('cat','chat');count=Contribution.objects.count()

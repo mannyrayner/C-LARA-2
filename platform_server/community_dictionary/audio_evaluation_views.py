@@ -3,6 +3,8 @@ from collections import Counter
 import csv
 import io
 import json
+import os
+from pathlib import Path
 import uuid
 
 from django import forms
@@ -55,30 +57,41 @@ def prepare(request,pk,run_id):
     dictionary,run=exp.owner_run(request,pk,run_id)
     if run.options.get('evaluation_study',{}).get('rubric')!=study.RUBRIC:
         raise Http404
+    google_error = None
+    google_checked = False
     if request.method=='POST':
         action=request.POST.get('action')
-        if action=='approve':
-            if request.POST.get('approve')!='on':
+        if action in {'approve', 'check-google'}:
+            if action=='approve' and request.POST.get('approve')!='on':
                 raise Conflict('Approve the allowance and permission to send the selected text to the providers.')
             if run.status=='estimate':
                 exp.comparison_recipes(run)
-                for method in study.METHODS[1:]:
+                try:
                     google_tts.check_access(request.user,run.port.language,
-                        selected_voice=run.prices['google_voices']['en'][method])
-            porting.approve(request.user,run.pk)
+                        selected_voices=[run.prices['google_voices']['en'][m] for m in study.METHODS[1:]])
+                    google_checked = True
+                except google_tts.GoogleAccessError as exc:
+                    google_error = exc
+            if action=='approve' and google_error is None:
+                porting.approve(request.user,run.pk)
+                return redirect('community_dictionary:audio-study-prepare',pk=pk,run_id=run.pk)
         elif action=='open':
             batch=study.freeze(request.user,run)
             return redirect('community_dictionary:evaluation-set',pk=pk,set_id=batch.pk)
         elif action=='resume': exp.resume(request.user,run.pk)
         elif action=='cancel': porting.cancel(request.user,run.pk)
         else: raise Conflict('Unknown study action.')
-        return redirect('community_dictionary:audio-study-prepare',pk=pk,run_id=run.pk)
+        if action not in {'approve','check-google'}:
+            return redirect('community_dictionary:audio-study-prepare',pk=pk,run_id=run.pk)
     items=list(run.items.all())
     counts=Counter(c['status'] for i in items for c in i.result.get('clips',[]))
     return render(request,'community_dictionary/audio_study_prepare.html',context(request,dictionary,True,
         run=run,total=sum(counts.values()),finished=counts['ready']+counts['failed'],failures=counts['failed'],
         planned=sum(len(i.snapshot['words']) for i in items),batch=EvaluationSet.objects.filter(pk=run.pk).first(),
-        voices=[run.port.voice,*[run.prices['google_voices']['en'][m] for m in study.METHODS[1:]]]))
+        voices=[run.port.voice,*[run.prices['google_voices']['en'][m] for m in study.METHODS[1:]]],
+        google_error=google_error,google_checked=google_checked,windows_host=os.name=='nt',
+        google_credential_location=str(google_tts.credential_path()) if google_error else '',
+        google_launcher=str(Path(__file__).resolve().parents[2]/'Connect-Google-TTS.cmd')))
 
 
 class JoinForm(forms.Form):

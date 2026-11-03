@@ -7,6 +7,7 @@ keys. Never log credential contents or provider error messages.
 import json
 import os
 import re
+from functools import partial
 from pathlib import Path
 from decimal import Decimal
 
@@ -29,6 +30,43 @@ VOICES = {
     'zh': {'google_wavenet': 'cmn-CN-Wavenet-A'},
 }
 RATES = {'google_wavenet': Decimal('4'), 'google_neural2': Decimal('16'), 'google_standard': Decimal('4'), 'google_chirp3': Decimal('30')}
+
+
+class GoogleAccessError(Conflict):
+    """Safe, actionable message; never forward provider text or token details."""
+    def __init__(self, code, stage):
+        self.code, self.stage = code, stage
+        messages = {
+            'sign_in': 'Google needs a fresh sign-in on this computer. Run Connect Google TTS on the laptop, then check the connection again.',
+            'permission': 'Google refused this account or project permission. Ask the site administrator to check Google access.',
+            'connection': 'The server could not connect to Google. Check the internet connection and try Check Google connection again.',
+            'voices': 'A selected Google voice is unavailable. Choose an available voice or prepare a new study.',
+            'credentials': 'The application could not load its Google credentials. Check the credential location shown below or ask the site administrator.',
+            'unknown': 'Google access could not be verified. Ask the site administrator to check the connection details below.',
+        }
+        message = messages[code]
+        if code == 'sign_in' and os.name != 'nt':
+            message = 'Google rejected credential renewal. Ask the site administrator to check this server\'s authentication configuration.'
+        super().__init__(message)
+
+
+def access_error(exc, stage):
+    # Examine provider text only for known categories. It must never be returned.
+    from google.auth.exceptions import RefreshError, TransportError
+    from google.api_core import exceptions as api_errors
+    detail = str(exc).lower()
+    if any(x in detail for x in ('reauth', 'invalid_grant', 'invalid_rapt')):
+        code = 'sign_in'
+    elif isinstance(exc, (api_errors.PermissionDenied, api_errors.Unauthenticated)) or any(
+            x in detail for x in ('serviceusage.services.use', 'permission_denied', 'access_denied')):
+        code = 'permission'
+    elif isinstance(exc, (TransportError, api_errors.ServiceUnavailable, api_errors.DeadlineExceeded, TimeoutError)):
+        code = 'connection'
+    elif isinstance(exc, RefreshError):
+        code = 'sign_in'
+    else:
+        code = 'unknown'
+    return GoogleAccessError(code, stage)
 
 
 def project():
@@ -54,12 +92,17 @@ def voice(language, method):
         raise Conflict('No Google voice is configured for this language. Load the available voices in Word audio settings.') from None
 
 
-def credentials():
+def credential_path():
     explicit = settings.COMMUNITY_DICTIONARY_GOOGLE_TTS_ADC_FILE
     root = (Path(os.environ['CLOUDSDK_CONFIG']) if os.environ.get('CLOUDSDK_CONFIG') else
             Path(os.environ.get('APPDATA', str(Path.home() / 'AppData' / 'Roaming'))) / 'gcloud'
             if os.name == 'nt' else Path.home() / '.config' / 'gcloud')
-    path = Path(explicit) if explicit else root / 'application_default_credentials.json'
+    return Path(explicit) if explicit else root / 'application_default_credentials.json'
+
+
+def credentials():
+    explicit = settings.COMMUNITY_DICTIONARY_GOOGLE_TTS_ADC_FILE
+    path = credential_path()
     try:
         info = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -94,26 +137,44 @@ def client():
         from google.cloud import texttospeech
     except ImportError:
         raise Conflict('Install the existing google-cloud-texttospeech project dependency before using this pilot.') from None
-    return texttospeech.TextToSpeechClient(credentials=credentials())
+    try:
+        auth = credentials()
+    except Conflict:
+        raise GoogleAccessError('credentials', 'credential file') from None
+    # Refresh explicitly: gRPC otherwise hides authentication errors inside
+    # ServiceUnavailable, indistinguishable from a network failure to the user.
+    from google.auth.transport.requests import Request
+    from requests import Session
+    try:
+        with Session() as session:
+            auth.refresh(partial(Request(session=session), timeout=30))
+    except Exception as exc:
+        raise access_error(exc, 'sign-in renewal') from None
+    try:
+        return texttospeech.TextToSpeechClient(credentials=auth)
+    except Exception as exc:
+        raise access_error(exc, 'Google connection') from None
 
 
-def check_access(user, language, *, selected_voice=None):
+def check_access(user, language, *, selected_voice=None, selected_voices=None):
     require_access(user)
     code = tts.language_code(language)
-    expected = {'selected':selected_voice} if selected_voice else VOICES.get(code)
+    expected = ({str(i):v for i,v in enumerate(selected_voices)} if selected_voices is not None else
+                {'selected':selected_voice} if selected_voice else VOICES.get(code))
     if not expected:
         raise Conflict('No Google voice is configured for this language. Load the available voices in Word audio settings.')
     connection = client()
     try:
         locale = voice_locale(next(iter(expected.values())))
-        response = connection.list_voices(request={'language_code': locale}, retry=None, timeout=30)
-        available = {v.name for v in response.voices if locale in v.language_codes}
+        locales = {voice_locale(name) for name in expected.values()}
+        response = connection.list_voices(request={'language_code': locale} if len(locales)==1 else {}, retry=None, timeout=30)
+        available = {v.name for v in response.voices if locales.intersection(v.language_codes)}
         if not set(expected.values()) <= available:
-            raise Conflict('A configured Google voice is unavailable. No audio was generated.')
+            raise GoogleAccessError('voices', 'voice availability')
     except Conflict:
         raise
     except Exception as exc:
-        raise Conflict('Google access check failed (' + type(exc).__name__ + '). No audio was generated; credentials are not shown.') from None
+        raise access_error(exc, 'voice listing') from None
     finally:
         connection.transport.close()
 
