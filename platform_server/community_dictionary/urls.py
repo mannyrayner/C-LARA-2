@@ -6,7 +6,7 @@ from django.views.i18n import JavaScriptCatalog
 from . import localisation, google_word_audio
 from .deployment_health import health as deployment_health
 
-from . import evaluation_views, mwe_audio
+from . import evaluation_views, mwe_audio, audio_evaluation_views
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
@@ -14,6 +14,14 @@ from . import writing_views, guided_views, form_jobs, homograph_experiments, aud
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/evaluate/audio-comparison/new/', audio_evaluation_views.start, name='audio-study-start'),
+    path('<int:pk>/evaluate/audio-comparison/prepare/<uuid:run_id>/', audio_evaluation_views.prepare, name='audio-study-prepare'),
+    path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/', audio_evaluation_views.detail, name='audio-study-detail'),
+    path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/session/', audio_evaluation_views.session, name='audio-study-session'),
+    path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/items/<int:item_id>/', audio_evaluation_views.item, name='audio-study-item'),
+    path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/items/<int:item_id>/<str:clip_id>/', audio_evaluation_views.media, name='audio-study-media'),
+    path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/results/', audio_evaluation_views.results, name='audio-study-results'),
+    path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/download/<str:format>/', audio_evaluation_views.results, name='audio-study-export'),
     path('<int:pk>/settings/word-audio/', google_word_audio.settings, name='word-audio-settings'),
     path('<int:pk>/tools/google-word-audio/', google_word_audio.start, name='google-word-audio'),
     path('<int:pk>/tools/review-homograph-audio/', audio_review.home, name='audio-review'),

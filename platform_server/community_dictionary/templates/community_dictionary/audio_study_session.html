@@ -1,0 +1,5 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
+<h1>{{ batch.name }}</h1><p>{{ completed }} / {{ total }} {% translate "items judged" %} · {{ unavailable }} {% translate "changed or unavailable" %}</p>
+<p>{% translate "You have reached the end of the available items. Results remain hidden until the owner closes the study." %}</p>
+{% if not batch.closed_at %}<p>{% translate "You may revisit your answers before the study closes." %}</p><ul>{% for row in rows %}<li><a href="{% url 'community_dictionary:audio-study-item' dictionary.pk batch.pk row.item.pk %}">{{ row.item.snapshot.word.word }}</a>{% if row.done %} · {% translate "Saved" %}{% endif %}</li>{% endfor %}</ul>{% endif %}
+<a href="{% url 'community_dictionary:audio-study-detail' dictionary.pk batch.pk %}">{% translate "Study overview" %}</a>{% endblock %}

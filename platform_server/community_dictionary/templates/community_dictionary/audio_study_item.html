@@ -1,0 +1,11 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
+<p>{{ batch.name }} · {{ number }} / {{ total }}</p><h1>{{ word.word }}</h1><p>{{ word.meaning }}</p>{% if word.context %}<p>{{ word.context }}</p>{% endif %}
+<p>{% translate "First judge correctness, allowing legitimate accents. Minor problem means a small pronunciation issue; Major problem means a wrong or seriously misleading pronunciation. Use Cannot judge when unsure. Voice pleasantness belongs in the preference question below." %}</p>
+<form method="post" class="stack">{% csrf_token %}{{ form.revision }}{{ form.non_field_errors }}
+{% for clip in clips %}<section class="panel"><h2>{{ clip.label }} · {{ word.word }}</h2><p>{{ word.meaning }}</p>
+{% if clip.ready %}<audio style="width:100%;max-width:28rem" controls preload="none" aria-label="{{ word.word }} {{ clip.label }}" src="{% url 'community_dictionary:audio-study-media' dictionary.pk batch.pk item.pk clip.id %}"></audio>
+<p>{{ clip.score.label_tag }}{{ clip.score }}{{ clip.score.errors }}</p><p>{{ clip.comment.label_tag }}{{ clip.comment }}{{ clip.comment.errors }}</p>
+{% else %}<p>{% translate "No usable recording was generated. This failure is counted automatically." %}</p>{% endif %}</section>{% endfor %}
+<section class="panel"><h2>{% translate "Listening preference" %} · {{ word.word }}</h2><p>{% translate "Which version would you prefer as a learner? Replay above if needed. Choose one, select two or three for a tie, or choose None suitable / Cannot choose with no version selected." %}</p>
+<p>{{ form.preference.label_tag }}{{ form.preference }}{{ form.preference.errors }}</p>{{ form.preferred.label_tag }}{{ form.preferred }}{{ form.preferred.errors }}<p>{{ form.preference_comment.label_tag }}{{ form.preference_comment }}{{ form.preference_comment.errors }}</p></section>
+<button>{% translate "Save and continue" %}</button></form><p><a href="{% url 'community_dictionary:audio-study-detail' dictionary.pk batch.pk %}">{% translate "Pause and return to the study" %}</a></p>{% endblock %}

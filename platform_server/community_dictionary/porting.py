@@ -344,7 +344,7 @@ def approve(user, run_id):
     if run.stage == 'homographs' and run.options.get('suite') == 'providers':
         from . import google_tts, homograph_experiments
         homograph_experiments.comparison_recipes(run)
-        current_prices.update(google_tts.comparison_prices(run.port.source))
+        current_prices.update(homograph_experiments.provider_prices(run.port.source, bool(run.options.get('evaluation_study'))))
     if run.options.get('google_batch'):
         from . import google_word_audio
         google_word_audio.check_run(run)

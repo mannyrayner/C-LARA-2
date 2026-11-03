@@ -19,7 +19,7 @@ from django.views.decorators.http import require_http_methods
 
 from . import evaluation as ev
 from .models import (Dictionary, EvaluationItem, EvaluationProgress, EvaluationRating,
-                     EvaluationSession, EvaluationSet, LanguageCompetence)
+                     EvaluationSession, EvaluationSet, LanguageCompetence, PortRun)
 from .permissions import dictionaries_for, is_editor, require_owner
 from .services import Conflict
 from .views import fail, private_media_response
@@ -111,8 +111,12 @@ def home(request, pk):
         batches = batches.filter(allow_visitors=True)
     sessions = {s.evaluation_set_id: s for s in EvaluationSession.objects.filter(user=request.user, evaluation_set__dictionary=dictionary)}
     rows = [{'batch': b, 'session': sessions.get(b.pk)} for b in batches[:100]]
+    from .tts import language_code
+    preparing = (PortRun.objects.filter(port__source=dictionary, port__user=request.user,
+        options__evaluation_study__rubric='word-audio-provider-study-v1')
+        .exclude(pk__in=dictionary.evaluation_sets.values('pk'))[:20]) if dictionary.owner_id==request.user.pk else []
     return render(request, 'community_dictionary/evaluation_home.html', context(request, dictionary, member,
-        rows=rows, form=form))
+        rows=rows, form=form, audio_study_supported=language_code(dictionary.language)=='en', preparing=preparing))
 
 
 class SessionForm(forms.Form):
@@ -140,6 +144,8 @@ def competence_display(snapshot):
 @page(['GET', 'POST'])
 def detail(request, pk, set_id):
     batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
+    if batch.rubric=='word-audio-provider-study-v1':
+        return redirect('community_dictionary:audio-study-detail',pk=pk,set_id=set_id)
     dictionary, member = ev.access(request.user, pk, batch)
     existing = EvaluationSession.objects.filter(evaluation_set=batch, user=request.user).first()
     competence = ev.competence_snapshot(request.user, batch)
@@ -169,6 +175,8 @@ def detail(request, pk, set_id):
 @page(['GET'])
 def session(request, pk, set_id):
     batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
+    if batch.rubric=='word-audio-provider-study-v1':
+        return redirect('community_dictionary:audio-study-session',pk=pk,set_id=set_id)
     dictionary, member = ev.access(request.user, pk, batch)
     attempt = get_object_or_404(EvaluationSession, evaluation_set=batch, user=request.user, evaluator_kind='human')
     items = list(batch.items.all())
@@ -221,6 +229,8 @@ def item(request, pk, set_id, item_id):
         Dictionary.objects.select_for_update().filter(pk=pk).first()
     batches = EvaluationSet.objects.select_for_update() if request.method == 'POST' else EvaluationSet.objects
     batch = get_object_or_404(batches, pk=set_id, dictionary_id=pk)
+    if batch.rubric=='word-audio-provider-study-v1':
+        return redirect('community_dictionary:audio-study-item',pk=pk,set_id=set_id,item_id=item_id)
     dictionary, member = ev.access(request.user, pk, batch)
     attempt = get_object_or_404(EvaluationSession, evaluation_set=batch, user=request.user, evaluator_kind='human')
     record = get_object_or_404(EvaluationItem, pk=item_id, evaluation_set=batch)
@@ -279,6 +289,8 @@ def item(request, pk, set_id, item_id):
 @page(['GET'])
 def media(request, pk, set_id, item_id, contribution_id):
     batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
+    if batch.rubric=='word-audio-provider-study-v1':
+        raise Http404
     dictionary, member = ev.access(request.user, pk, batch)
     record = get_object_or_404(EvaluationItem, pk=item_id, evaluation_set=batch)
     if (not batch.sessions.filter(user=request.user).exists() and dictionary.owner_id != request.user.pk):
@@ -322,6 +334,9 @@ def csv_cell(value):
 @page(['GET'])
 def results(request, pk, set_id, download=False):
     batch = get_object_or_404(EvaluationSet.objects.select_related('dictionary'), pk=set_id, dictionary_id=pk)
+    if batch.rubric=='word-audio-provider-study-v1':
+        return redirect('community_dictionary:audio-study-export' if download else 'community_dictionary:audio-study-results',
+                        pk=pk,set_id=set_id,**({'format':'csv'} if download else {}))
     dictionary, member = ev.access(request.user, pk, batch)
     require_owner(request.user, dictionary)
     if not batch.closed_at:
@@ -391,6 +406,8 @@ def results(request, pk, set_id, download=False):
 @page(['POST'])
 def repeat_audio(request, pk, set_id):
     batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
+    if batch.rubric=='word-audio-provider-study-v1':
+        raise Conflict('Create a new provider study from Evaluate; an existing study cannot be regenerated.')
     dictionary, member = ev.access(request.user, pk, batch)
     require_owner(request.user, dictionary)
     try:

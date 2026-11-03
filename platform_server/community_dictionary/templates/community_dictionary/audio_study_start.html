@@ -1,0 +1,8 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
+<h1>{% translate "Prepare an English word audio study" %}</h1>
+<p>{% translate "Each item gets one new recording from the current OpenAI word pipeline, Google WaveNet and Google Neural2. No dictionary audio is replaced. You approve the cost separately before generation." %}</p>
+<p>{% translate "A random sample estimates quality in this dictionary. Expressions and forms are separate challenge sets: do not pool them with the random sample. Sampling is without replacement; fewer items are used if the eligible population is smaller." %}</p>
+<p>{% translate "Default: 100 items, 300 recordings. Start with 3–5 items to check the workflow. Evaluators receive the same recordings, in independently randomized orders. Their ratings and method labels stay hidden until the owner closes the study." %}</p>
+<form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button>{% translate "Create estimate — no generation yet" %}</button></form>
+<p><a href="{% url 'community_dictionary:evaluation-home' dictionary.pk %}">{% translate "Back to Evaluate" %}</a></p>
+{% endblock %}
