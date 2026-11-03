@@ -74,7 +74,8 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(self.metrics()['open_sessions'], 1)
         with self.assertRaises(log.Invalid):
             self.start()
-        self.journal.stop(self.feature, session, 'Interrupted; actual end unknown.', unknown=True)
+        stopped = self.journal.stop(self.feature, session, 'Interrupted; actual end unknown.', unknown=True)
+        self.assertEqual(stopped['source'],'assistant_note')
         self.assertEqual(self.metrics()['unknown_ended_sessions'], 1)
         self.assertEqual(self.metrics()['elapsed_seconds']['assistant_response'], 0)
         self.start()
