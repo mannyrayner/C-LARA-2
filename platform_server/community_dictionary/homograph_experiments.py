@@ -6,6 +6,7 @@ comparison is current enriched guidance versus native carrier + extraction,
 not carrier + guidance. Ratings never enter either generation prompt.
 """
 import csv
+import random
 import secrets
 import uuid
 from collections import Counter
@@ -54,11 +55,23 @@ def methods_for(run):
             if is_comparison(run) else METHODS)
 
 
+def provider_prices(dictionary, study=False):
+    prices = google_tts.comparison_prices(dictionary)
+    if study:
+        # Supplement only this study; do not invalidate other languages' live runs
+        # by changing the application's global trial-voice catalogue.
+        voices = dict(prices['google_voices'].get('en',{}))
+        voices.setdefault('google_neural2','en-GB-Neural2-F')
+        prices['google_voices'] = {**prices['google_voices'],'en':voices}
+        prices['speech_model'] = tts.MODEL
+    return prices
+
+
 def comparison_recipes(run):
     if is_comparison(run):
         google_tts.require_access(run.port.user)
         if (run.options.get('comparison_version') != COMPARISON_VERSION or
-                any(run.prices.get(k) != v for k, v in google_tts.comparison_prices(run.port.source).items())):
+                any(run.prices.get(k) != v for k, v in provider_prices(run.port.source, bool(run.options.get('evaluation_study'))).items())):
             raise Conflict('Google comparison configuration changed. Create a fresh estimate.')
 
 
@@ -114,6 +127,15 @@ def candidate(part, *, for_review=False, comparison=False, loaded=None):
 
 
 def candidates(dictionary, *, for_review=False, comparison=False):
+    if comparison:
+        from .audio_review_data import ReviewData
+        loaded = ReviewData(dictionary)
+        result = [row for part in loaded.selected.values()
+                  if (row := candidate(part, comparison=True, loaded=loaded))]
+        unique = {}
+        for row in sorted(result, key=lambda r:r['id']):
+            unique.setdefault((row['word'], row['meaning'], row['kind']), row)
+        return sorted(unique.values(), key=lambda r:(r['word'].casefold(), r['meaning'], r['id']))
     parts = Contribution.objects.filter(entry__dictionary=dictionary, entry__archived=False,
         status='accepted', kind__in=['text','form']).select_related(
             'entry__dictionary','entry__current_text','entry__current_meaning')
@@ -150,11 +172,11 @@ def clip_allowance(word, language, prices, method):
 
 
 @transaction.atomic
-def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comparison=False, sampling='manual', sample_size=30):
+def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comparison=False, sampling='manual', sample_size=30, study=None):
     porting.locks(); require_owner(user, dictionary)
     old = PortRun.objects.filter(pk=token, port__source=dictionary, port__user=user, stage=STAGE).first()
     if old:
-        if is_comparison(old) != comparison:
+        if is_comparison(old) != comparison or bool(old.options.get('evaluation_study')) != bool(study):
             raise Conflict('Reload the experiment form.')
         return old
     if PortRun.objects.filter(pk=token).exists():
@@ -169,19 +191,21 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comp
     selected = set(map(int, selected))
     available = {r['id']:r for r in candidates(dictionary, comparison=comparison)}
     population = len(available)
+    seed = secrets.token_hex(16)
+    pool = sorted(available)
+    limit = 100 if study else MAX_COMPARISON if comparison else MAX_SELECTION
     if comparison and sampling != 'manual':
-        if sampling not in {'random', 'homographs', 'expressions', 'forms'} or not 1 <= sample_size <= MAX_COMPARISON:
-            raise Conflict('Choose a listed sample type and between 1 and 60 items.')
+        if sampling not in {'random', 'homographs', 'expressions', 'forms'} or not 1 <= sample_size <= limit:
+            raise Conflict(f'Choose a listed sample type and between 1 and {limit} items.')
         pool = [r['id'] for r in available.values() if sampling == 'random' or
             (sampling == 'homographs' and comparison_homograph(r, dictionary.language)) or
             (sampling == 'expressions' and carrier.eligible(r['word'], dictionary.language)) or
             (sampling == 'forms' and r['kind'] == 'form')]
         population = len(pool)
-        selected = set(secrets.SystemRandom().sample(pool, min(sample_size, population)))
-    limit = MAX_COMPARISON if comparison else MAX_SELECTION
+        selected = set(random.Random(seed).sample(sorted(pool), min(sample_size, population)))
     if not 1 <= len(selected) <= limit or not selected.issubset(available):
         raise Conflict(f'Choose between 1 and {limit} currently available words or forms.')
-    if comparison and len(selected) * repeats * (1 + len(google_tts.voices_for(dictionary))) > 450:
+    if comparison and len(selected) * repeats * (3 if study else 1 + len(google_tts.voices_for(dictionary))) > 450:
         raise Conflict('Choose fewer items or takes: at most 450 recordings can be rated in one experiment.')
     model, key, personal, prices = photo_ai.configuration(user)
     port = LanguagePort.objects.create(source=dictionary, user=user, is_audio_batch=True,
@@ -195,10 +219,16 @@ def quote(user, dictionary, token, selected, repeats=2, voice=tts.VOICE, *, comp
                 'repeats':repeats, 'revealed':False, 'ratings_revision':0},
         payer=porting.payer_now(user), expires_at=timezone.now()+timedelta(hours=1))
     if comparison:
-        run.prices.update(google_tts.comparison_prices(dictionary))
+        run.prices.update(provider_prices(dictionary, bool(study)))
         run.options.update(suite='providers', comparison_version=COMPARISON_VERSION,
-            methods=['openai', *google_tts.voices_for(dictionary)],
+            methods=['openai', *run.prices['google_voices'][tts.language_code(dictionary.language)]],
             sampling=sampling, population=population)
+    if study:
+        wanted = ['openai','google_wavenet','google_neural2']
+        if not comparison or tts.language_code(dictionary.language) != 'en' or not set(wanted).issubset(run.options['methods']):
+            raise Conflict('This first study requires English and WaveNet/Neural2 trial voices.')
+        run.options.update(evaluation_study=study, methods=wanted, sampling_seed=seed,
+                           population_ids=sorted(pool), requested_sample_size=sample_size)
     grouped = {}
     for pk in sorted(selected):
         row = available[pk]
@@ -471,6 +501,8 @@ def visible_items(run):
 def save_ratings(run_id, data, *, reveal=False):
     porting.locks()
     run = PortRun.objects.select_for_update().get(pk=run_id, stage=STAGE)
+    if run.options.get('evaluation_study'):
+        raise Conflict('Use the independent sessions under Evaluate for this study.')
     if not run.settled or run.status != 'complete':
         raise Conflict('Wait for generation to finish before rating.')
     if str(run.options['ratings_revision']) != data.get('revision'):
@@ -539,6 +571,8 @@ def paired_summary(run, rows):
 @page(['GET','POST'])
 def detail(request, pk, run_id):
     dictionary, run = owner_run(request, pk, run_id)
+    if run.options.get('evaluation_study'):
+        return redirect('community_dictionary:audio-study-prepare', pk=pk, run_id=run.pk)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'approve':
@@ -575,6 +609,8 @@ def detail(request, pk, run_id):
 @page(['GET'])
 def media(request, pk, run_id, item_id, clip_id):
     dictionary, run = owner_run(request, pk, run_id)
+    if run.options.get('evaluation_study'):
+        raise Http404
     item = get_object_or_404(PortItem, pk=item_id, run=run)
     item.run = run
     current_item(item)
@@ -596,6 +632,8 @@ def csv_safe(value):
 @page(['GET'])
 def export(request, pk, run_id):
     dictionary, run = owner_run(request, pk, run_id)
+    if run.options.get('evaluation_study'):
+        raise Conflict('Close the study under Evaluate before exporting its independent ratings.')
     if not run.options['revealed']:
         raise Conflict('Save ratings and reveal methods before exporting.')
     response = HttpResponse(content_type='text/csv; charset=utf-8')
