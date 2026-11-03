@@ -40,6 +40,40 @@ Judging, pausing and downloading make no AI calls. Preparing/generating a study
 is separate from judging it. No workflow is dispatched merely by committing the
 code or updating the release request.
 
+### Google sign-in on the Windows laptop
+
+The preparation page has **Check Google connection**, which verifies the selected
+voices without generating audio or reserving credit. A failure keeps the study
+on the page and distinguishes sign-in renewal, network/permission problems and
+unavailable voices. **Connection details** shows the credential path actually
+used by the server, without exposing credential contents.
+
+If Google requests sign-in, open the repository folder in Windows File Explorer
+and double-click **Connect-Google-TTS.cmd**. Select the authorised Google account
+in the browser (for this project, `mannyrayner@c-lara.org`). The launcher forces a
+fresh login, updates the application credentials in their configured directory,
+sets the quota project and checks the English voices. Return to the study and
+click **Check Google connection**, then approve generation when ready.
+
+This uses the installed Google Cloud CLI and existing Windows Python. It does
+not require switching shells, copying credentials, restarting the server, or
+generating an API key. If Google cannot open a browser, its CLI displays a URL;
+complete that login in a trusted browser and return its code only to the CLI.
+The launcher reports failures and stops; it never claims success after a failed
+login or replaces federation credentials. A custom-named ADC file needs an
+administrator check. The existing Google project and permission policies are
+unchanged. Google can still require another browser login when a Workspace
+session expires. The exact session policy is not inferred from the error alone.
+
+AWS continues to use federation and does not use this Windows launcher.
+If the web check still fails after the launcher succeeds, compare its credential
+location with the path under the page's Connection details and report the stage
+and category. Do not upload the credential file. If the estimate has expired,
+prepare a new estimate before authorising generation.
+
+Google documents [`gcloud auth login --force --update-adc`](https://docs.cloud.google.com/sdk/gcloud/reference/auth/login)
+and [reauthentication of local ADC](https://docs.cloud.google.com/docs/authentication/reauthentication).
+
 ## Initial English protocol
 
 Use a new study of **100 randomly sampled lexical items**, or all eligible items
