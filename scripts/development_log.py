@@ -281,7 +281,7 @@ class Journal:
         return self.append(feature, 'work_stopped', summary, data={'session_id':session},
             occurred_at=None if unknown else at or self.clock(),
             timing='unknown' if unknown else 'reported_exact' if at else 'observed',
-            source='human_report' if at or human or unknown else 'local_clock',
+            source='human_report' if at or human else 'assistant_note' if unknown else 'local_clock',
             actor='human' if human else 'assistant')
 
     def import_receipt(self, feature, receipt, retrospective=False):
