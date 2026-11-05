@@ -218,8 +218,11 @@ class EvaluationTests(TestCase):
         item = batch.items.first()
         html = self.client.get(self.item_url(batch)).content.decode()
         panels = re.findall(r'<fieldset[^>]*data-evaluation-dimension="([^"]+)"[^>]*>(.*?)</fieldset>', html, re.S)
-        self.assertEqual(len(panels), 9)
+        self.assertEqual(len(panels), 11)
         for dimension, panel in panels:
+            if dimension == 'form_audio':
+                self.assertIn('Missing material at sampling', panel)
+                continue
             material, question = panel.split('<select', 1)
             self.assertIn('Katten ligger på soffan.', material)
             self.assertIn('Choose a judgement', question)
@@ -440,7 +443,7 @@ class EvaluationTests(TestCase):
         response = self.owner_client.get(url('evaluation-export', self.dictionary.pk, batch.pk))
         self.assertIn('no-store', response['Cache-Control'])
         rows = list(csv.DictReader(io.StringIO(response.content.decode())))
-        self.assertEqual({r['evaluator'] for r in rows}, {'R1', 'R2'})
+        self.assertEqual({r['evaluator'] for r in rows if r['score']}, {'R1', 'R2'})
         self.assertIn("'=DANGEROUS()", {r['comment'] for r in rows})
         self.assertNotContains(response, self.member.username)
         self.assertNotContains(response, '.wav')
@@ -462,10 +465,13 @@ class EvaluationTests(TestCase):
         self.close(batch)
         response = self.owner_client.get(url('evaluation-export', self.dictionary.pk, batch.pk))
         rows = list(csv.DictReader(io.StringIO(response.content.decode())))
-        self.assertEqual(len(rows), 9)
+        self.assertEqual(len(rows), 11)
         self.assertTrue(all(r['entry_type'] == 'sentence' and r['entry_text'] == 'Katten ligger på soffan.'
                             and r['entry_translation'] == 'The cat is on the sofa.' for r in rows))
-        self.assertTrue(all(r['score'] == 'ok' and r['explanation_listening'] == '3' for r in rows))
+        self.assertTrue(all(r['score'] == 'ok' and r['explanation_listening'] == '3'
+                            for r in rows if r['dimension'] != 'form_audio'))
+        self.assertTrue(all(r['missing_material'] == 'True' and r['score'] == ''
+                            for r in rows if r['dimension'] == 'form_audio'))
         vocabulary = next(r for r in rows if r['dimension'] == 'vocabulary')
         self.assertEqual(vocabulary['extracted_vocabulary'], 'katt (Katten) — cat\nsoffa (soffan) — sofa, couch')
         self.assertEqual(vocabulary['word_text'], '')

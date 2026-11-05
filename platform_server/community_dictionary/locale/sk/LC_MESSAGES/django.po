@@ -6970,3 +6970,35 @@ msgstr "Pred uložením poznámok ku kontrole počkajte na dokončenie generovan
 
 msgid "You can leave and return through Tools. Existing dictionary audio remains available."
 msgstr "Môžete odísť a vrátiť sa cez Nástroje. Existujúci zvuk v slovníku zostáva dostupný."
+
+# Inflected-form evaluation
+msgid "Inflected-form audio"
+msgstr "Zvuk ohýbaných tvarov"
+
+# Inflected-form evaluation
+msgid "Listen: does it pronounce the displayed form correctly as used in this sentence? Judge the form, not the dictionary lemma. Accept legitimate regional varieties."
+msgstr "Počúvajte: je zobrazený tvar vyslovený správne v zmysle tejto vety? Hodnoťte tvar, nie slovníkovú lemu. Akceptujte platné regionálne varianty."
+
+# Inflected-form evaluation
+msgid "Dictionary lemma:"
+msgstr "Slovníková lema:"
+
+# Inflected-form evaluation
+msgid "Form to listen to:"
+msgstr "Tvar na vypočutie:"
+
+# Inflected-form evaluation
+msgid "Inflected-form audio: %(count)s targets, including %(missing)s missing recordings."
+msgstr "Zvuk ohýbaných tvarov: %(count)s položiek, z toho %(missing)s chýbajúcich nahrávok."
+
+# Inflected-form evaluation
+msgid "Forms identical to the lemma are covered by word audio. Separated expressions are heard in the sentence."
+msgstr "Tvary zhodné s lemou sú zahrnuté v hodnotení zvuku slov. Nesúvislé výrazy počujete vo vete."
+
+# Inflected-form evaluation
+msgid "This earlier set does not assess inflected-form audio separately. Create a new sentence-page set to include it."
+msgstr "Táto staršia sada nehodnotí zvuk ohýbaných tvarov samostatne. Ak ho chcete zahrnúť, vytvorte novú sadu stránok viet."
+
+# Inflected-form evaluation
+msgid "Create a new word-audio-only set using the same dictionary lemmas and their current recordings. This does not repeat inflected-form audio. Existing ratings remain unchanged."
+msgstr "Vytvorte novú sadu na hodnotenie zvuku s rovnakými slovníkovými lemami a ich aktuálnymi nahrávkami. Zvuk ohýbaných tvarov sa neopakuje. Existujúce hodnotenia zostanú nezmenené."

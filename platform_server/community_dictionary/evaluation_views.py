@@ -149,7 +149,8 @@ def detail(request, pk, set_id):
     dictionary, member = ev.access(request.user, pk, batch)
     existing = EvaluationSession.objects.filter(evaluation_set=batch, user=request.user).first()
     competence = ev.competence_snapshot(request.user, batch)
-    eligible = ev.eligible_dimensions(competence, batch.scope)
+    present = set(batch.units.values_list('dimension', flat=True))
+    eligible = [dim for dim in ev.eligible_dimensions(competence, batch.scope) if dim in present]
     form = SessionForm(request.POST if request.method == 'POST' else None, eligible=eligible)
     if request.method == 'POST':
         with transaction.atomic():
@@ -168,6 +169,9 @@ def detail(request, pk, set_id):
                 return redirect('community_dictionary:evaluation-session', pk=pk, set_id=batch.pk)
     return render(request, 'community_dictionary/evaluation_set.html', context(request, dictionary, member,
         batch=batch, session=existing, eligible=eligible, form=form, repeat_token=uuid.uuid4(),
+        forms_covered=batch.rubric == ev.RUBRIC and batch.scope == 'sentences',
+        form_count=batch.units.filter(dimension='form_audio').count(),
+        missing_form_count=batch.units.filter(dimension='form_audio', missing=True).count(),
         competence_rows=competence_display(existing.competences if existing else competence),
         item_count=batch.items.count(), participant_count=batch.sessions.count()))
 
@@ -181,7 +185,7 @@ def session(request, pk, set_id):
     attempt = get_object_or_404(EvaluationSession, evaluation_set=batch, user=request.user, evaluator_kind='human')
     items = list(batch.items.all())
     available = ev.available_items(items, dictionary)
-    live = ev.graph(dictionary)
+    live = ev.graph_for_set(batch)
     progress = {p.item_id: p for p in attempt.progress.all()}
     next_item = None
     rows = []
@@ -201,7 +205,10 @@ def session(request, pk, set_id):
 
 
 def unit_word(unit, snapshot):
-    return snapshot['words'][unit.word_index] if unit.word_index is not None else snapshot['entry']
+    word = snapshot['words'][unit.word_index] if unit.word_index is not None else snapshot['entry']
+    if unit.dimension == 'form_audio':
+        return {**word['form'], 'lemma': word['text'], 'lemma_meaning': word['meaning']}
+    return word
 
 
 class RatingForm(forms.Form):
@@ -236,7 +243,7 @@ def item(request, pk, set_id, item_id):
     record = get_object_or_404(EvaluationItem, pk=item_id, evaluation_set=batch)
     if record.pk not in ev.available_items([record], dictionary):
         raise Http404
-    if not ev.is_current(record, ev.graph(dictionary)):
+    if not ev.is_current(record, ev.graph_for_set(batch)):
         raise Conflict('This page has changed since it was sampled. Earlier ratings are preserved. Return to your session and continue with another page; use a new set to assess the changed version.')
     if batch.closed_at:
         raise Conflict('This evaluation set is closed. Your saved ratings are retained.')
@@ -277,8 +284,9 @@ def item(request, pk, set_id, item_id):
         rows.append({'unit': unit, 'label': ev.DIMENSIONS[unit.dimension][0],
             'help': ev.DIMENSIONS[unit.dimension][1], 'word': word,
             'word_task': unit.dimension.startswith('word_'),
+            'form_task': unit.dimension == 'form_audio',
             'show_image': unit.dimension in {'image', 'translation', 'vocabulary', 'word_translation'},
-            'audio_task': unit.dimension in {'sentence_audio', 'word_audio'},
+            'audio_task': unit.dimension in {'sentence_audio', 'word_audio', 'form_audio'},
             'score': form[f'score_{unit.pk}'] if not unit.missing else None,
             'comment': form[f'comment_{unit.pk}'] if not unit.missing else None})
     return render(request, 'community_dictionary/evaluation_item.html', context(request, dictionary, member,
@@ -298,7 +306,7 @@ def media(request, pk, set_id, item_id, contribution_id):
     if record.pk not in ev.available_items([record], dictionary):
         raise Http404
     # Do not expose retired accepted content to non-members through a saved URL.
-    if not member and not ev.is_current(record, ev.graph(dictionary)):
+    if not member and not ev.is_current(record, ev.graph_for_set(batch)):
         raise Http404
     part = ev.references(record.snapshot).get(contribution_id)
     if not part or part['kind'] not in {'audio', 'image'} or not part['path']:
@@ -352,7 +360,8 @@ def results(request, pk, set_id, download=False):
             'target_variety', 'experience', 'score', 'comment',
             'entry_type', 'entry_text', 'entry_translation', 'word_entry_id', 'word_text',
             'word_translation', 'word_form_in_sentence', 'extracted_vocabulary', 'explanation_listening',
-            'audio_contribution_id', 'based_on_set_id', 'scope', 'mwe_only'])
+            'audio_contribution_id', 'based_on_set_id', 'scope', 'mwe_only',
+            'audio_text', 'form_contribution_id', 'form_translation', 'form_link_id'])
         by_unit = {}
         for rating in data['ratings']:
             by_unit.setdefault(rating.unit_id, []).append(rating)
@@ -363,7 +372,11 @@ def results(request, pk, set_id, download=False):
             # Export the material that was judged, not its possibly edited live text.
             # result_data has already applied the source-access/withdrawal checks.
             entry = snap['entry']
-            word = unit_word(unit, snap) if unit.dimension.startswith('word_') else None
+            word = (snap['words'][unit.word_index] if unit.word_index is not None else entry
+                ) if unit.dimension.startswith('word_') or unit.dimension == 'form_audio' else None
+            material = unit_word(unit, snap)
+            audio_task = unit.dimension in {'word_audio', 'sentence_audio', 'form_audio'}
+            form = word['form'] if unit.dimension == 'form_audio' else {}
             vocabulary = ''
             if unit.dimension == 'vocabulary':
                 vocabulary = '\n'.join(
@@ -384,8 +397,10 @@ def results(request, pk, set_id, download=False):
                     word['text'] if word else '', word['meaning'] if word else '',
                     word.get('surface', '') if word else '', vocabulary,
                     skills.get('explanation', {}).get('listening', ''),
-                    ((word if word else entry).get('audio') or {}).get('id', '') if unit.dimension in {'word_audio','sentence_audio'} else '',
-                    batch.based_on_id or '', batch.scope, batch.mwe_only]
+                    (material.get('audio') or {}).get('id', '') if audio_task else '',
+                    batch.based_on_id or '', batch.scope, batch.mwe_only,
+                    material['text'] if audio_task else '',
+                    (form.get('text_part') or {}).get('id', ''), form.get('meaning', ''), form.get('link_id', '')]
                 writer.writerow([csv_cell(value) for value in values])
         response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="dictionary-evaluation-{batch.pk}.csv"'

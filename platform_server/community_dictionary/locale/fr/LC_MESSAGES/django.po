@@ -7063,3 +7063,35 @@ msgstr "Attendez la fin de la génération pour enregistrer des notes de révisi
 
 msgid "You can leave and return through Tools. Existing dictionary audio remains available."
 msgstr "Vous pouvez quitter cette page et y revenir par Outils. L’audio existant du dictionnaire reste disponible."
+
+# Inflected-form evaluation
+msgid "Inflected-form audio"
+msgstr "Audio des formes fléchies"
+
+# Inflected-form evaluation
+msgid "Listen: does it pronounce the displayed form correctly as used in this sentence? Judge the form, not the dictionary lemma. Accept legitimate regional varieties."
+msgstr "Écoutez : la forme affichée est-elle prononcée correctement dans le sens de cette phrase ? Évaluez la forme, et non le lemme du dictionnaire. Acceptez les variantes régionales légitimes."
+
+# Inflected-form evaluation
+msgid "Dictionary lemma:"
+msgstr "Lemme du dictionnaire :"
+
+# Inflected-form evaluation
+msgid "Form to listen to:"
+msgstr "Forme à écouter :"
+
+# Inflected-form evaluation
+msgid "Inflected-form audio: %(count)s targets, including %(missing)s missing recordings."
+msgstr "Audio des formes fléchies : %(count)s éléments, dont %(missing)s enregistrements manquants."
+
+# Inflected-form evaluation
+msgid "Forms identical to the lemma are covered by word audio. Separated expressions are heard in the sentence."
+msgstr "Les formes identiques au lemme sont couvertes par l’audio des mots. Les expressions discontinues sont écoutées dans la phrase."
+
+# Inflected-form evaluation
+msgid "This earlier set does not assess inflected-form audio separately. Create a new sentence-page set to include it."
+msgstr "Cet ancien ensemble n’évalue pas séparément l’audio des formes fléchies. Créez un nouvel ensemble de pages de phrases pour l’inclure."
+
+# Inflected-form evaluation
+msgid "Create a new word-audio-only set using the same dictionary lemmas and their current recordings. This does not repeat inflected-form audio. Existing ratings remain unchanged."
+msgstr "Créez un nouvel ensemble d’évaluation audio avec les mêmes lemmes et leurs enregistrements actuels. L’audio des formes fléchies n’est pas repris. Les évaluations existantes restent inchangées."
