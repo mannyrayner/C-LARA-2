@@ -46,9 +46,11 @@ aspects at its start; later profile changes do not rewrite earlier sessions.
 
 ## Rubric and sampling
 
-Seven dimensions: sentence/image match, sentence grammaticality/naturalness,
+New sentence-page sets use rubric `community-quality-v2` with eight dimensions:
+sentence/image match, sentence grammaticality/naturalness,
 sentence audio, sentence translation, vocabulary extraction (including MWEs and
-important omissions), word translation in context, and word audio. Accept plausible
+important omissions), word translation in context, word/lemma audio, and
+**inflected-form audio**. Accept plausible
 alternative picture descriptions and legitimate language varieties. The rubric
 has brief examples on each evaluation page.
 
@@ -77,6 +79,30 @@ with the first sampled sentence supplying its context. Deduplication uses the wo
 entry (sense), exact component versions and languages, never spelling alone. This
 avoids counting the same recording ten times; it does not evaluate every possible
 context for a shared word sense.
+
+Inflected-form questions display the sentence, dictionary lemma, actual surface
+form and its contextual translation (when present), immediately before playing
+the form's own recording. They never substitute lemma audio for absent form audio.
+Forms that differ only in capitalization/normalization use the lemma question;
+discontinuous expressions (marked with an ellipsis) remain in the whole-sentence
+audio task rather than being scored as missing isolated audio. Current continuous
+forms without a current recording, including forms whose metadata has not yet
+been added, are reported as missing. The set page shows form-target and missing
+counts before evaluation begins.
+
+Form targets retain their sentence occurrence and exact contribution versions.
+Separate occurrence recordings are distinct units, even if the spelling matches
+or one recording was copied from another; these are not independent lexical
+observations. Word-page and word-audio-only sets still assess dictionary lemmas.
+The existing audio-follow-up action repeats lemma targets only; create a new
+sentence-page set to assess changed form recordings.
+
+Previously created `community-quality-v1` sets retain their seven dimensions,
+snapshots and ratings. Re-exporting them cannot add form judgements retrospectively.
+Choose **Evaluate → Create an evaluation set → Sentence pages and their vocabulary**
+and select **Inflected-form audio** when starting a new session. Target-language
+reading and listening competence are required. Both evaluators should use the
+same set and select this aspect to obtain overlapping form judgements.
 
 ## Privacy and contribution withdrawal
 
@@ -130,6 +156,15 @@ including when the live dictionary has subsequently changed. Re-exporting an
 existing closed set adds these columns without reopening it or changing ratings.
 Source withdrawal still withholds the affected rows. No media paths or evaluator
 account names are added.
+
+Additional appended columns identify form-audio judgements: `audio_text` is the
+actual text being pronounced (for every audio dimension), `form_contribution_id`
+identifies the sampled form record, `form_translation` preserves its contextual
+gloss, and `form_link_id` identifies its sentence occurrence. `word_text` remains
+the lemma, `word_form_in_sentence` remains the surface form, and
+`audio_contribution_id` identifies the form recording for `form_audio` rows.
+Missing/unrated form units remain in the CSV without a fabricated score. Form
+statistics and agreement appear separately from lemma and sentence audio.
 
 The first version supplies no confidence intervals,
 automatic adjudication or proficiency weighting. Withdrawn-source exclusions and

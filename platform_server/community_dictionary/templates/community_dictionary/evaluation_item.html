@@ -17,7 +17,7 @@
   {% csrf_token %}{{ form.revision }}{{ form.non_field_errors }}
   {% for row in rows %}
   <fieldset class="panel" data-evaluation-dimension="{{ row.unit.dimension }}">
-    <legend>{{ row.label }}{% if row.word_task %}: {{ row.word.text }}{% endif %}</legend>
+    <legend>{{ row.label }}{% if row.word_task or row.form_task %}: {{ row.word.text }}{% endif %}</legend>
     <div class="evaluation-material">
       <div{% if row.show_image %} class="entry-layout"{% endif %}>
         {% if row.show_image %}
@@ -34,6 +34,10 @@
           {% if row.word_task %}
           <p>{% blocktranslate with language=batch.language %}{{ language }} word or expression:{% endblocktranslate %} <strong dir="{{ dictionary.text_direction }}">{{ row.word.text }}</strong></p>
           {% if row.word.surface and row.word.surface != row.word.text %}<p>{% translate "Form in the sentence:" %} <span dir="{{ dictionary.text_direction }}">{{ row.word.surface }}</span></p>{% endif %}
+          {% endif %}
+          {% if row.form_task %}
+          <p>{% translate "Dictionary lemma:" %} <span dir="{{ dictionary.text_direction }}">{{ row.word.lemma }}</span>{% if row.word.lemma_meaning %} — <span dir="auto">{{ row.word.lemma_meaning }}</span>{% endif %}</p>
+          <p>{% translate "Form to listen to:" %} <strong dir="{{ dictionary.text_direction }}">{{ row.word.text }}</strong>{% if row.word.meaning %} — <span dir="auto">{{ row.word.meaning }}</span>{% endif %}</p>
           {% endif %}
           {% if row.unit.dimension == 'translation' %}
           <p>{% if batch.explanation_language %}{{ batch.explanation_language }}{% else %}{% translate "Translation" %}{% endif %}: <span dir="auto">{% if root.meaning %}{{ root.meaning }}{% else %}{% translate "No translation available" %}{% endif %}</span></p>

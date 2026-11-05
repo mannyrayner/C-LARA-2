@@ -11,10 +11,12 @@ import json
 import random
 import unicodedata
 import uuid
+from types import SimpleNamespace
 
 from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from . import public_browsing as public
 from .models import (Contribution, Dictionary, Entry, EvaluationItem, EvaluationSet,
@@ -23,7 +25,7 @@ from .models import (Contribution, Dictionary, Entry, EvaluationItem, Evaluation
 from .permissions import dictionaries_for, require_owner
 from .services import Conflict
 
-RUBRIC = 'community-quality-v1'
+RUBRIC = 'community-quality-v2'
 DIMENSIONS = {
     'image': ('Sentence and image', 'Does the picture support the description? Several different descriptions can be valid.'),
     'language': ('Sentence language', 'Is the sentence grammatical and reasonably natural? Accept legitimate regional varieties.'),
@@ -32,6 +34,7 @@ DIMENSIONS = {
     'vocabulary': ('Extracted vocabulary', 'Check the complete list: lemmas, senses, multi-word expressions and important omissions. Not every function word needs its own entry.'),
     'word_translation': ('Word translation', 'Is the translation appropriate for this word or expression in the example sentence?'),
     'word_audio': ('Word audio', 'Listen: does it pronounce the displayed word or expression correctly in this language?'),
+    'form_audio': (_('Inflected-form audio'), _('Listen: does it pronounce the displayed form correctly as used in this sentence? Judge the form, not the dictionary lemma. Accept legitimate regional varieties.')),
 }
 AI_ORIGINS = {'language-port', 'picture-description', 'sentence-vocabulary', 'synthetic', 'generated'}
 MAX_SAMPLE = 500
@@ -79,7 +82,7 @@ def eligible_dimensions(competences, scope):
     if read:
         selected.update(['image', 'language', 'vocabulary'])
     if read and listen:
-        selected.update(['sentence_audio', 'word_audio'])
+        selected.update(['sentence_audio', 'word_audio', 'form_audio'])
     if translation:
         selected.update(['translation', 'word_translation'])
     if scope == 'words':
@@ -100,9 +103,10 @@ def signature(part):
             'previous_revision': part.previous_revision_id}
 
 
-def graph(dictionary):
+def graph(dictionary, *, include_forms=False):
     """Bounded-query accepted projection, independent of public-browsing enablement."""
-    parts = list(public.contributions(dictionary).exclude(kind='note').order_by('-created_at', '-pk'))
+    parts = list(public.contributions(dictionary).exclude(kind='note').select_related(
+        'entry__dictionary').order_by('-created_at', '-pk'))
     part_map = {c.pk: c for c in parts}
     by_entry = defaultdict(list)
     for c in parts:
@@ -119,7 +123,8 @@ def graph(dictionary):
         media = by_entry[entry.pk]
         images = [c for c in media if c.kind == 'image' and c.file_path]
         image = next((c for c in images if c.pk == entry.selected_image_id), images[0] if images else None)
-        audios = [c for c in media if c.kind == 'audio' and c.file_path and (
+        audios = [c for c in media if c.kind == 'audio' and c.file_path and
+            (not include_forms or not c.provenance.get('sentence_form')) and (
             c.provenance.get('origin') != 'synthetic' or (
                 c.provenance.get('source_text') == text.word and
                 c.provenance.get('language') == dictionary.language and
@@ -134,7 +139,20 @@ def graph(dictionary):
             'origin': 'AI' if text.provenance.get('origin') in AI_ORIGINS else
                       'human' if text.provenance.get('origin') == 'human' else 'unknown'}
     links = defaultdict(list)
-    for link in SentenceWord.objects.filter(sentence_text__entry__dictionary=dictionary).order_by('pk'):
+    sentence_links = list(SentenceWord.objects.filter(sentence_text__entry__dictionary=dictionary)
+        .select_related('sentence_text__entry__dictionary', 'word_entry', 'word_text').order_by('pk'))
+    forms = {}
+    if include_forms:
+        from . import sentence_forms as sf
+        loaded = SimpleNamespace(parts=part_map, selected=part_map,
+            links={(link.sentence_text_id, link.word_entry_id): link for link in sentence_links})
+        # Reuse the production form checks with request-local data: no query per word.
+        for part in parts:
+            if part.kind == 'form':
+                link = sf.current(part, loaded=loaded)
+                if link:
+                    forms.setdefault(link.pk, part)
+    for link in sentence_links:
         word = rows.get(link.word_entry_id)
         sentence_part = part_map.get(link.sentence_text_id)
         sentence = rows.get(sentence_part.entry_id) if sentence_part else None
@@ -142,9 +160,26 @@ def graph(dictionary):
             sentence['text_part']['id'] == link.sentence_text_id and word['text_part']['id'] == link.word_text_id):
             # Word-page pictures are not the sentence's context and need not enter this snapshot.
             word = {**word, 'image': None, 'surface': link.surface}
+            if include_forms:
+                word['form'] = None
+                if sf.different(link.surface, word['text']) and not sf.separated(link.surface):
+                    part = forms.get(link.pk)
+                    clips = [c for c in by_entry[sentence['id']] if part and c.kind == 'audio'
+                        and c.file_path and c.shared_from_id == part.pk and
+                        c.provenance.get('sentence_form') == part.pk and
+                        (c.provenance.get('origin') != 'synthetic' or sf.audio_current(c, loaded=loaded))]
+                    word['form'] = {'link_id': link.pk, 'text': link.surface,
+                        'meaning': part.meaning if part else '',
+                        'text_part': signature(part) if part else None,
+                        'audio': signature(clips[0]) if clips else None}
             links[sentence['id']].append(word)
     return {entry_id: {'entry': row, 'words': links[entry_id], 'language': dictionary.language,
             'explanation_language': dictionary.explanation_language} for entry_id, row in rows.items()}
+
+
+def graph_for_set(batch):
+    # Old sets keep their original projection; adding coverage cannot rewrite their targets.
+    return graph(batch.dictionary, include_forms=batch.rubric == RUBRIC and batch.scope == 'sentences')
 
 
 def references(snapshot):
@@ -152,6 +187,11 @@ def references(snapshot):
     for row in [snapshot['entry'], *snapshot['words']]:
         for key in ['text_part', 'meaning_part', 'image', 'audio']:
             part = row.get(key)
+            if part:
+                result[part['id']] = part
+        form = row.get('form') or {}
+        for key in ['text_part', 'audio']:
+            part = form.get(key)
             if part:
                 result[part['id']] = part
     return result
@@ -186,7 +226,7 @@ def create_set(user, dictionary, data):
         raise Conflict('Visitor evaluation requires public browsing to be enabled.')
     if dictionary.evaluation_sets.filter(closed_at__isnull=True).count() >= 10:
         raise Conflict('Close an existing evaluation set before creating another (maximum ten open sets).')
-    live = graph(dictionary)
+    live = graph(dictionary, include_forms=data['scope'] == 'sentences')
     kind = 'sentence' if data['scope'] == 'sentences' else 'word'
     ids = sorted(pk for pk, snap in live.items() if snap['entry']['kind'] == kind)
     if not ids:
@@ -254,6 +294,11 @@ def create_set(user, dictionary, data):
                               dictionary.explanation_language if dim == 'word_translation' else ''])
                 missing = not word['meaning'] if dim == 'word_translation' else not word['audio']
                 candidates.append((dim, key, index, missing))
+            form = word.get('form')
+            if kind == 'sentence' and form:
+                # An occurrence-specific form/recording is not interchangeable with its lemma.
+                key = digest([word['id'], word['text_part'], form, dictionary.language])
+                candidates.append(('form_audio', key, index, not form['audio']))
         for dim, key, index, missing in candidates:
             if (dim, key) in seen:
                 continue
@@ -291,7 +336,7 @@ def agreement(units):
 def result_data(batch):
     items = list(batch.items.all())
     visible = available_items(items, batch.dictionary)
-    live = graph(batch.dictionary)
+    live = graph_for_set(batch)
     by_id = {item.pk: item for item in items}
     units = list(batch.units.filter(item_id__in=visible))
     departed = Participation.objects.filter(dictionary=batch.dictionary, withdrawn=True).values('user_id')
