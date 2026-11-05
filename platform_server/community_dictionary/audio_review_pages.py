@@ -53,9 +53,16 @@ def saved_results(run):
             if clips:
                 rows.append({'item':item, 'word':word, 'clips':clips, 'state':review_state(clips)})
     total = sum(counts.values())
+    application = Counter()
+    for row in rows:
+        state = 'unavailable' if row['item'].invalidated else {
+            'accepted': 'applied', 'awaiting': 'pending', 'rejected': 'kept',
+            'failed': 'failed', 'waiting': 'waiting'}[row['state']]
+        application[state] += 1
     return rows, dict(words=len(rows), total=total, finished=counts['ready']+counts['failed'],
         failures=counts['failed'], remaining=total-counts['ready']-counts['failed'],
-        guidance_count=methods['guidance'], carrier_count=methods['carrier'])
+        guidance_count=methods['guidance'], carrier_count=methods['carrier'],
+        application={key:application[key] for key in ['applied','pending','kept','failed','unavailable','waiting']})
 
 
 def sort_key(row):

@@ -7002,3 +7002,76 @@ msgstr "Táto staršia sada nehodnotí zvuk ohýbaných tvarov samostatne. Ak ho
 # Inflected-form evaluation
 msgid "Create a new word-audio-only set using the same dictionary lemmas and their current recordings. This does not repeat inflected-form audio. Existing ratings remain unchanged."
 msgstr "Vytvorte novú sadu na hodnotenie zvuku s rovnakými slovníkovými lemami a ich aktuálnymi nahrávkami. Zvuk ohýbaných tvarov sa neopakuje. Existujúce hodnotenia zostanú nezmenené."
+
+# Google audio application status
+msgid "Some Google previews have not been applied. Browsing will keep the existing audio for those items. Your previews are saved so you can return later. Leave without applying them?"
+msgstr "Niektoré ukážky Google ešte neboli použité. Pri prehliadaní sa pre tieto položky zachová pôvodný zvuk. Ukážky sú uložené, takže sa k nim môžete vrátiť neskôr. Odísť bez ich použitia?"
+
+# Google audio application status
+msgid "Previews ready — waiting to be applied"
+msgstr "Ukážky sú pripravené — čakajú na použitie"
+
+# Google audio application status
+msgid "Replacements applied"
+msgstr "Náhrady boli použité"
+
+# Google audio application status
+msgid "No replacements applied"
+msgstr "Neboli použité žiadne náhrady"
+
+# Google audio application status
+#, python-format
+msgid "Applied in this batch: %(applied)s · Awaiting a decision: %(pending)s · Kept or restored earlier audio: %(kept)s"
+msgstr "Použité v tejto dávke: %(applied)s · Čakajú na rozhodnutie: %(pending)s · Pôvodný zvuk ponechaný alebo obnovený: %(kept)s"
+
+# Google audio application status
+#, python-format
+msgid "Unavailable replacement groups: %(count)s"
+msgstr "Nedostupné skupiny náhrad: %(count)s"
+
+# Google audio application status
+msgid "Generation has finished. Apply the previews to change the audio heard when browsing."
+msgstr "Generovanie sa skončilo. Ak chcete zmeniť zvuk pri prehliadaní, použite pripravené ukážky."
+
+# Google audio application status
+msgid "Items awaiting a decision still use their existing audio. You can listen below before choosing."
+msgstr "Položky čakajúce na rozhodnutie stále používajú pôvodný zvuk. Pred výberom si môžete ukážky vypočuť nižšie."
+
+# Google audio application status
+msgid "This uses the saved previews and makes no new TTS requests. Changed sources and human recordings remain protected. Bulk acceptance does not mark pronunciation as reviewed."
+msgstr "Použijú sa uložené ukážky bez nových požiadaviek na syntézu reči. Zmenené zdroje a ľudské nahrávky zostávajú chránené. Hromadné prijatie neoznačí výslovnosť ako skontrolovanú."
+
+# Google audio application status
+msgid "Keep current audio for now and leave"
+msgstr "Zatiaľ ponechať súčasný zvuk a odísť"
+
+# Google audio application status
+msgid "Previews stay saved; you can return to this batch later."
+msgstr "Ukážky zostávajú uložené; k tejto dávke sa môžete vrátiť neskôr."
+
+# Google audio application status
+msgid "Generation finished — open to check replacements"
+msgstr "Generovanie dokončené — otvorte a skontrolujte náhrady"
+
+# Google audio application status
+#, python-format
+msgid "Google replacements applied: %(count)s. Browsing now uses those recordings."
+msgstr "Použité náhrady Google: %(count)s. Pri prehliadaní sa teraz používajú tieto nahrávky."
+
+# Google audio application status
+msgid "No additional replacements were applied."
+msgstr "Neboli použité žiadne ďalšie náhrady."
+
+# Google audio application status
+#, python-format
+msgid "Earlier recordings restored: %(count)s."
+msgstr "Obnovené pôvodné nahrávky: %(count)s."
+
+# Google audio application status
+msgid "No earlier recordings were restored."
+msgstr "Neboli obnovené žiadne pôvodné nahrávky."
+
+# Google audio application status
+#, python-format
+msgid "Replacements left unchanged: %(count)s. Their sources changed or are unavailable. Existing audio was kept."
+msgstr "Náhrady ponechané bez zmeny: %(count)s. Ich zdroje sa zmenili alebo nie sú dostupné. Pôvodný zvuk bol zachovaný."

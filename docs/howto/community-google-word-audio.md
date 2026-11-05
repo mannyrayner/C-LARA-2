@@ -23,10 +23,20 @@ audio continue using OpenAI.
 4. Human recordings are always excluded. Listener-approved AI recordings and
    recordings already using the selected Google voice are excluded by default;
    two explicit checkboxes can include those groups.
-5. At completion, listen and accept individual previews, or choose **Use all
-   usable replacements**. Bulk acceptance does not mark pronunciation as reviewed.
+5. When generation finishes, the page says **Previews ready — waiting to be
+   applied**. Listen and accept individual previews, or choose **Use all usable
+   replacements**. The confirmation reports how many replacements were applied;
+   the batch summary separates applied, pending and kept/restored recordings.
+   These counts cover the whole batch, including other pages. Browsing changes
+   only after acceptance. Bulk acceptance does not mark pronunciation as reviewed.
    Failed items retain their earlier audio. A new batch estimates any remaining
    missing/nonmatching audio; there are no automatic paid retries.
+   Leaving with undecided previews triggers a warning. **Keep current audio for
+   now and leave** explicitly postpones the decision; previews remain saved.
+   Pagination, filtering and downloads do not require a leave confirmation.
+   Closing/reloading the tab uses the browser's generic warning, where supported;
+   browsers may suppress it without prior interaction or on mobile. The persistent
+   page notice remains visible regardless. Applying previews makes no new TTS calls.
 6. **Restore earlier audio from this batch** restores unchanged replacements.
    Later edits, human recordings and withdrawals are protected. Earlier files
    remain stored. Switching the future provider back to OpenAI also leaves all
