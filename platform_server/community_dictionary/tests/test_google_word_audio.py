@@ -145,6 +145,15 @@ class GoogleWordAudioTests(TestCase):
         self.assertEqual(self.client.get(preview).status_code,200)
         self.assertEqual(self.client.post(url,{'action':'accept_all'}).status_code,302)
         self.assertContains(self.client.get(url),'Replacement accepted')
+        response = self.client.get(url)
+        self.assertContains(response, '<h2>Replacements applied</h2>', html=True)
+        self.assertContains(response, 'data-pending-replacements="0"')
+        self.assertNotContains(response, 'Use all usable replacements')
+        response = self.client.post(url, {'action':'restore'}, follow=True)
+        self.assertContains(response, 'Earlier recordings restored: 1.')
+        self.assertContains(response, '<h2>No replacements applied</h2>', html=True)
+        self.assertEqual(response.context['application']['kept'], 1)
+        self.assertNotContains(response, 'Use all usable replacements')
 
     def test_all_listed_languages_can_quote_without_carrier_support(self):
         for language in ['German','Italian','Icelandic','Japanese','Spanish','Chinese','Slovak','English','Swedish']:

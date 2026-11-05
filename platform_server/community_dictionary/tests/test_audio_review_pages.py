@@ -64,6 +64,61 @@ class AudioReviewPageTests(TestCase):
         run.status = 'estimate'; run.save(update_fields=['status'])
         self.assertContains(self.client.get(self.url(run), {'inspect':'1'}), 'mot 001')
 
+    def test_pending_application_is_prominent_and_counts_cover_all_pages(self):
+        run = self.saved_batch(28)
+        response = self.client.get(self.url(run), {'page':2})
+        self.assertEqual(response.context['application']['pending'], 28)
+        self.assertContains(response, 'Previews ready — waiting to be applied')
+        self.assertContains(response, 'data-pending-replacements="28"')
+        self.assertContains(response, 'Use all usable replacements', count=1)
+        self.assertContains(response, 'Keep current audio for now and leave')
+        html = response.content.decode()
+        self.assertLess(html.index('Use all usable replacements'), html.index('audio-review-row'))
+        self.assertNotContains(response, '<h2>Complete</h2>')
+        # Estimate and running views do not warn about an action that is not ready yet.
+        run.status, run.settled = 'running', False; run.save(update_fields=['status','settled'])
+        self.assertNotContains(self.client.get(self.url(run)), 'data-google-audio-batch')
+
+    def test_saved_decisions_separate_pending_applied_kept_failed_and_unavailable(self):
+        run = self.saved_batch(5)
+        items = list(run.items.all())
+        items[0].result['clips'][0]['decision'] = 'accept'
+        items[1].result['clips'][0]['decision'] = 'restored'
+        items[2].result['clips'][0]['status'] = 'failed'
+        items[3].invalidated = True
+        for item in items: item.save(update_fields=['result','invalidated'])
+        with CaptureQueriesContext(connection) as queries:
+            _rows, totals = pages.saved_results(run)
+        self.assertEqual(len(queries), 1)
+        self.assertEqual(totals['application'], {'applied':1,'kept':1,'failed':1,'unavailable':1,'pending':1,'waiting':0})
+        items[4].result['clips'][0]['decision'] = 'reject'; items[4].save(update_fields=['result'])
+        response = self.client.get(self.url(run))
+        self.assertContains(response, 'data-pending-replacements="0"')
+        self.assertNotContains(response, 'Use all usable replacements')
+        self.assertContains(response, '<h2>Replacements applied</h2>', html=True)
+
+    def test_non_google_reviews_do_not_receive_google_leave_guard(self):
+        run = self.saved_batch(1)
+        run.options.pop('google_batch'); run.save(update_fields=['options'])
+        response = self.client.get(self.url(run))
+        self.assertNotContains(response, 'data-google-audio-batch')
+
+    def test_application_confirmation_and_safe_skips(self):
+        first=self.seed('chat','cat'); self.audio(first)
+        second=self.seed('chien','dog'); self.audio(second)
+        run=self.quote(); self.approve(run); self.finish(run)
+        self.audio(second,human=True)
+        with patch('community_dictionary.google_tts.synthesize', side_effect=AssertionError('No new audio')):
+            response=self.client.post(self.url(run), {'action':'accept_all'}, follow=True)
+        self.assertContains(response, 'Google replacements applied: 1. Browsing now uses those recordings.')
+        self.assertContains(response, 'Replacements left unchanged: 1.')
+        self.assertEqual(response.context['application']['applied'], 1)
+        self.assertEqual(response.context['application']['pending'], 1)
+        # Repeated acceptance must not claim to have made another replacement.
+        response=self.client.post(self.url(run), {'action':'accept_all'}, follow=True)
+        self.assertContains(response, 'No additional replacements were applied.')
+        self.assertEqual(response.context['application']['applied'], 1)
+
     def test_pagination_precedes_validation_and_preserves_alphabetic_order(self):
         run = self.saved_batch()
         with patch.object(review, 'current_item', wraps=review.current_item) as validate:

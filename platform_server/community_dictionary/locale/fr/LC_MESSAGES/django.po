@@ -7095,3 +7095,76 @@ msgstr "Cet ancien ensemble n’évalue pas séparément l’audio des formes fl
 # Inflected-form evaluation
 msgid "Create a new word-audio-only set using the same dictionary lemmas and their current recordings. This does not repeat inflected-form audio. Existing ratings remain unchanged."
 msgstr "Créez un nouvel ensemble d’évaluation audio avec les mêmes lemmes et leurs enregistrements actuels. L’audio des formes fléchies n’est pas repris. Les évaluations existantes restent inchangées."
+
+# Google audio application status
+msgid "Some Google previews have not been applied. Browsing will keep the existing audio for those items. Your previews are saved so you can return later. Leave without applying them?"
+msgstr "Certains aperçus Google n’ont pas été appliqués. L’audio existant restera utilisé pour ces éléments. Vos aperçus sont enregistrés et vous pourrez y revenir plus tard. Quitter sans les appliquer ?"
+
+# Google audio application status
+msgid "Previews ready — waiting to be applied"
+msgstr "Aperçus prêts — en attente d’application"
+
+# Google audio application status
+msgid "Replacements applied"
+msgstr "Remplacements appliqués"
+
+# Google audio application status
+msgid "No replacements applied"
+msgstr "Aucun remplacement appliqué"
+
+# Google audio application status
+#, python-format
+msgid "Applied in this batch: %(applied)s · Awaiting a decision: %(pending)s · Kept or restored earlier audio: %(kept)s"
+msgstr "Appliqués dans ce lot : %(applied)s · En attente de décision : %(pending)s · Audio antérieur conservé ou restauré : %(kept)s"
+
+# Google audio application status
+#, python-format
+msgid "Unavailable replacement groups: %(count)s"
+msgstr "Groupes de remplacement indisponibles : %(count)s"
+
+# Google audio application status
+msgid "Generation has finished. Apply the previews to change the audio heard when browsing."
+msgstr "La génération est terminée. Appliquez les aperçus pour modifier l’audio entendu lors de la consultation."
+
+# Google audio application status
+msgid "Items awaiting a decision still use their existing audio. You can listen below before choosing."
+msgstr "Les éléments en attente de décision utilisent toujours leur audio existant. Vous pouvez écouter les aperçus ci-dessous avant de choisir."
+
+# Google audio application status
+msgid "This uses the saved previews and makes no new TTS requests. Changed sources and human recordings remain protected. Bulk acceptance does not mark pronunciation as reviewed."
+msgstr "Cette action utilise les aperçus enregistrés sans nouvelle requête de synthèse vocale. Les sources modifiées et les enregistrements humains restent protégés. L’acceptation en bloc ne marque pas la prononciation comme vérifiée."
+
+# Google audio application status
+msgid "Keep current audio for now and leave"
+msgstr "Conserver l’audio actuel pour le moment et quitter"
+
+# Google audio application status
+msgid "Previews stay saved; you can return to this batch later."
+msgstr "Les aperçus restent enregistrés ; vous pourrez revenir à ce lot plus tard."
+
+# Google audio application status
+msgid "Generation finished — open to check replacements"
+msgstr "Génération terminée — ouvrir pour vérifier les remplacements"
+
+# Google audio application status
+#, python-format
+msgid "Google replacements applied: %(count)s. Browsing now uses those recordings."
+msgstr "Remplacements Google appliqués : %(count)s. Ces enregistrements sont maintenant utilisés lors de la consultation."
+
+# Google audio application status
+msgid "No additional replacements were applied."
+msgstr "Aucun remplacement supplémentaire n’a été appliqué."
+
+# Google audio application status
+#, python-format
+msgid "Earlier recordings restored: %(count)s."
+msgstr "Enregistrements antérieurs restaurés : %(count)s."
+
+# Google audio application status
+msgid "No earlier recordings were restored."
+msgstr "Aucun enregistrement antérieur n’a été restauré."
+
+# Google audio application status
+#, python-format
+msgid "Replacements left unchanged: %(count)s. Their sources changed or are unavailable. Existing audio was kept."
+msgstr "Remplacements laissés inchangés : %(count)s. Leurs sources ont changé ou sont indisponibles. L’audio existant a été conservé."

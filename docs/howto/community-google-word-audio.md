@@ -23,10 +23,20 @@ audio continue using OpenAI.
 4. Human recordings are always excluded. Listener-approved AI recordings and
    recordings already using the selected Google voice are excluded by default;
    two explicit checkboxes can include those groups.
-5. At completion, listen and accept individual previews, or choose **Use all
-   usable replacements**. Bulk acceptance does not mark pronunciation as reviewed.
+5. When generation finishes, the page says **Previews ready — waiting to be
+   applied**. Listen and accept individual previews, or choose **Use all usable
+   replacements**. The confirmation reports how many replacements were applied;
+   the batch summary separates applied, pending and kept/restored recordings.
+   These counts cover the whole batch, including other pages. Browsing changes
+   only after acceptance. Bulk acceptance does not mark pronunciation as reviewed.
    Failed items retain their earlier audio. A new batch estimates any remaining
    missing/nonmatching audio; there are no automatic paid retries.
+   Leaving with undecided previews triggers a warning. **Keep current audio for
+   now and leave** explicitly postpones the decision; previews remain saved.
+   Pagination, filtering and downloads do not require a leave confirmation.
+   Closing/reloading the tab uses the browser's generic warning, where supported;
+   browsers may suppress it without prior interaction or on mobile. The persistent
+   page notice remains visible regardless. Applying previews makes no new TTS calls.
 6. **Restore earlier audio from this batch** restores unchanged replacements.
    Later edits, human recordings and withdrawals are protected. Earlier files
    remain stored. Switching the future provider back to OpenAI also leaves all
@@ -170,7 +180,7 @@ or remove the instance's existing permissions.
 
 Sign in as the Google administrator for the existing
 `community-dictionaries-tts` project. These commands create new resources named
-`clara-aws`, `ec2`, and `clara-tts`; if a resource already exists, inspect it
+`clara-aws`, `clara-ec2`, and `clara-tts`; if a resource already exists, inspect it
 instead of overwriting it. Fill in the verified role name and account number.
 
 ```bash
@@ -185,7 +195,11 @@ CLARA_GOOGLE_SERVICE="clara-tts@${CLARA_GOOGLE_PROJECT}.iam.gserviceaccount.com"
 
 Enable the required services, create the service account, and grant use of the
 billing/quota project. Ordinary synchronous Cloud TTS uses service-usage
-permission; do not grant Editor or Owner for speech synthesis.
+permission; do not grant Editor or Owner for speech synthesis. The application
+sets an explicit quota project, including during service-account impersonation.
+Grant Service Usage Consumer to both the service account and the exact federated
+EC2 principal: the latter authenticates the request to obtain the service-account
+token, before the service account can be used.
 
 ```bash
 gcloud services enable texttospeech.googleapis.com iam.googleapis.com \
@@ -197,15 +211,18 @@ gcloud projects add-iam-policy-binding "$CLARA_GOOGLE_PROJECT" \
   --role=roles/serviceusage.serviceUsageConsumer &&
 gcloud iam workload-identity-pools create clara-aws --location=global \
   --project="$CLARA_GOOGLE_PROJECT" --display-name='Community Dictionaries EC2' &&
-gcloud iam workload-identity-pools providers create-aws ec2 --location=global \
+gcloud iam workload-identity-pools providers create-aws clara-ec2 --location=global \
   --workload-identity-pool=clara-aws --project="$CLARA_GOOGLE_PROJECT" \
   --account-id="$CLARA_AWS_ACCOUNT" --attribute-mapping='google.subject=assertion.arn' \
   --attribute-condition="assertion.arn == '$CLARA_AWS_SUBJECT'" &&
+gcloud projects add-iam-policy-binding "$CLARA_GOOGLE_PROJECT" \
+  --member="principal://iam.googleapis.com/projects/$CLARA_GOOGLE_NUMBER/locations/global/workloadIdentityPools/clara-aws/subject/$CLARA_AWS_SUBJECT" \
+  --role=roles/serviceusage.serviceUsageConsumer --condition=None &&
 gcloud iam service-accounts add-iam-policy-binding "$CLARA_GOOGLE_SERVICE" \
   --project="$CLARA_GOOGLE_PROJECT" --role=roles/iam.workloadIdentityUser \
   --member="principal://iam.googleapis.com/projects/$CLARA_GOOGLE_NUMBER/locations/global/workloadIdentityPools/clara-aws/subject/$CLARA_AWS_SUBJECT" &&
 gcloud iam workload-identity-pools create-cred-config \
-  "projects/$CLARA_GOOGLE_NUMBER/locations/global/workloadIdentityPools/clara-aws/providers/ec2" \
+  "projects/$CLARA_GOOGLE_NUMBER/locations/global/workloadIdentityPools/clara-aws/providers/clara-ec2" \
   --service-account="$CLARA_GOOGLE_SERVICE" --aws --enable-imdsv2 \
   --output-file=clara-google-wif.json
 ```
@@ -273,5 +290,6 @@ References checked 2 November 2026:
 - [Google supported voices](https://docs.cloud.google.com/text-to-speech/docs/list-voices-and-types)
 - [Google TTS pricing](https://cloud.google.com/text-to-speech/pricing)
 - [TTS authentication](https://docs.cloud.google.com/text-to-speech/docs/authentication)
+- [Quota-project permissions](https://docs.cloud.google.com/docs/quotas/set-quota-project)
 - [AWS federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds)
 - [Credential configuration with IMDSv2](https://docs.cloud.google.com/sdk/gcloud/reference/iam/workload-identity-pools/create-cred-config)

@@ -601,7 +601,15 @@ def detail(request, pk, run_id):
         if run.options.get('google_batch') and action in {'accept_all','restore'}:
             from .google_word_audio import apply_all, restore
             done, skipped = (apply_all if action == 'accept_all' else restore)(request.user, run)
-            messages.success(request, f'{done} recordings changed; {skipped} changed or unavailable items kept.')
+            if action == 'accept_all':
+                message = (_('Google replacements applied: %(count)s. Browsing now uses those recordings.') % {'count':done}
+                    if done else _('No additional replacements were applied.'))
+            else:
+                message = (_('Earlier recordings restored: %(count)s.') % {'count':done}
+                    if done else _('No earlier recordings were restored.'))
+            messages.success(request, message)
+            if skipped:
+                messages.warning(request, _('Replacements left unchanged: %(count)s. Their sources changed or are unavailable. Existing audio was kept.') % {'count':skipped})
         elif action == 'more':
             if run.options.get('google_batch'):
                 raise Conflict('Return to the Google batch tool for a fresh estimate.')
