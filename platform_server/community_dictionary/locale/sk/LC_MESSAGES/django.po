@@ -7075,3 +7075,11 @@ msgstr "Neboli obnovené žiadne pôvodné nahrávky."
 #, python-format
 msgid "Replacements left unchanged: %(count)s. Their sources changed or are unavailable. Existing audio was kept."
 msgstr "Náhrady ponechané bez zmeny: %(count)s. Ich zdroje sa zmenili alebo nie sú dostupné. Pôvodný zvuk bol zachovaný."
+
+# Feedback while applying saved Google audio
+msgid "Applying replacements…"
+msgstr "Používajú sa náhrady…"
+
+# Feedback while applying saved Google audio
+msgid "Applying replacements… Please keep this page open."
+msgstr "Používajú sa náhrady… Nechajte túto stránku otvorenú."

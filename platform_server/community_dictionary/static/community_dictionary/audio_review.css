@@ -6,3 +6,4 @@
 .audio-more { margin-top: 1rem; }
 .audio-variant { margin: .75rem 0; padding-bottom: .5rem; }
 @media (max-width: 640px) { .audio-candidates { grid-template-columns: 1fr; } }
+[data-audio-apply-form] button[aria-busy="true"]{opacity:.6;cursor:wait}

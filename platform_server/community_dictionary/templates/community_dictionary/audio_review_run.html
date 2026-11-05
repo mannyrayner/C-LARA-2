@@ -9,7 +9,7 @@
 {% if application.unavailable %}<p>{% blocktranslate with count=application.unavailable %}Unavailable replacement groups: {{ count }}{% endblocktranslate %}</p>{% endif %}
 {% if application.pending %}
 <div class="notice" role="status"><p><strong>{% translate "Generation has finished. Apply the previews to change the audio heard when browsing." %}</strong></p><p>{% translate "Items awaiting a decision still use their existing audio. You can listen below before choosing." %}</p></div>
-<form method="post">{% csrf_token %}{% include "community_dictionary/audio_review_nav_fields.html" %}<button name="action" value="accept_all">{% translate "Use all usable replacements" %}</button></form>
+<form method="post" data-audio-apply-form>{% csrf_token %}{% include "community_dictionary/audio_review_nav_fields.html" %}<button name="action" value="accept_all" data-busy-label="{% translate 'Applying replacements…' %}">{% translate "Use all usable replacements" %}</button><p data-audio-apply-status role="status" hidden>{% translate "Applying replacements… Please keep this page open." %}</p></form>
 <p class="help">{% translate "This uses the saved previews and makes no new TTS requests. Changed sources and human recordings remain protected. Bulk acceptance does not mark pronunciation as reviewed." %}</p>
 <p><a class="button secondary" data-audio-leave-later href="{% url 'community_dictionary:google-word-audio' dictionary.pk %}">{% translate "Keep current audio for now and leave" %}</a></p><p class="help">{% translate "Previews stay saved; you can return to this batch later." %}</p>
 {% endif %}
@@ -58,5 +58,5 @@
 </section>{% endif %}{% empty %}{% if show_review %}<p>{% translate "No words match this filter." %}</p>{% endif %}{% endfor %}
 {% include "community_dictionary/audio_review_paging.html" %}
 <p>{% if google_batch %}<a class="button secondary" href="{% url 'community_dictionary:google-word-audio' dictionary.pk %}">{% translate "Return to Google word audio" %}</a>{% else %}<a class="button secondary" href="{% url 'community_dictionary:audio-review' dictionary.pk %}">{% translate "Return to listening checklist" %}</a>{% endif %}</p>
-<link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}?v=3" defer></script>
+<link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}?v=2"><script src="{% static 'community_dictionary/audio_review.js' %}?v=4" defer></script>
 {% endblock %}

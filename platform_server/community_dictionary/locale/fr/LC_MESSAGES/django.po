@@ -7168,3 +7168,11 @@ msgstr "Aucun enregistrement antérieur n’a été restauré."
 #, python-format
 msgid "Replacements left unchanged: %(count)s. Their sources changed or are unavailable. Existing audio was kept."
 msgstr "Remplacements laissés inchangés : %(count)s. Leurs sources ont changé ou sont indisponibles. L’audio existant a été conservé."
+
+# Feedback while applying saved Google audio
+msgid "Applying replacements…"
+msgstr "Application des remplacements…"
+
+# Feedback while applying saved Google audio
+msgid "Applying replacements… Please keep this page open."
+msgstr "Application des remplacements… Veuillez garder cette page ouverte."
