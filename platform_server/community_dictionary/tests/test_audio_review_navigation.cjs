@@ -6,6 +6,14 @@ const {runInNewContext} = require('node:vm');
 const {test} = require('node:test');
 const source = readFileSync(join(__dirname, '../static/community_dictionary/audio_review.js'), 'utf8');
 
+function form(action = null, controlValue = 'accept_all') {
+  return {
+    // A real button named "action" shadows HTMLFormElement.action.
+    action: {name: 'action', value: controlValue, toString: () => '[object HTMLButtonElement]'},
+    getAttribute: name => name === 'action' ? action : null,
+  };
+}
+
 function page(pending = 3) {
   const handlers = {};
   const state = {confirm: false, prompts: 0, reloads: 0};
@@ -55,10 +63,57 @@ test('pagination, filters and explicit postponement leave without prompts', asyn
     assert.equal(p.fire('beforeunload').defaultPrevented, false);
   }
   const p = page();
-  p.fire('submit', {target: {action: 'https://example.test/review/123/'}});
+  p.fire('submit', {target: form('https://example.test/review/123/')});
   await Promise.resolve();
   assert.equal(p.state.prompts, 0);
   assert.equal(p.fire('beforeunload').defaultPrevented, false);
+});
+
+test('review submissions ignore the button named action', async () => {
+  for (const action of [null, '', '/review/123/?page=2']) {
+    for (const choice of ['accept_all', 'accept', 'reject', 'note']) {
+      const p = page();
+      const event = p.fire('submit', {target: form(action, choice)});
+      await Promise.resolve();
+      assert.equal(event.defaultPrevented, false);
+      assert.equal(p.state.prompts, 0);
+      assert.equal(p.fire('beforeunload').defaultPrevented, false);
+    }
+  }
+});
+
+test('external form submissions can be cancelled or confirmed', async () => {
+  const p = page();
+  const cancelled = p.fire('submit', {target: form('/dictionary/')});
+  await Promise.resolve();
+  assert.equal(cancelled.defaultPrevented, true);
+  assert.equal(p.state.prompts, 1);
+  assert.equal(p.fire('beforeunload').defaultPrevented, true);
+  p.state.confirm = true;
+  const confirmed = p.fire('submit', {target: form('/dictionary/')});
+  await Promise.resolve();
+  assert.equal(confirmed.defaultPrevented, false);
+  assert.equal(p.state.prompts, 2);
+  assert.equal(p.fire('beforeunload').defaultPrevented, false);
+});
+
+test('the submitting button can override the form destination', async () => {
+  for (const [action, formaction, warns] of [
+    ['/dictionary/', '/review/123/', false],
+    ['/review/123/', '/dictionary/', true],
+    ['/dictionary/', '', false],
+    ['/dictionary/', null, true],
+  ]) {
+    const p = page();
+    const event = p.fire('submit', {
+      target: form(action),
+      submitter: {getAttribute: name => name === 'formaction' ? formaction : null},
+    });
+    await Promise.resolve();
+    assert.equal(event.defaultPrevented, warns);
+    assert.equal(p.state.prompts, warns ? 1 : 0);
+    assert.equal(p.fire('beforeunload').defaultPrevented, warns);
+  }
 });
 
 test('downloads, anchors and opening another tab preserve the leave warning', () => {
@@ -75,7 +130,7 @@ test('downloads, anchors and opening another tab preserve the leave warning', ()
 
 test('a cancelled submission does not disable the warning', async () => {
   const p = page();
-  const event = p.fire('submit', {target: {action: 'https://example.test/review/123/'}});
+  const event = p.fire('submit', {target: form('https://example.test/review/123/')});
   event.preventDefault();
   await Promise.resolve();
   assert.equal(p.fire('beforeunload').defaultPrevented, true);

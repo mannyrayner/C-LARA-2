@@ -27,7 +27,9 @@
   document.addEventListener('submit', event => {
     if (event.defaultPrevented) return;
     const form = event.target;
-    if (!samePage(new URL(form.action || location.href, location.href))) {
+    // The review buttons are named "action", which shadows form.action.
+    const action = event.submitter?.getAttribute('formaction') ?? form.getAttribute('action');
+    if (!samePage(new URL(action || location.href, location.href))) {
       allowLeave(event);
     }
     // Applying/rejecting, saving a note and changing filters must not prompt.

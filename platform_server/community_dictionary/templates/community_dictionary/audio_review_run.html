@@ -58,5 +58,5 @@
 </section>{% endif %}{% empty %}{% if show_review %}<p>{% translate "No words match this filter." %}</p>{% endif %}{% endfor %}
 {% include "community_dictionary/audio_review_paging.html" %}
 <p>{% if google_batch %}<a class="button secondary" href="{% url 'community_dictionary:google-word-audio' dictionary.pk %}">{% translate "Return to Google word audio" %}</a>{% else %}<a class="button secondary" href="{% url 'community_dictionary:audio-review' dictionary.pk %}">{% translate "Return to listening checklist" %}</a>{% endif %}</p>
-<link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}?v=2" defer></script>
+<link rel="stylesheet" href="{% static 'community_dictionary/audio_review.css' %}"><script src="{% static 'community_dictionary/audio_review.js' %}?v=3" defer></script>
 {% endblock %}
