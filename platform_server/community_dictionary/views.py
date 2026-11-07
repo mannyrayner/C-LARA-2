@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, EntryPictureForm, LinkWordForm, NoteForm, RequestForm
 from .models import Contribution, Dictionary, Entry, ImageWordLink, Membership, Partner, Partnership, Participation, Request
 from .lexicon import linked_words, outdated_tts, valid_links, vocabulary, word_row
-from .permissions import entitled_dictionaries, dictionaries_for, get_dictionary, is_editor, is_coordinator, require_editor, require_owner
+from .permissions import entitled_dictionaries, dictionaries_for, get_dictionary, is_editor, is_coordinator, is_owner, require_editor, require_owner
 from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
 from .contribution_ladder import image_ladder
@@ -30,9 +30,10 @@ def context(request, dictionary=None, **extra):
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
     google_voice = ''
     if dictionary and page in {'capture-start','capture-image','guided-start','guided-image','contribution-setting','writing-start','writing-image','port-run','port-vocabulary','forms-start','port-start'}:
-        from .models import DictionaryWordAudioSettings
-        google_voice = DictionaryWordAudioSettings.objects.filter(dictionary=dictionary, language=dictionary.language, authorised_by_id=dictionary.owner_id).values_list('voice', flat=True).first() or ''
-    return {'google_word_voice':google_voice, 'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
+        from .word_audio import authorised_settings
+        settings = authorised_settings(dictionary)
+        google_voice = settings.voice if settings else ''
+    return {'google_word_voice':google_voice, 'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and is_owner(request.user, dictionary)), 'primary_owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
         'writing_mode': personal_mode == 'writing', 'guided_mode': personal_mode == 'guided',
         'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
             'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',
@@ -547,8 +548,10 @@ def people(request, pk):
             require_owner(request.user, dictionary)
             user = get_user_model().objects.filter(username=request.POST.get('username', '').strip(), is_active=True).first()
             role = request.POST.get('role', 'member')
-            if not user or user.pk == dictionary.owner_id or role not in {'member', 'editor'}:
+            if not user or user.pk == dictionary.owner_id or role not in {'member', 'editor', 'co_owner'}:
                 return fail(request, gettext('Choose an existing account other than the owner, and a valid role.'))
+            if role == 'co_owner' and dictionary.owner_id != request.user.pk:
+                raise Http404
             from . import membership as membership_service
             with transaction.atomic():
                 locked = Dictionary.objects.select_for_update().get(pk=dictionary.pk)
@@ -556,10 +559,13 @@ def people(request, pk):
                 if existing:
                     if existing.role != role:
                         try:
-                            membership_service.propose(request.user, locked, 'role', existing, role)
+                            decision = membership_service.propose(request.user, locked, 'role', existing, role)
                         except Conflict as exc:
                             return fail(request, exc, 409)
-                    messages.success(request, gettext('Membership retained. Use the status controls to reactivate an inactive member.'))
+                        messages.success(request, gettext('Role change saved.') if decision.status == 'applied' else
+                                         gettext('Role change proposed. A different coordinator must approve it.'))
+                    else:
+                        messages.success(request, gettext('Membership retained. Use the status controls to reactivate an inactive member.'))
                 else:
                     # A new coordinator must first join as an ordinary member.
                     if role != 'member' and locked.membership_policy == 'coordinators':
@@ -607,13 +613,15 @@ def people(request, pk):
     invite_accounts = (
         get_user_model().objects.filter(is_active=True).exclude(pk=dictionary.owner_id)
         .order_by('username').values_list('username', flat=True)
-        if request.user.pk == dictionary.owner_id else []
+        if is_owner(request.user, dictionary) else []
     )
     memberships = list(dictionary.memberships.exclude(user_id=dictionary.owner_id).select_related('user'))
+    for member in memberships:
+        member.can_manage = dictionary.owner_id == request.user.pk or member.role != 'co_owner'
     withdrawn_users = set(Participation.objects.filter(dictionary=dictionary, withdrawn=True).values_list('user_id', flat=True))
     for member in memberships:
         member.content_withdrawn = member.user_id in withdrawn_users
-    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, image_ladder_rows=image_ladder(request.user), decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
+    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, can_manage_memberships=is_owner(request.user, dictionary) or (dictionary.membership_policy == 'coordinators' and is_coordinator(request.user, dictionary)), people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, image_ladder_rows=image_ladder(request.user), decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
 
 
 @login_required

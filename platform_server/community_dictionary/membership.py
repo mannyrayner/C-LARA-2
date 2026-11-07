@@ -5,19 +5,17 @@ from django.http import Http404
 from django.utils import timezone
 
 from .models import Dictionary, Membership, MembershipDecision, Participation
-from .permissions import get_dictionary, is_coordinator
+from .permissions import get_dictionary, is_coordinator, is_owner
 from .services import Conflict, event
 
 
 def coordinators(dictionary):
-    ids = list(Membership.objects.filter(dictionary=dictionary, accepted=True, status='active', role='coordinator').values_list('user_id', flat=True))
+    ids = list(Membership.objects.filter(dictionary=dictionary, accepted=True, status='active', role__in=['coordinator', 'co_owner']).values_list('user_id', flat=True))
     withdrawn = Participation.objects.filter(dictionary=dictionary, withdrawn=True).values('user_id')
     return get_user_model().objects.filter(pk__in=[dictionary.owner_id, *ids], is_active=True).exclude(pk__in=withdrawn)
 
 
 def validate(dictionary, action, member, value):
-    if action == 'role' and value == 'co_owner':
-        raise Conflict('Install the co-owner feature release before assigning this role.')
     if dictionary.personal:
         raise Conflict('Personal collections have no other members.')
     if action not in {'deactivate', 'reactivate', 'role', 'policy'}:
@@ -36,9 +34,21 @@ def validate(dictionary, action, member, value):
         raise Conflict('Choose a valid membership policy.')
     if action == 'policy' and value == 'coordinators' and coordinators(dictionary).count() < 2:
         raise Conflict('Appoint a coordinator who has joined before enabling two-person decisions.')
-    loses_coordinator = member and member.status == 'active' and member.role == 'coordinator' and (action == 'deactivate' or (action == 'role' and value != 'coordinator'))
+    loses_coordinator = member and member.accepted and member.status == 'active' and member.role in {'coordinator', 'co_owner'} and (action == 'deactivate' or (action == 'role' and value not in {'coordinator', 'co_owner'}))
     if dictionary.membership_policy == 'coordinators' and loses_coordinator and coordinators(dictionary).count() <= 2:
         raise Conflict('Appoint another coordinator first, so two-person decisions remain possible.')
+
+
+def require_manager(user, dictionary, action, member, value):
+    if not is_coordinator(user, dictionary):
+        raise Http404
+    if dictionary.membership_policy == 'owner' and not is_owner(user, dictionary):
+        raise Http404
+    # Co-owners can manage ordinary members, but cannot grant themselves or
+    # others ownership, or remove another co-owner's access.
+    if (member and member.role == 'co_owner') or (action == 'role' and value == 'co_owner'):
+        if dictionary.owner_id != user.pk:
+            raise Http404
 
 
 def apply(dictionary, decision, actor):
@@ -65,12 +75,9 @@ def apply(dictionary, decision, actor):
 def propose(user, dictionary, action, member=None, value=''):
     dictionary = Dictionary.objects.select_for_update().get(pk=dictionary.pk)
     get_dictionary(user, dictionary.pk)
-    if not is_coordinator(user, dictionary):
-        raise Http404
-    if dictionary.membership_policy == 'owner' and dictionary.owner_id != user.pk:
-        raise Http404
     if member:
         member = Membership.objects.select_for_update().get(pk=member.pk, dictionary=dictionary)
+    require_manager(user, dictionary, action, member, value)
     validate(dictionary, action, member, value)
     decision = MembershipDecision.objects.create(dictionary=dictionary, proposed_by=user, action=action,
         member=member, value=value, base_revision=dictionary.membership_revision)
@@ -106,6 +113,7 @@ def decide(user, dictionary, decision_id, *, cancel=False):
         raise Conflict('A different coordinator must approve this change.')
     if decision.base_revision != dictionary.membership_revision or not is_coordinator(decision.proposed_by, dictionary):
         raise Conflict('Membership changed after this proposal. Cancel it and make a new proposal.')
+    require_manager(decision.proposed_by, dictionary, decision.action, decision.member, decision.value)
     validate(dictionary, decision.action, decision.member, decision.value)
     apply(dictionary, decision, user)
     return decision

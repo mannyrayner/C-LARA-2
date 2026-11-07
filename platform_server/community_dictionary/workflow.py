@@ -13,7 +13,7 @@ from django.utils.translation import gettext as _, ngettext
 from projects.billing import get_user_balance_usd
 from . import batch_descriptions as batch, port_vocabulary as vocabulary, porting, photo_ai, tts, port_ai
 from .models import LanguagePort, MembershipRequest, PortItem
-from .permissions import dictionaries_for
+from .permissions import dictionaries_for, is_owner
 from .services import Conflict
 from .voices import DEFAULT_VOICE
 from .workflow_data import reading
@@ -44,7 +44,7 @@ def suggestion(user, dictionary, *, details=False):
 
 
 def _suggestion(user, dictionary, *, details=False):
-    if (not user.is_authenticated or dictionary.owner_id != user.pk or dictionary.hidden or
+    if (not user.is_authenticated or not is_owner(user, dictionary) or dictionary.hidden or
             not dictionary.show_workflow_suggestions or
             not dictionaries_for(user).filter(pk=dictionary.pk).exists()):
         return None

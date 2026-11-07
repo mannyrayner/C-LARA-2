@@ -37,13 +37,25 @@ def get_dictionary(user, pk):
 def is_editor(user, dictionary):
     return dictionaries_for(user).filter(pk=dictionary.pk).exists() and (
         dictionary.owner_id == user.pk or Membership.objects.filter(dictionary=dictionary,
-        user=user, accepted=True, status='active', role__in=['editor', 'coordinator']).exists())
+        user=user, accepted=True, status='active', role__in=['editor', 'coordinator', 'co_owner']).exists())
 
 
 def is_coordinator(user, dictionary):
     return dictionaries_for(user).filter(pk=dictionary.pk).exists() and (
         dictionary.owner_id == user.pk or Membership.objects.filter(dictionary=dictionary,
-        user=user, accepted=True, status='active', role='coordinator').exists())
+        user=user, accepted=True, status='active', role__in=['coordinator', 'co_owner']).exists())
+
+
+def owned_dictionaries(user):
+    """Active management rights; invitations and withdrawn content grant none."""
+    if not user.is_authenticated or not user.is_active:
+        return Dictionary.objects.none()
+    memberships = Membership.objects.filter(user=user, accepted=True, status='active', role='co_owner')
+    return dictionaries_for(user).filter(Q(owner=user) | Q(pk__in=memberships.values('dictionary_id')))
+
+
+def is_owner(user, dictionary):
+    return owned_dictionaries(user).filter(pk=dictionary.pk).exists()
 
 
 def require_editor(user, dictionary):
@@ -52,6 +64,5 @@ def require_editor(user, dictionary):
 
 
 def require_owner(user, dictionary):
-    get_dictionary(user, dictionary.pk)
-    if dictionary.owner_id != user.pk:
+    if not is_owner(user, dictionary):
         raise Http404

@@ -6,18 +6,24 @@ Google project charges are authorised by a site-administrator dictionary owner.
 from decimal import Decimal
 from . import google_tts, tts
 from .models import Dictionary, DictionaryWordAudioSettings
+from .permissions import is_owner
 from .services import Conflict
 
 VERSION = 'dictionary-word-audio-1'
 
 
+def authorised_settings(dictionary, row=None):
+    row = row or DictionaryWordAudioSettings.objects.filter(dictionary=dictionary).select_related('authorised_by').first()
+    return row if row and row.language == dictionary.language and is_owner(row.authorised_by, dictionary) else None
+
+
 def policy(dictionary):
     if not dictionary or not dictionary.pk:
         return {}
-    row = DictionaryWordAudioSettings.objects.filter(dictionary_id=dictionary.pk).first()
+    row = DictionaryWordAudioSettings.objects.filter(dictionary_id=dictionary.pk).select_related('authorised_by').first()
     if not row or not row.voice:
         return {}
-    if row.language != dictionary.language or row.authorised_by_id != dictionary.owner_id:
+    if not authorised_settings(dictionary, row):
         raise Conflict('The owner or language changed. Choose word audio settings again.')
     method = google_tts.voice_method(row.voice)
     return {'version':VERSION, 'voice':row.voice, 'method':method, 'language':row.language,
@@ -30,7 +36,10 @@ def validate(dictionary, expected):
     if policy(current) != (expected or {}):
         raise Conflict('Word audio settings changed. Prepare a fresh estimate or picture.')
     if expected:
-        google_tts.require_access(current.owner)
+        settings = authorised_settings(current)
+        if not settings:
+            raise Conflict('The owner or language changed. Choose word audio settings again.')
+        google_tts.require_access(settings.authorised_by)
         if not current.tts_enabled or current.archived:
             raise Conflict('Dictionary audio is disabled.')
         if not google_tts.matches_language(expected['voice'], current.language):

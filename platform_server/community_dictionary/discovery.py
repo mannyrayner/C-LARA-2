@@ -2,6 +2,7 @@
 from django.db.models import Q
 
 from . import public_browsing as public
+from .permissions import is_owner, owned_dictionaries
 from .models import CommunityProfile, Dictionary, Membership, MembershipRequest, Participation
 
 
@@ -18,7 +19,7 @@ def state(user, dictionary):
         return 'anonymous'
     if Participation.objects.filter(dictionary=dictionary, user=user, withdrawn=True).exists():
         return 'withdrawn'
-    if dictionary.owner_id == user.pk:
+    if is_owner(user, dictionary):
         return 'owner'
     member = Membership.objects.filter(dictionary=dictionary, user=user).first()
     if member:
@@ -43,5 +44,5 @@ def row(dictionary, user):
 def pending_for(user):
     if not user.is_authenticated:
         return MembershipRequest.objects.none()
-    return MembershipRequest.objects.filter(status='pending', dictionary__owner=user,
+    return MembershipRequest.objects.filter(status='pending', dictionary__in=owned_dictionaries(user),
         dictionary__personal=False, dictionary__archived=False)
