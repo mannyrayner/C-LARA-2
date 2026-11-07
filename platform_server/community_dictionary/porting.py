@@ -21,7 +21,7 @@ from .collections import content_digest, controller
 from .lexicon import outdated_tts, pictures_for_word
 from .models import (Contribution, ContributionDependency, Dictionary, Entry, LanguagePort,
                      PortEntryLink, PortItem, PortRun, ImageWordLink)
-from .permissions import require_owner
+from .permissions import require_owner, is_owner
 from .services import Conflict, accept, event
 from .storage import delete_file, path_for
 from .text import FIELDS
@@ -665,7 +665,7 @@ def save_item(user, item_id, values, *, automatic=False):
 
 def pending_destination_run(user, dictionary):
     """Only the authorised port owner sees a link to their private previews."""
-    if dictionary.owner_id != user.pk:
+    if not is_owner(user, dictionary):
         return None
     run = PortRun.objects.filter(Q(port__destination=dictionary) | Q(port__source=dictionary, port__is_description_batch=True), port__user=user,
         items__status__in=['ready','unclear'], items__invalidated=False).select_related(

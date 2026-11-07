@@ -20,7 +20,7 @@ from django.views.decorators.http import require_http_methods
 from . import evaluation as ev
 from .models import (Dictionary, EvaluationItem, EvaluationProgress, EvaluationRating,
                      EvaluationSession, EvaluationSet, LanguageCompetence, PortRun)
-from .permissions import dictionaries_for, is_editor, require_owner
+from .permissions import dictionaries_for, is_editor, is_owner, require_owner
 from .services import Conflict
 from .views import fail, private_media_response
 
@@ -39,7 +39,7 @@ def page(methods):
 
 def context(request, dictionary, member, **extra):
     return {'dictionary': dictionary, 'public_browsing': not member,
-            'owner': dictionary.owner_id == request.user.pk,
+            'owner': is_owner(request.user, dictionary),
             'editor': member and is_editor(request.user, dictionary),
             'evaluation_available': True, 'evaluation_page': True, **extra}
 
@@ -114,7 +114,7 @@ def home(request, pk):
     from .tts import language_code
     preparing = (PortRun.objects.filter(port__source=dictionary, port__user=request.user,
         options__evaluation_study__rubric='word-audio-provider-study-v1')
-        .exclude(pk__in=dictionary.evaluation_sets.values('pk'))[:20]) if dictionary.owner_id==request.user.pk else []
+        .exclude(pk__in=dictionary.evaluation_sets.values('pk'))[:20]) if is_owner(request.user, dictionary) else []
     return render(request, 'community_dictionary/evaluation_home.html', context(request, dictionary, member,
         rows=rows, form=form, audio_study_supported=language_code(dictionary.language)=='en', preparing=preparing))
 
@@ -301,7 +301,7 @@ def media(request, pk, set_id, item_id, contribution_id):
         raise Http404
     dictionary, member = ev.access(request.user, pk, batch)
     record = get_object_or_404(EvaluationItem, pk=item_id, evaluation_set=batch)
-    if (not batch.sessions.filter(user=request.user).exists() and dictionary.owner_id != request.user.pk):
+    if (not batch.sessions.filter(user=request.user).exists() and not is_owner(request.user, dictionary)):
         raise Http404
     if record.pk not in ev.available_items([record], dictionary):
         raise Http404

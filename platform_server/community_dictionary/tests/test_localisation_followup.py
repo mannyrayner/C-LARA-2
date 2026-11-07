@@ -119,7 +119,7 @@ class LocalisationFollowupTests(TestCase):
         page = self.client.get(self.url('people'))
         self.assert_translated(page, 'People & partnerships',
             'Build together. Everyone keeps their own account and contribution credit.',
-            'Dictionary members', 'Owner', 'Editor', 'Coordinator', 'Member',
+            'Dictionary members', 'Original owner', 'Co-owner', 'Editor', 'Coordinator', 'Member',
             'Active', 'Inactive', 'Invited', 'Joined', 'Content withdrawn',
             'Role', 'Request role change', 'Make inactive', 'Reactivate membership',
             'Invite an account', 'Existing C-LARA account', 'Save invitation or role',

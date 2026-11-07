@@ -16,6 +16,7 @@ from projects.models import Profile
 from . import discovery
 from .models import CommunityProfile, Dictionary, MembershipRequest
 from .public_views import visitor_page
+from .permissions import owned_dictionaries
 from .views import fail
 
 
@@ -106,7 +107,7 @@ def profile(request):
         'contributor_form': contributor, 'preferences_form': preferences,
         'is_listed': local.list_as_contributor and bool(local.public_name),
         'has_personal_key': bool(common.openai_api_key),
-        'owned': Dictionary.objects.filter(owner=request.user, personal=False, archived=False),
+        'owned': owned_dictionaries(request.user),
         'request_rows': rows, 'page': requests_page,
         'pending_count': discovery.pending_for(request.user).count()})
 

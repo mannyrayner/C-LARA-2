@@ -235,10 +235,10 @@ def matches_language(name, language):
 
 def voices_for(dictionary):
     """Static trial voices plus the owner's explicitly verified selection."""
-    from .models import DictionaryWordAudioSettings
+    from .word_audio import authorised_settings
     result = dict(VOICES.get(tts.language_code(dictionary.language), {}))
-    selected = DictionaryWordAudioSettings.objects.filter(dictionary=dictionary,
-        language=dictionary.language, authorised_by_id=dictionary.owner_id).values_list('voice', flat=True).first()
+    settings = authorised_settings(dictionary)
+    selected = settings.voice if settings else ''
     if selected:
         result[voice_method(selected)] = selected
     return result

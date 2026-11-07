@@ -399,8 +399,7 @@ git push
 browse view. Contributions and versions preserve attribution. **Edit words**
 proposes a complete wording revision; older accepted wording remains until
 review. A stale proposal produces a conflict message. An editor can restore an
-accepted wording version or choose another accepted main picture. Owners manage
-roles and dictionary settings under **People**. Dictionary access remains private.
+accepted wording version or choose another accepted main picture. Owners and active co-owners manage roles under **People** and dictionary settings under **Settings**. Only the original owner appoints or removes co-owners. Dictionary access remains private.
 
 ## Deploy through the existing server
 
@@ -472,7 +471,7 @@ membership removes future server access but cannot recall files already download
 
 ## Export, backup and restoration
 
-The owner's **Export dictionary** button downloads a ZIP containing:
+An owner or active co-owner’s **Download this dictionary and its media** link downloads a ZIP containing:
 
 - `manifest.json`: format/version, dictionary ID, original contributor IDs and usernames;
 - `records.json`: Django records for the dictionary, members, partnerships, entries,
@@ -573,3 +572,5 @@ Sentence vocabulary can now show the actual form, its contextual translation and
 audio alongside the dictionary lemma. Owners can use **Tools → Add missing sentence
 forms** for existing material. See [sentence forms](community-sentence-forms.md)
 for cost approval, corrections, retries and the first-version limits.
+
+See [Co-owners](community-coowners.md) for shared management and dictionary downloads.
