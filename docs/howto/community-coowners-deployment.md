@@ -72,4 +72,3 @@ Receipts are stored as `coowner-schema-receipt.json` in the configured controlle
 state directory. Inspect the reported recovery status and private log before a
 retry. After successful preparation, the installed version is the preparation
 commit, so do not repeat a command claiming the preceding release is installed.
-
