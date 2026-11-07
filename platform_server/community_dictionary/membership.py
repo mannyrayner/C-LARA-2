@@ -44,11 +44,13 @@ def require_manager(user, dictionary, action, member, value):
         raise Http404
     if dictionary.membership_policy == 'owner' and not is_owner(user, dictionary):
         raise Http404
-    # Co-owners can manage ordinary members, but cannot grant themselves or
-    # others ownership, or remove another co-owner's access.
-    if (member and member.role == 'co_owner') or (action == 'role' and value == 'co_owner'):
-        if dictionary.owner_id != user.pk:
+    # Appointment is shared by active owners; coordinators cannot promote
+    # themselves. Removal of existing co-owners remains with the primary owner.
+    if action == 'role' and value == 'co_owner':
+        if not is_owner(user, dictionary):
             raise Http404
+    elif member and member.role == 'co_owner' and dictionary.owner_id != user.pk:
+        raise Http404
 
 
 def apply(dictionary, decision, actor):

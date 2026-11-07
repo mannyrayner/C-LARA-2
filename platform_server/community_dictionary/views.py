@@ -550,8 +550,6 @@ def people(request, pk):
             role = request.POST.get('role', 'member')
             if not user or user.pk == dictionary.owner_id or role not in {'member', 'editor', 'co_owner'}:
                 return fail(request, gettext('Choose an existing account other than the owner, and a valid role.'))
-            if role == 'co_owner' and dictionary.owner_id != request.user.pk:
-                raise Http404
             from . import membership as membership_service
             with transaction.atomic():
                 locked = Dictionary.objects.select_for_update().get(pk=dictionary.pk)

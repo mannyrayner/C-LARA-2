@@ -399,7 +399,7 @@ git push
 browse view. Contributions and versions preserve attribution. **Edit words**
 proposes a complete wording revision; older accepted wording remains until
 review. A stale proposal produces a conflict message. An editor can restore an
-accepted wording version or choose another accepted main picture. Owners and active co-owners manage roles under **People** and dictionary settings under **Settings**. Only the original owner appoints or removes co-owners. Dictionary access remains private.
+accepted wording version or choose another accepted main picture. Owners and active co-owners manage roles under **People** and dictionary settings under **Settings**. Active owners and co-owners can appoint further co-owners without a fixed limit; only the original owner removes co-owners. Dictionary access remains private.
 
 ## Deploy through the existing server
 

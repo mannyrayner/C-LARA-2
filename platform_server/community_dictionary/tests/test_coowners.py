@@ -99,18 +99,19 @@ class CoOwnerTests(TestCase):
             'action': 'approve', 'revision': item.revision}).status_code, 302)
         self.assertEqual(Membership.objects.get(dictionary=self.dictionary, user=self.outsider).role, 'member')
 
-    def test_coowner_manages_ordinary_members_but_cannot_create_or_remove_owners(self):
+    def test_coowner_appoints_more_owners_but_cannot_remove_existing_owners(self):
         coowner = self.grant(); other = Membership.objects.get(dictionary=self.dictionary, user=self.third)
         self.assertEqual(self.change(other, value='editor').status_code, 302)
-        for target, action, value in [(other, 'role', 'co_owner'), (coowner, 'role', 'member'),
+        self.assertEqual(self.change(other, value='co_owner').status_code, 302)
+        for target, action, value in [(coowner, 'role', 'member'),
                                       (coowner, 'deactivate', '')]:
             self.assertEqual(self.change(target, action, value).status_code, 404)
         self.assertEqual(self.client.post(self.url('people'), {
-            'action': 'invite', 'username': self.outsider.username, 'role': 'co_owner'}).status_code, 404)
+            'action': 'invite', 'username': self.outsider.username, 'role': 'co_owner'}).status_code, 302)
         self.assertEqual(self.client.post(self.url('people'), {
-            'action': 'invite', 'username': self.outsider.username, 'role': 'editor'}).status_code, 302)
+            'action': 'invite', 'username': self.outsider.username, 'role': 'editor'}).status_code, 404)
         page = self.client.get(self.url('people'))
-        self.assertNotContains(page, '<option value="co_owner"', html=False)
+        self.assertContains(page, '<option value="co_owner"', html=False)
         self.assertNotContains(page, self.owner.password)
 
     def test_members_and_coordinators_cannot_self_promote_or_export(self):
@@ -122,20 +123,21 @@ class CoOwnerTests(TestCase):
             self.assertEqual(self.client.get(self.url('export')).status_code, 404)
             self.assertNotContains(self.client.get(self.url('dictionary')), self.url('export'))
 
-    def test_only_original_owner_proposes_coownership_even_with_two_person_policy(self):
+    def test_coowner_appointments_still_need_two_person_approval(self):
         coowner = self.grant()
         Membership.objects.filter(dictionary=self.dictionary, user=self.third).update(role='coordinator')
         other = Membership.objects.get(dictionary=self.dictionary, user=self.third)
         self.dictionary.membership_policy = 'coordinators'; self.dictionary.save()
-        self.assertEqual(self.change(other).status_code, 404)
-        self.client.force_login(self.third)
-        self.assertEqual(self.change(other).status_code, 404)
-        self.client.force_login(self.owner)
         self.assertEqual(self.change(other).status_code, 302)
         proposal = self.dictionary.membership_decisions.latest('pk')
         self.assertEqual(proposal.status, 'pending')
         other.refresh_from_db(); self.assertEqual(other.role, 'coordinator')
+        self.client.force_login(self.third)
+        self.assertEqual(self.change(other).status_code, 404)
         self.client.force_login(self.member)
+        self.assertEqual(self.client.post(self.url('membership-action'), {
+            'action': 'approve', 'decision_id': proposal.pk}).status_code, 409)
+        self.client.force_login(self.owner)
         self.assertEqual(self.client.post(self.url('membership-action'), {
             'action': 'approve', 'decision_id': proposal.pk}).status_code, 302)
         other.refresh_from_db(); self.assertEqual(other.role, 'co_owner')
@@ -242,7 +244,43 @@ class CoOwnerTests(TestCase):
             self.assertContains(page, primary)
             self.assertContains(page, 'value="co_owner"')
             self.client.force_login(self.member)
-            self.assertNotContains(self.client.get(self.url('people')), 'value="co_owner"')
+            self.assertContains(self.client.get(self.url('people')), 'value="co_owner"')
+
+    def test_successive_coowners_can_invite_many_more_and_all_can_export(self):
+        from django.contrib.auth import get_user_model
+        self.grant()
+        inviter = self.member
+        for number in range(7):
+            invited = get_user_model().objects.create_user(username=f'coowner{number}')
+            self.client.force_login(inviter)
+            page = self.client.get(self.url('people'))
+            self.assertContains(page, '<option value="co_owner"')
+            self.assertEqual(self.client.post(self.url('people'), {
+                'action':'invite', 'username':invited.username, 'role':'co_owner'}).status_code, 302)
+            self.client.force_login(invited)
+            self.assertFalse(is_owner(invited, self.dictionary))
+            self.assertEqual(self.client.post(self.url('people'), {
+                'action':'invite', 'username':self.outsider.username, 'role':'co_owner'}).status_code, 404)
+            self.assertEqual(self.client.post(self.url('join')).status_code, 302)
+            self.assertTrue(is_owner(invited, self.dictionary))
+            with closing(self.client.get(self.url('export'))) as response:
+                self.assertEqual(response.status_code, 200)
+            inviter = invited
+        self.assertEqual(self.dictionary.memberships.filter(role='co_owner',accepted=True,status='active').count(), 8)
+        self.client.force_login(self.owner)
+        self.assertEqual(len(self.client.get(self.url('people')).context['memberships']), 9)
+
+    def test_revoked_or_withdrawn_coowner_cannot_use_saved_invitation_form(self):
+        row = self.grant()
+        self.assertContains(self.client.get(self.url('people')), '<option value="co_owner"')
+        Membership.objects.filter(pk=row.pk).update(role='editor')
+        self.assertEqual(self.client.post(self.url('people'), {
+            'action':'invite', 'username':self.outsider.username, 'role':'co_owner'}).status_code, 404)
+        self.grant()
+        withdraw_all(self.member, self.dictionary.pk, state_for(self.member, self.dictionary).revision)
+        self.assertEqual(self.client.post(self.url('people'), {
+            'action':'invite', 'username':self.outsider.username, 'role':'co_owner'}).status_code, 404)
+        self.assertFalse(Membership.objects.filter(dictionary=self.dictionary,user=self.outsider).exists())
 
 
 class CoOwnerMigrationTests(TransactionTestCase):

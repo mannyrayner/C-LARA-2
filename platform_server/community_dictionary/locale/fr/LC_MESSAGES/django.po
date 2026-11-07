@@ -7190,8 +7190,8 @@ msgstr "Copropriétaire"
 msgid "Co-owner — also manage and download the dictionary"
 msgstr "Copropriétaire — peut aussi gérer et télécharger le dictionnaire"
 
-msgid "Co-owners can manage settings and members, review contributions and download the dictionary and its media. Only the original owner can appoint or remove co-owners. Invitations must be accepted first. Everyone keeps control of their own contributions."
-msgstr "Les copropriétaires peuvent gérer les paramètres et les membres, vérifier les contributions et télécharger le dictionnaire et ses médias. Seul le propriétaire d’origine peut nommer ou retirer des copropriétaires. Il faut d’abord accepter l’invitation. Chacun garde le contrôle de ses propres contributions."
+msgid "Co-owners can manage settings and members, review contributions and download the dictionary and its media. Owners and co-owners can appoint further co-owners, with no fixed limit. Only the original owner can remove co-owners. Invitations must be accepted first. Everyone keeps control of their own contributions."
+msgstr "Les copropriétaires peuvent gérer les paramètres et les membres, vérifier les contributions et télécharger le dictionnaire et ses médias. Les propriétaires et copropriétaires peuvent nommer d’autres copropriétaires, sans limite fixe. Seul le propriétaire d’origine peut retirer des copropriétaires. Il faut d’abord accepter l’invitation. Chacun garde le contrôle de ses propres contributions."
 
 msgid "The original owner and active co-owners count as coordinators. Appoint at least one other active coordinator before enabling two-person decisions. Once enabled, changing roles, status or this policy requires two different coordinators."
 msgstr "Le propriétaire d’origine et les copropriétaires actifs comptent comme coordinateurs. Nommez au moins un autre coordinateur actif avant d’activer les décisions à deux personnes. Ensuite, tout changement de rôle, de statut ou de cette règle exige deux coordinateurs différents."
