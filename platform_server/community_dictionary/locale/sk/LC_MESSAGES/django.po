@@ -7097,8 +7097,8 @@ msgstr "Spoluvlastník"
 msgid "Co-owner — also manage and download the dictionary"
 msgstr "Spoluvlastník — môže aj spravovať a stiahnuť slovník"
 
-msgid "Co-owners can manage settings and members, review contributions and download the dictionary and its media. Only the original owner can appoint or remove co-owners. Invitations must be accepted first. Everyone keeps control of their own contributions."
-msgstr "Spoluvlastníci môžu spravovať nastavenia a členov, kontrolovať príspevky a stiahnuť slovník aj jeho médiá. Iba pôvodný vlastník môže menovať alebo odvolať spoluvlastníkov. Pozvanie treba najprv prijať. Každý si ponecháva kontrolu nad vlastnými príspevkami."
+msgid "Co-owners can manage settings and members, review contributions and download the dictionary and its media. Owners and co-owners can appoint further co-owners, with no fixed limit. Only the original owner can remove co-owners. Invitations must be accepted first. Everyone keeps control of their own contributions."
+msgstr "Spoluvlastníci môžu spravovať nastavenia a členov, kontrolovať príspevky a stiahnuť slovník aj jeho médiá. Vlastníci a spoluvlastníci môžu menovať ďalších spoluvlastníkov bez pevného obmedzenia počtu. Iba pôvodný vlastník môže odvolať spoluvlastníkov. Pozvanie treba najprv prijať. Každý si ponecháva kontrolu nad vlastnými príspevkami."
 
 msgid "The original owner and active co-owners count as coordinators. Appoint at least one other active coordinator before enabling two-person decisions. Once enabled, changing roles, status or this policy requires two different coordinators."
 msgstr "Pôvodný vlastník a aktívni spoluvlastníci sa počítajú ako koordinátori. Pred zapnutím rozhodovania vo dvojici menujte aspoň jedného ďalšieho aktívneho koordinátora. Potom zmena rolí, stavu alebo tohto pravidla vyžaduje dvoch rôznych koordinátorov."
