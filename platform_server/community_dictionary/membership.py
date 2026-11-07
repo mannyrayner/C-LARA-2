@@ -16,6 +16,8 @@ def coordinators(dictionary):
 
 
 def validate(dictionary, action, member, value):
+    if action == 'role' and value == 'co_owner':
+        raise Conflict('Install the co-owner feature release before assigning this role.')
     if dictionary.personal:
         raise Conflict('Personal collections have no other members.')
     if action not in {'deactivate', 'reactivate', 'role', 'policy'}:

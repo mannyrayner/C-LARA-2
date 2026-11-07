@@ -207,7 +207,7 @@ class MembershipRequest(models.Model):
 
 
 class Membership(models.Model):
-    ROLES = [('member', 'Member'), ('editor', 'Editor'), ('coordinator', 'Coordinator')]
+    ROLES = [('member', 'Member'), ('editor', 'Editor'), ('coordinator', 'Coordinator'), ('co_owner', 'Co-owner')]
     dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='memberships')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(max_length=12, choices=ROLES, default='member')
