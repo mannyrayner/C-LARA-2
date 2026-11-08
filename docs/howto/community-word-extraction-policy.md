@@ -26,7 +26,7 @@ headword and sense need not create duplicate dictionary entries.
 
 ## What belongs together
 
-Use [PARSEME 2.0](https://parsemefr.lis-lab.fr/parseme-st-guidelines/2.0/) as the
+Use [PARSEME 2.0](https://parsemefr.lis-lab.fr/parseme-st-guidelines/2.0/index.php?page=home) as the
 reference for lexicalisation and linguistic idiosyncrasy. Meaningful restrictions
 on substitution or grammatical flexibility support lexical unity. Frequency,
 adjacency, or translation by a single word do not establish it.
