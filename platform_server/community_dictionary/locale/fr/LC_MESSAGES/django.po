@@ -1582,10 +1582,10 @@ msgstr ""
 #, python-format
 msgid ""
 "About US$%(value1)s per short description, including its sentence and up to "
-"six new words with audio."
+"twelve new words with audio."
 msgstr ""
 "Environ %(value1)s $ US par courte description, y compris sa phrase et "
-"jusqu’à six nouveaux mots avec audio."
+"jusqu’à douze nouveaux mots avec audio."
 
 #: community_dictionary/templates/community_dictionary/capture_limit.html:11
 msgid ""
@@ -1633,14 +1633,14 @@ msgstr "Comment l’estimation est calculée"
 msgid ""
 "Model: %(value1)s. Configured rates: US$%(value2)s per million input tokens "
 "and US$%(value3)s per million output tokens. Each description is budgeted as"
-" 12,000 input tokens and 2,600 output tokens, plus US$%(value4)s as an "
+" 16,000 input tokens and 4,096 output tokens, plus US$%(value4)s as an "
 "approximate allowance for associated audio, pronunciation guidance and "
 "spoken input. These are planning assumptions; actual usage and provider "
 "prices may differ. The provider invoice is authoritative."
 msgstr ""
 "Modèle : %(value1)s. Tarifs configurés : %(value2)s $ US par million de "
 "jetons d’entrée et %(value3)s $ US par million de jetons de sortie. Chaque "
-"description est budgétée à 12 000 jetons d’entrée et 2 600 jetons de sortie,"
+"description est budgétée à 16 000 jetons d’entrée et 4 096 jetons de sortie,"
 " plus environ %(value4)s $ US pour l’audio associé, les indications de "
 "prononciation et la saisie vocale. Ce sont des hypothèses de planification ;"
 " la consommation réelle et les tarifs du fournisseur peuvent varier. La "
@@ -1779,11 +1779,11 @@ msgstr ""
 #: community_dictionary/templates/community_dictionary/capture_start.html:22
 #, python-format
 msgid ""
-"Rough estimate: US$%(value1)s for a short description and up to six words "
+"Rough estimate: US$%(value1)s for a short description and up to twelve words "
 "with audio. Actual usage varies."
 msgstr ""
 "Estimation approximative : %(value1)s $ US pour une courte description et "
-"jusqu’à six mots avec audio. La consommation réelle varie."
+"jusqu’à douze mots avec audio. La consommation réelle varie."
 
 #: community_dictionary/templates/community_dictionary/capture_start.html:22
 msgid "Your own OpenAI key is used."
@@ -7201,3 +7201,19 @@ msgstr "Changement de rôle enregistré."
 
 msgid "Role change proposed. A different coordinator must approve it."
 msgstr "Changement de rôle proposé. Un autre coordinateur doit l’approuver."
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "Compare vocabulary after a change"
+msgstr "Comparer le vocabulaire après une modification"
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "Snapshot the same sentence pages and their current vocabulary in the same order. This makes no AI calls and does not regenerate or edit content. Earlier ratings remain unchanged; the new set starts with hidden, independent ratings. If an original page is unavailable, no substitute is selected."
+msgstr "Créer un instantané des mêmes pages de phrases et de leur vocabulaire actuel, dans le même ordre. Cette action ne fait aucun appel à l’IA et ne régénère ni ne modifie le contenu. Les évaluations précédentes restent inchangées ; la nouvelle série commence avec des évaluations indépendantes et masquées. Si une page d’origine est indisponible, aucune autre page ne la remplace."
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "Repeat these sentence pages"
+msgstr "Réévaluer ces pages de phrases"
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "using the same sentence pages and new vocabulary snapshots."
+msgstr "avec les mêmes pages de phrases et de nouveaux instantanés du vocabulaire."

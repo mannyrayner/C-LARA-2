@@ -297,7 +297,7 @@ class AutomaticTests(TestCase):
             self.process(run.items.get().pk)
         child=self.child(run)
         self.assertLessEqual(child.allowance_usd,Decimal(run.options['automatic_vocabulary_reserve']))
-        with patch('community_dictionary.port_vocabulary_tasks.port_costs.analysis',return_value=Decimal('100')):
+        with patch.object(port_vocabulary,'analysis_estimate',return_value=Decimal('100')):
             self.drain()
         child.refresh_from_db();self.assertEqual(child.items.get().status,'budget')
         self.assertFalse(self.analyse.called)

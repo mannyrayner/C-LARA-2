@@ -269,9 +269,10 @@ class ReliabilityTests(TestCase):
 
     def test_new_vocabulary_quote_has_bounded_estimate(self):
         first,entry=self.translated();run=vocab.quote(self.owner,first.port,uuid.uuid4())
-        # Regression bound for one short sentence: 150 of these formerly held ~$130.
-        self.assertLess(run.allowance_usd*150,Decimal('25'))
-        self.assertLess(run.estimated_usd*150,Decimal('10'))
+        # Preview now reserves for twelve lemmas and twelve forms, not six clips.
+        # Keep a bound against the old ~$130 hold for 150 short sentences.
+        self.assertLess(run.allowance_usd*150,Decimal('50'))
+        self.assertLess(run.estimated_usd*150,Decimal('20'))
         self.assertLessEqual(run.allowance_usd,run.estimated_usd*Decimal('2.5')+Decimal('.0001'))
 
     def test_translation_cost_can_pause_audio_without_translating_again(self):
