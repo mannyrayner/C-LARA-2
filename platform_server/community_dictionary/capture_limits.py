@@ -7,16 +7,17 @@ from django.core import signing
 from django.utils import timezone
 
 from .models import PictureCapture
-from . import photo_ai
+from . import photo_ai, vocabulary_policy
 from .services import Conflict
 
 SALT = 'community-picture-description-limit-v1'
 QUOTE_SECONDS = 600
-ESTIMATE_VERSION = 'capture-budget-forms-2'
-# This is the existing short-description estimate, not a spending guarantee.
-INPUT_TOKENS = 12000
-OUTPUT_TOKENS = 2600
-AUDIO_ALLOWANCE_USD = Decimal('.16')
+ESTIMATE_VERSION = 'capture-budget-vocabulary-3'
+# More shared guidance and up to twelve items, each with lemma/form audio.
+# This is a rough preview, not a spending guarantee.
+INPUT_TOKENS = 16000
+OUTPUT_TOKENS = vocabulary_policy.MAX_OUTPUT_TOKENS
+AUDIO_ALLOWANCE_USD = Decimal('.30')
 
 
 def ceiling():

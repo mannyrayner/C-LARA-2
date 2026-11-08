@@ -41,6 +41,7 @@ urlpatterns = [
     path('interface-language/', localisation.set_language, name='set-language'),
     path('translations.js', JavaScriptCatalog.as_view(packages=['community_dictionary']), name='javascript-catalog'),
     path('<int:pk>/evaluate/<uuid:set_id>/repeat-audio/', evaluation_views.repeat_audio, name='evaluation-repeat-audio'),
+    path('<int:pk>/evaluate/<uuid:set_id>/repeat-sentences/', evaluation_views.repeat_sentences, name='evaluation-repeat-sentences'),
     path('<int:pk>/settings/expression-audio/', mwe_audio.start, name='mwe-audio'),
     path('<int:pk>/settings/expression-audio/<uuid:run_id>/', mwe_audio.detail, name='mwe-audio-run'),
     path('profile/languages/', evaluation_views.competences, name='evaluation-languages'),

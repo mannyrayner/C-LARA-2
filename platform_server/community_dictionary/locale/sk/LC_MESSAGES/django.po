@@ -1538,7 +1538,7 @@ msgstr "Približné denné náklady pri využití celého limitu: US$%(value1)s"
 #, python-format
 msgid ""
 "About US$%(value1)s per short description, including its sentence and up to "
-"six new words with audio."
+"twelve new words with audio."
 msgstr ""
 "Približne US$%(value1)s za krátky opis, vrátane jeho vety a najviac šiestich "
 "nových slov so zvukovou nahrávkou."
@@ -1587,14 +1587,14 @@ msgstr "Ako sa odhad počíta"
 msgid ""
 "Model: %(value1)s. Configured rates: US$%(value2)s per million input tokens "
 "and US$%(value3)s per million output tokens. Each description is budgeted as "
-"12,000 input tokens and 2,600 output tokens, plus US$%(value4)s as an "
+"16,000 input tokens and 4,096 output tokens, plus US$%(value4)s as an "
 "approximate allowance for associated audio, pronunciation guidance and spoken"
 " input. These are planning assumptions; actual usage and provider prices may "
 "differ. The provider invoice is authoritative."
 msgstr ""
 "Model: %(value1)s. Nastavené sadzby: US$%(value2)s za milión vstupných "
 "tokenov a US$%(value3)s za milión výstupných tokenov. Na každý opis sa v "
-"rozpočte počíta s 12 000 vstupnými tokenmi a 2 600 výstupnými tokenmi plus "
+"rozpočte počíta s 16 000 vstupnými tokenmi a 4 096 výstupnými tokenmi plus "
 "US$%(value4)s ako približná rezerva na súvisiace zvukové nahrávky, pokyny k "
 "výslovnosti a hovorený vstup. Ide o predpoklady pre plánovanie; skutočné "
 "využitie a ceny poskytovateľa sa môžu líšiť. Rozhodujúca je faktúra "
@@ -1729,10 +1729,10 @@ msgstr ""
 #: community_dictionary/templates/community_dictionary/capture_start.html:22
 #, python-format
 msgid ""
-"Rough estimate: US$%(value1)s for a short description and up to six words "
+"Rough estimate: US$%(value1)s for a short description and up to twelve words "
 "with audio. Actual usage varies."
 msgstr ""
-"Približný odhad: US$%(value1)s za krátky opis a najviac šesť slov so "
+"Približný odhad: US$%(value1)s za krátky opis a najviac dvanásť slov so "
 "zvukovými nahrávkami. Skutočné využitie sa líši."
 
 #: community_dictionary/templates/community_dictionary/capture_start.html:22
@@ -7108,3 +7108,19 @@ msgstr "Zmena roly bola uložená."
 
 msgid "Role change proposed. A different coordinator must approve it."
 msgstr "Zmena roly bola navrhnutá. Musí ju schváliť iný koordinátor."
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "Compare vocabulary after a change"
+msgstr "Porovnať slovnú zásobu po zmene"
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "Snapshot the same sentence pages and their current vocabulary in the same order. This makes no AI calls and does not regenerate or edit content. Earlier ratings remain unchanged; the new set starts with hidden, independent ratings. If an original page is unavailable, no substitute is selected."
+msgstr "Vytvoriť snímku rovnakých strán s vetami a ich aktuálnou slovnou zásobou v rovnakom poradí. Táto akcia nevolá AI, neobnovuje ani neupravuje obsah. Predchádzajúce hodnotenia zostanú nezmenené; nová sada začína so skrytými, nezávislými hodnoteniami. Ak je pôvodná strana nedostupná, nevyberie sa žiadna náhradná."
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "Repeat these sentence pages"
+msgstr "Znova hodnotiť tieto strany s vetami"
+
+#: community_dictionary/templates/community_dictionary/evaluation_set.html
+msgid "using the same sentence pages and new vocabulary snapshots."
+msgstr "s rovnakými stranami s vetami a novými snímkami slovnej zásoby."

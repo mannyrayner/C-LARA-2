@@ -1,5 +1,6 @@
 """Bounded, resumable analysis and shared-word speech for vocabulary stage."""
 from decimal import Decimal
+import json
 import logging
 from django.conf import settings
 from django.db import transaction
@@ -59,7 +60,8 @@ def process_item(item_id):
             porting.clear_preview(item,'The sentence, permissions or vocabulary changed. Prepare a new estimate.')
             transaction.on_commit(lambda:port_tasks.dispatch(str(item.run_id)))
             return
-        if not port_budget.claim(item, f'item:{item.pk}', port_costs.analysis(item.source_entry,item.run.prices)):
+        extra = len(json.dumps(data.get('vocabulary', []), ensure_ascii=False).encode('utf-8'))
+        if not port_budget.claim(item, f'item:{item.pk}', vocabulary.analysis_estimate(item.source_entry,item.run.prices,extra)):
             item.status='budget';item.message='More allowance is needed. Use the progress page to approve it.'
             item.save(update_fields=['status','message'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(item.run_id)));return

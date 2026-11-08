@@ -73,6 +73,19 @@ class PortVocabularyTests(TestCase):
         run.refresh_from_db()
         return synth
 
+    def test_old_ready_preview_cannot_be_published_as_the_new_recipe(self):
+        first, entry = self.translated()
+        run = self.stage_two(first.port)
+        item = run.items.get()
+        self.analyse(item)
+        run.prices['vocabulary_recipe'] = 'accepted-sentence-vocabulary-1'
+        run.save(update_fields=['prices'])
+        before = list(SentenceWord.objects.values_list('pk', flat=True))
+        with self.assertRaisesMessage(Conflict, 'processing changed'):
+            vocab.save_item(self.owner, item.pk, WORDS)
+        self.assertEqual(list(SentenceWord.objects.values_list('pk', flat=True)), before)
+        self.assertFalse(VocabularyState.objects.filter(sentence=entry).exists())
+
     def test_new_translation_ignores_source_word_pages_and_keeps_sentence_audio(self):
         run,entry=self.translated()
         self.assertEqual(run.stage,'sentences')

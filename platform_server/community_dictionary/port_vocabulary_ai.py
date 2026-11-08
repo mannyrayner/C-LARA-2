@@ -6,6 +6,7 @@ from PIL import Image
 from . import capture_ai
 from .capture_vocabulary import WORD_INSTRUCTIONS, mwe_guidance
 from .photo_ai import _openai_client
+from . import vocabulary_policy
 
 SCHEMA=capture_ai.obj({'words':capture_ai.SCHEMA['properties']['words']})
 INSTRUCTIONS='''Extract learning vocabulary from this already accepted target-language sentence.
@@ -25,7 +26,7 @@ def analyse(data,photo,*,model,api_key):
     with _openai_client(api_key=api_key,timeout=45,max_retries=0) as client:
         return client.responses.create(model=model,instructions=INSTRUCTIONS+WORD_INSTRUCTIONS+mwe_guidance(data['target_language'])+'\nFor this request return only the sentence_vocabulary schema: words, without sentence fields.',
             input=[{'role':'user','content':content}],text={'format':{'type':'json_schema','name':'sentence_vocabulary','strict':True,'schema':SCHEMA}},
-            reasoning={'effort':'low'},max_output_tokens=2600,store=False)
+            reasoning={'effort':'low'},max_output_tokens=vocabulary_policy.MAX_OUTPUT_TOKENS,store=False)
 
 def parse(response,data):
     if getattr(response,'status',None)!='completed':
