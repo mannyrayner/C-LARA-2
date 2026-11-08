@@ -8,8 +8,9 @@ import json
 import re
 from pipeline import annotation_prompts
 from .tts import language_code
+from . import vocabulary_policy
 
-MAX_EDITED_WORDS = 12
+MAX_EDITED_WORDS = vocabulary_policy.MAX_WORDS
 
 
 def mwe_guidance(language):
@@ -37,7 +38,8 @@ For discontinuous expressions, join exact sentence spans in their original order
 The lemma can have a different word order. Otherwise surface must be an exact whole-word span of the sentence
 (an exact lexical substring is sufficient for Japanese and Chinese, which do not require spaces).
 Return only the picture_description schema; do not return token annotations or MWE analysis fields.
-''')
+''' + '\nFor learner-vocabulary selection, the following policy takes precedence over conflicting legacy examples.\n'
+            + vocabulary_policy.guidance(code))
 
 
 def unspaced_character(char):
@@ -79,8 +81,8 @@ def aligned_surface(surface, sentence):
 WORD_INSTRUCTIONS = """For Japanese and Chinese, select lexical units even without spaces: surface must be
 an exact substring in the sentence and lemma the dictionary form. Do not insert spaces into surface.
 For Korean, surface includes the particles/endings as written; lemma is the dictionary form.
-Select up to six useful lexical items from the supplied target-language sentence,
-including useful verbs and prepositions. Return exact surface spans and dictionary-form lemmas.
+Select useful lexical items according to the learner-vocabulary policy below.
+Return exact surface spans and dictionary-form lemmas.
 Reuse an existing lemma AND sense only when both match; copy its lemma and meaning exactly.
 Otherwise use existing_id=0 and a short sense-specific meaning in the commenting language.
 Do not make entries for inflectional variants, punctuation or lists of alternative translations.

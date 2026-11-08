@@ -419,6 +419,27 @@ def results(request, pk, set_id, download=False):
 
 
 @page(['POST'])
+def repeat_sentences(request, pk, set_id):
+    batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
+    dictionary, _ = ev.access(request.user, pk, batch)
+    require_owner(request.user, dictionary)
+    if batch.scope != 'sentences' or batch.rubric != ev.RUBRIC:
+        raise Conflict('Choose a standard sentence-page set for this follow-up.')
+    try:
+        token = uuid.UUID(request.POST.get('token', ''))
+    except ValueError:
+        raise Conflict('Reload the evaluation page before repeating it.')
+    name = request.POST.get('name', '').strip() or batch.name[:110] + ' · sentence follow-up'
+    if len(name) > 160:
+        raise Conflict('Use a follow-up name of at most 160 characters.')
+    repeated = ev.create_set(request.user, dictionary, {'token': token,
+        'name': name, 'scope': 'sentences',
+        'sampling': 'all', 'size': ev.MAX_SAMPLE, 'allow_visitors': False,
+        'based_on': batch})
+    return redirect('community_dictionary:evaluation-set', pk=pk, set_id=repeated.pk)
+
+
+@page(['POST'])
 def repeat_audio(request, pk, set_id):
     batch = get_object_or_404(EvaluationSet, pk=set_id, dictionary_id=pk)
     if batch.rubric=='word-audio-provider-study-v1':

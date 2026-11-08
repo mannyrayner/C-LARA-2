@@ -8,13 +8,13 @@ from django.db.models import F, Q
 from django.http import Http404
 from django.utils import timezone
 from projects.billing import credits_enabled
-from . import capture_ai, photo_ai, porting, tts, capture_vocabulary
+from . import capture_ai, photo_ai, porting, tts, capture_vocabulary, vocabulary_policy
 from .collections import content_digest
 from .models import (Contribution, Entry, PortRun, PortItem, PortEntryLink, PortSpeech,
                      SentenceWord, ImageWordLink, VocabularyState)
 from .services import Conflict, event
 
-VERSION = 'accepted-sentence-vocabulary-1'
+VERSION = 'accepted-sentence-' + vocabulary_policy.VERSION
 
 
 def authority(port):
@@ -80,6 +80,8 @@ def current_state(entry, state=None):
 def current_item(item):
     port = item.run.port
     authority(port)
+    if item.run.prices.get('vocabulary_recipe') != VERSION:
+        raise Conflict('Vocabulary processing changed. Prepare a new estimate.')
     if item.invalidated or item.run.status == 'cancelled':
         raise Conflict('This vocabulary result is no longer available.')
     from .workflow_data import data
@@ -121,15 +123,22 @@ def input_data(item):
             'meaning':parts[ref['meaning']].meaning} for ref in item.snapshot.get('context',[])]}
 
 
+def analysis_estimate(entry, prices, extra=0):
+    from . import port_costs
+    size = len((entry.word + entry.meaning).encode('utf-8')) + extra
+    return port_costs.text_cost(prices, 16000 + size//3, vocabulary_policy.MAX_OUTPUT_TOKENS)
+
+
 def estimate(entry, prices, extra, *, audio_policy=None):
     from . import port_costs
-    analysis = port_costs.analysis(entry, prices, extra)
-    # Plan three lemmas and three contextual forms; reuse/identical forms reduce this.
+    analysis = analysis_estimate(entry, prices, extra)
+    # Bound the preview by twelve lemmas and twelve contextual forms.
+    # Reuse/identical forms reduce actual work; this is not a provider spending cap.
     # Actual edited/reused words determine speech work after human review.
     from . import word_audio
     policy = (word_audio.policy(entry.dictionary) if entry.dictionary_id else {}) if audio_policy is None else audio_policy
     speech = word_audio.estimate('x'*12, policy) if policy else port_costs.speech('x'*12, '', prices, unknown=True)
-    estimate = analysis + 6*speech
+    estimate = analysis + 2*vocabulary_policy.MAX_WORDS*speech
     return porting.money(estimate), port_costs.allowance(estimate)
 
 

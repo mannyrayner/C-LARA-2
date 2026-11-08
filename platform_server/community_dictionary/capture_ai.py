@@ -6,10 +6,11 @@ from decimal import Decimal
 from PIL import Image
 from .photo_ai import _openai_client
 from .capture_vocabulary import mwe_guidance, aligned_surface, WORD_INSTRUCTIONS
+from . import vocabulary_policy
 
-VERSION = 'picture-description-forms-v4'
+VERSION = 'picture-description-' + vocabulary_policy.VERSION
 ASR_MODEL = 'gpt-4o-mini-transcribe'
-MAX_WORDS = 6
+MAX_WORDS = vocabulary_policy.MAX_WORDS
 
 def obj(properties):
     return {'type':'object', 'properties':properties, 'required':list(properties), 'additionalProperties':False}
@@ -30,7 +31,7 @@ Do not invent visible details. Correct learner grammar gently. Do not identify u
 If a material ambiguity cannot be reconciled, outcome=clarify and ask ONE short question; words=[], sentence/translation may be empty.
 Otherwise produce a natural short sentence in target_language and its translation in explanation_language.
 feedback must be in input_language: briefly restate the intended meaning and ask if it is right; at most 255 characters.
-Select up to six useful lexical items, including useful verbs/prepositions, with exact surface strings from sentence and dictionary-form lemmas.
+Select useful lexical items under the shared learner-vocabulary policy, with exact surface strings and dictionary-form lemmas.
 E.g. Swedish Katten/ligger/soffan -> katt/ligga/soffa. Do not make separate entries for inflections or punctuation.
 Reuse existing_id ONLY for an existing item with the same lemma AND intended sense. When reusing copy its lemma and meaning EXACTLY.
 Otherwise existing_id=0 and supply a short sense-specific meaning in explanation_language. No category guessing.
@@ -45,7 +46,7 @@ If the picture is too unclear to describe responsibly, outcome=clarify and ask O
 words=[], sentence/translation may be empty. Otherwise outcome=ready.
 Produce the sentence in target_language and its translation in explanation_language.
 feedback must be in input_language: briefly restate the proposed meaning and ask whether the user wants to use it; at most 255 characters.
-Select up to six useful lexical items, including useful verbs/prepositions, with exact surface strings from sentence and dictionary-form lemmas.
+Select useful lexical items under the shared learner-vocabulary policy, with exact surface strings and dictionary-form lemmas.
 E.g. Swedish Katten/ligger/soffan -> katt/ligga/soffa. Do not make separate entries for inflections or punctuation.
 Prefer familiar dictionary vocabulary when it fits the picture naturally, without changing its meaning.
 Reuse existing_id ONLY for an existing item with the same lemma AND intended sense. When reusing copy its lemma and meaning EXACTLY.
@@ -77,7 +78,7 @@ outcome=ready. The image is context for sense disambiguation, not a reason to re
                 {'type':'input_text','text':json.dumps(data,ensure_ascii=False)},
                 {'type':'input_image','detail':'auto','image_url':'data:image/jpeg;base64,'+base64.b64encode(output.getvalue()).decode()}]}],
             text={'format':{'type':'json_schema','name':'picture_description','strict':True,'schema':SCHEMA}},
-            reasoning={'effort':'low'}, max_output_tokens=2600, store=False)
+            reasoning={'effort':'low'}, max_output_tokens=vocabulary_policy.MAX_OUTPUT_TOKENS, store=False)
 
 def parse(response):
     if getattr(response,'status',None) != 'completed':

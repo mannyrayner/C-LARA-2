@@ -254,19 +254,26 @@ def create_set(user, dictionary, data):
     if based_on:
         require_owner(user, based_on.dictionary)
         if based_on.dictionary_id != dictionary.pk or not based_on.closed_at:
-            raise Conflict('Finish the original evaluation before repeating its audio items.')
+            raise Conflict('Finish the original evaluation before repeating its items.')
         if (based_on.language, based_on.explanation_language) != (dictionary.language, dictionary.explanation_language):
             raise Conflict('The languages changed; create a new evaluation instead.')
         selected = []
-        for unit in based_on.units.filter(dimension='word_audio').select_related('item'):
-            snap = unit.item.snapshot
-            word = snap['words'][unit.word_index] if unit.word_index is not None else snap['entry']
-            if word['id'] not in selected:
-                selected.append(word['id'])
+        if data['scope'] == 'sentences':
+            if based_on.scope != 'sentences':
+                raise Conflict('A sentence follow-up needs an earlier sentence-page set.')
+            selected = [item.entry_id for item in based_on.items.order_by('position')]
+        elif data['scope'] == 'word_audio':
+            for unit in based_on.units.filter(dimension='word_audio').select_related('item'):
+                snap = unit.item.snapshot
+                word = snap['words'][unit.word_index] if unit.word_index is not None else snap['entry']
+                if word['id'] not in selected:
+                    selected.append(word['id'])
+        else:
+            raise Conflict('Choose a sentence-page or word-audio follow-up.')
         if not selected or any(pk not in ids for pk in selected):
-            raise Conflict('Some original word pages are no longer eligible. No substitute pages were selected.')
+            raise Conflict('Some original pages are no longer eligible. No substitute pages were selected.')
         if len(selected) > MAX_SAMPLE:
-            raise Conflict('This earlier set contains too many words for one follow-up (maximum 500).')
+            raise Conflict('This earlier set contains too many pages for one follow-up (maximum 500).')
         seed = based_on.seed
         ids = selected.copy()
     batch = EvaluationSet.objects.create(id=data['token'], dictionary=dictionary, created_by=user,
