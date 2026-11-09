@@ -1,10 +1,12 @@
-# Community Dictionaries: word-extraction policy v2
+# Community Dictionaries: word-extraction policy v2.1
 
 This is the working policy for the second extraction experiment, revised after
 the first 20-page English/French pilot. It applies to **the language being
 learned**, with contextual glosses in the dictionary's explanation language.
 It guides both new picture descriptions and vocabulary rebuilt from accepted
-sentences. It is a development policy, not a gold-standard PARSEME corpus guide.
+sentences. Version 2.1 adds the French existential convention after the
+French-to-English pilot. This is a development policy, not a gold-standard
+PARSEME corpus guide.
 
 ## What to select
 
@@ -93,7 +95,31 @@ The original pilot's ratings and comments remain unchanged. A presentation
 preference should not be reported as a new linguistic error without an agreed
 convention.
 
-## How we annotate the second experiment
+### French existential convention
+
+Select the existential construction as one teaching item with the learner-facing
+headword **il y a**. Keep the sentence form and its contextual gloss separately.
+In *Il peut y avoir un problème*, *peut* expresses possibility and sits between
+the existential components. Use the exact spans *Il … y avoir* for the
+vocabulary link. The example sentence still displays *Il peut y avoir un problème*.
+
+| Example | Surface | Headword | English form gloss |
+| --- | --- | --- | --- |
+| *Il y a des chats dans le tableau.* | *Il y a* | *il y a* | there are |
+| *Il y avait des chats dans le tableau.* | *Il y avait* | *il y a* | there were |
+| *Il y aura un changement.* | *Il y aura* | *il y a* | there will be |
+| *Il peut y avoir un problème.* | *Il … y avoir* | *il y a* | there may be |
+
+Keep the following noun phrase separate and distinguish the temporal sense
+meaning *ago*. Use a stable gloss for the existential headword, such as
+*there is; there are* in English.
+
+For judging, an absent existential item is a **Selection** problem. A correctly
+grouped item with *il y avoir* as its headword is a **Headword/sense** problem.
+Either can be minor on an otherwise usable page. Record the distinction in the
+comment so the follow-up can separate better coverage from better headwords.
+
+## How we annotate the extraction experiments
 
 Select **Extracted vocabulary** only. Judge the complete displayed list against
 this policy; this is rating an existing extraction, not making an independent
