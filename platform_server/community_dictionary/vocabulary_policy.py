@@ -4,7 +4,7 @@ These are model instructions, not a deterministic linguistic classifier.
 Keep the annotation guide in docs/howto/community-word-extraction-policy.md aligned.
 """
 
-VERSION = 'learner-vocabulary-v2'
+VERSION = 'learner-vocabulary-v2.1'
 MAX_WORDS = 12
 MAX_OUTPUT_TOKENS = 4096
 
@@ -80,6 +80,16 @@ do not confuse a state with an event (couché is not automatically se coucher).
 Lexical constructions such as avoir faim are different from grammatical avoir.
 Use normal French citation forms and fixed-expression boundaries, not literal
 translations of English headwords or English there be conventions.
+
+French existential convention: always select existential il y a as one teaching
+unit, with canonical lemma il y a in every tense. Keep the exact sentence form,
+such as il y avait, il y aura or il y a eu, separate from the lemma. With a modal
+or near-future aller, select the existential components without the intervening
+verb: Il peut y avoir -> surface "Il … y avoir", lemma "il y a". Keep the noun
+phrase separate. Use a stable existential lemma gloss (English: there is; there
+are) and a contextual form_meaning (e.g. there were or there may be). Do not reuse
+the old lemma il y avoir, emit bare avoir for this use, or merge the temporal
+sense meaning ago with the existential entry.
 ''',
     'sv': '''
 Swedish conventions: Use normal Swedish citation forms, including infinitives

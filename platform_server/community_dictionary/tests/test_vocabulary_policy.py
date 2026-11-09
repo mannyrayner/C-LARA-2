@@ -55,6 +55,22 @@ class VocabularyPolicyContracts(SimpleTestCase):
         self.assertTrue(capture_vocabulary.aligned_surface('猫', '猫が寝ている。'))
         self.assertFalse(capture_vocabulary.aligned_surface('cat', '猫 and caterpillar'))
 
+    def test_french_existential_guidance_reaches_both_requests_and_modal_spans_align(self):
+        sentence = 'Il peut y avoir un problème.'
+        data = {'target_language': 'French', 'sentence': sentence, 'vocabulary': []}
+        with patch('community_dictionary.capture_ai._openai_client') as capture_client, \
+                patch('community_dictionary.port_vocabulary_ai._openai_client') as rebuild_client:
+            capture_ai.interpret(capture_base.picture().read(), {**data, 'input_mode': 'text'},
+                                 model='fixture-model', api_key='fixture-key')
+            port_vocabulary_ai.analyse(data, None, model='fixture-model', api_key='fixture-key')
+            for client in (capture_client, rebuild_client):
+                call = client.return_value.__enter__.return_value.responses.create.call_args.kwargs
+                self.assertIn('canonical lemma il y a', call['instructions'])
+                self.assertIn('"Il … y avoir"', call['instructions'])
+
+        self.assertTrue(capture_vocabulary.aligned_surface('Il … y avoir', sentence))
+        self.assertNotIn('French existential convention:', vocabulary_policy.guidance('de'))
+
 
 class SentenceFollowupTests(TestCase):
     setUp = EvaluationTests.setUp
