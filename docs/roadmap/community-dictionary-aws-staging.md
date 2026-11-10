@@ -190,6 +190,10 @@ when a task moves to them.
 
 ## First implementation slice
 
+The [bootstrap specification](community-dictionary-aws-staging-bootstrap.md)
+sets out the proposed hosting defaults, request format, operator steps, and
+pass criteria for the first staging deployment and recovery rehearsal.
+
 1. Agree on the staging hostname, hosting cost, operator and staging-only
    trigger identity. Confirm the browser can reach the chosen access boundary.
 2. Prepare the isolated host and fixtures, parameterise the reviewed
