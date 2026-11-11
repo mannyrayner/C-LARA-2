@@ -117,7 +117,7 @@ class SlovakLocalisationTests(TestCase):
         self.choose()
         response = self.client.get(url('home'), {'learning': 'en'})
         self.assertEqual(response.context['learning_language'], 'en')
-        self.assertEqual(set(dict(response.context['learning_choices'])), {'en', 'fr'})
+        self.assertEqual(set(dict(response.context['learning_choices'])), {'en', 'fr', 'sk', 'de'})
         self.assertEqual(self.names(response), [item.name for item in expected])
         self.assertNotContains(response, self.dictionary.name)
         self.assertNotContains(response, legacy.name)
@@ -150,8 +150,9 @@ class SlovakLocalisationTests(TestCase):
         self.client.get(url('home'), {'learning': 'invalid'})
         self.assertEqual(self.client.get(url('home')).context['learning_language'], 'de')
         all_languages = self.client.get(url('home'), {'learning': 'all'})
-        self.assertEqual(set(self.names(all_languages)), {'English for Slovak speakers', german.name})
-        self.assertTrue(self.client.get(url('home')).context['choosing_language'])
+        self.assertEqual(set(self.names(all_languages)), {'English for Slovak speakers', german.name,
+            'English for French speakers', french.name, self.dictionary.name})
+        self.assertEqual(self.client.get(url('home')).context['learning_language'], 'all')
 
     def test_slovak_recommendations_retain_member_visibility_and_access_rules(self):
         public = self.make_dictionary('Public English')

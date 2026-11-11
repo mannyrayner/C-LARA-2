@@ -104,7 +104,7 @@ class LocalisationTests(TestCase):
             self.assertEqual(self.choose('fr', destination=destination)['Location'], url('home'))
             self.assertEqual(self.choose('fr', Client(), destination)['Location'], url('public-home'))
 
-    def test_english_choice_and_blank_explanations_mean_english(self):
+    def test_signed_in_choices_include_all_explanation_languages(self):
         french = self.make_dictionary('French for English speakers', 'French', 'English')
         german = self.make_dictionary('German with legacy explanations', 'German', '')
         wrong = self.make_dictionary('English for French speakers')
@@ -113,12 +113,12 @@ class LocalisationTests(TestCase):
         response = self.client.get(url('home'), {'learning': 'fr'})
         self.assertEqual(response.context['learning_language'], 'fr')
         self.assertEqual(self.names(response), [french.name])
-        self.assertEqual(set(dict(response.context['learning_choices'])), {'fr', 'de', 'sv'})
+        self.assertEqual(set(dict(response.context['learning_choices'])), {'fr', 'de', 'sv', 'en'})
         self.assertNotContains(response, self.dictionary.name)
         self.assertNotContains(response, wrong.name)
         management = self.client.get(url('manage'))
-        self.assertContains(management, self.dictionary.name)
-        self.assertContains(management, wrong.name)
+        self.assertNotContains(management, self.dictionary.name)
+        self.assertNotContains(management, wrong.name)
         response = self.client.get(url('home'), {'learning': 'de'})
         self.assertEqual(self.names(response), [german.name])
 
@@ -132,7 +132,7 @@ class LocalisationTests(TestCase):
         self.assertEqual(response.context['learning_language'], 'en')
         self.assertEqual(self.client.get(url('manage')).context['form']['explanation_language'].value(), 'French')
         self.assertEqual(self.names(response), [item.name for item in expected])
-        self.assertEqual(set(dict(response.context['learning_choices'])), {'en', 'de'})
+        self.assertEqual(set(dict(response.context['learning_choices'])), {'en', 'de', 'sv'})
         self.assertNotContains(response, other.name)
         self.assertNotContains(response, self.dictionary.name)
 
@@ -152,15 +152,18 @@ class LocalisationTests(TestCase):
         self.client.get(url('home'), {'learning': 'not-a-language'})
         self.assertEqual(self.client.get(url('home')).context['learning_language'], 'de')
 
-    def test_all_learning_languages_preserves_matching_explanation_boundary(self):
+    def test_member_all_languages_includes_other_explanations_but_visitor_recommendations_match_ui(self):
         english = self.make_dictionary('English with French explanations')
         german = self.make_dictionary('German with French explanations', 'German', 'French')
-        self.make_dictionary('French with English explanations', 'French', 'English')
+        french = self.make_dictionary('French with English explanations', 'French', 'English')
         self.choose('fr')
         response = self.client.get(url('home'), {'learning': 'all'})
-        self.assertEqual(set(self.names(response)), {english.name, german.name})
+        self.assertEqual(set(self.names(response)), {english.name, german.name, french.name, self.dictionary.name})
         self.assertEqual(response.context['learning_language'], 'all')
-        self.assertTrue(self.client.get(url('home')).context['choosing_language'])
+        self.assertEqual(self.client.get(url('home')).context['learning_language'], 'all')
+        guest = Client(); self.choose('fr', guest)
+        self.assertEqual(set(self.names(guest.get(url('public-home'), {'learning': 'all'}))),
+                         {english.name, german.name})
 
     def test_fallback_uses_an_available_language_and_empty_list_is_valid(self):
         guest = Client()
