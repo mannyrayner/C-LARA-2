@@ -2,6 +2,20 @@
 (() => {
   'use strict';
   const gettext = window.gettext || (message => message);
+  document.querySelectorAll('[data-password-toggle]').forEach(toggle => {
+    const password = document.getElementById(toggle.getAttribute('aria-controls'));
+    const hidePassword = () => {
+      toggle.checked = false;
+      password.type = 'password';
+    };
+    hidePassword();
+    toggle.closest('label').hidden = false;
+    toggle.addEventListener('change', () => {
+      password.type = toggle.checked ? 'text' : 'password';
+    });
+    toggle.form.addEventListener('submit', hidePassword);
+    window.addEventListener('pageshow', hidePassword);
+  });
   let database;
   const openDatabase = () => {
     if (!database) database = new Promise((resolve, reject) => {

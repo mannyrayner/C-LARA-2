@@ -14,6 +14,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n == 1 ? 0 : n % 1 == 0 && n >= 2 && n <= 4 ? 1 : n % 1 != 0 ? 2 : 3);\n"
 
+#: community_dictionary/templates/community_dictionary/login.html
+msgid "Show password"
+msgstr "Zobraziť heslo"
+
 #: community_dictionary/capture_forms.py:9
 msgid "Type"
 msgstr "Písať"
