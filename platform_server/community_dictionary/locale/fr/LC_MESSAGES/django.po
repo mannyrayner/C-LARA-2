@@ -7241,3 +7241,16 @@ msgstr "Changer de langue"
 #: community_dictionary/templates/community_dictionary/home.html
 msgid "No dictionaries are available for this language."
 msgstr "Aucun dictionnaire n’est disponible pour cette langue."
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "Microphone settings"
+msgstr "Réglages du microphone"
+
+msgid ""
+"Saving starts paid AI analysis. Your picture stays private until you confirm"
+" its description."
+msgstr ""
+"Enregistrer l’image lance une analyse payante par l’IA. Votre image reste "
+"privée jusqu’à ce que vous confirmiez sa description."
