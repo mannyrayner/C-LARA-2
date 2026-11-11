@@ -190,7 +190,7 @@ class BatchDescriptionTests(TestCase):
         self.assertEqual(self.dictionary.name,'Our pictures');self.assertEqual(self.dictionary.language,'Swedish')
         self.assertTrue(self.dictionary.sentence_capture_enabled)
         self.assertEqual(self.client.post(self.url('rename'),{'name':'  '}).status_code,400)
-        home=self.client.get(reverse('community_dictionary:home'))
+        home=self.client.get(reverse('community_dictionary:manage'))
         self.assertContains(home,'1 sentence · 1 word')
         self.assertContains(self.client.get(self.url('settings')),'Rename dictionary')
         self.assertContains(self.client.get(self.url('tools')),'Add missing sentences')
@@ -278,7 +278,7 @@ class BatchDescriptionTests(TestCase):
         self.picture(word='katt')
         withdraw_all(self.member,self.dictionary.pk,0)
         self.client.force_login(self.member)
-        page=self.client.get(reverse('community_dictionary:home'))
+        page=self.client.get(reverse('community_dictionary:manage'))
         self.assertContains(page,'Your content is withdrawn');self.assertNotContains(page,'dictionary-counts')
 
     def test_vocabulary_preview_uses_same_dictionary_links(self):

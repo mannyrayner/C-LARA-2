@@ -69,3 +69,65 @@
 @media(max-width:600px) {.site-header {align-items:flex-start;} .interface-language-form {width:100%;} .learning-language-form {align-items:flex-start;flex-direction:column;}}
 
 .image-ladder{width:100%;border-collapse:collapse;table-layout:fixed}.image-ladder th,.image-ladder td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:anywhere}.image-ladder th:first-child,.image-ladder td:first-child{width:4em}.image-ladder th:last-child,.image-ladder td:last-child{width:5em;text-align:right;font-variant-numeric:tabular-nums}.image-ladder tbody th{font-weight:600}
+
+.account-menu { position: relative; flex-shrink: 0; }
+.account-menu > summary {
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--teal);
+  border-radius: 10px;
+  color: var(--teal);
+  cursor: pointer;
+  font-weight: 650;
+}
+.account-menu > .account-menu-content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: min(300px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  text-align: left;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 8px 24px #183b3b22;
+  font-size: 16px;
+}
+.account-menu-content > a { padding: 10px 4px; }
+.account-menu-content .interface-language-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.account-menu-content .interface-language-form select { max-width: 100%; min-height: 48px; }
+.account-menu-content .interface-language-form label { font-size: inherit; }
+.learning-home { max-width: 680px; margin: 0 auto; }
+.language-choices, .learning-dictionaries { display: grid; gap: 14px; }
+.language-choices button, .dictionary-choice {
+  min-height: 56px;
+  padding: 16px 20px;
+  font-size: 18px;
+  text-align: left;
+  justify-content: flex-start;
+  overflow-wrap: anywhere;
+}
+.dictionary-choice {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  text-decoration: none;
+  font-weight: 650;
+}
+.dictionary-choice:hover { border-color: var(--teal); }
+.site-header { flex-direction: row; align-items: center; }
+.site-header .brand { min-width: 0; }

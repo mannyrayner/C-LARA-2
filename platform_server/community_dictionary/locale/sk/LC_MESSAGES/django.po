@@ -7128,3 +7128,23 @@ msgstr "Znova hodnotiť tieto strany s vetami"
 #: community_dictionary/templates/community_dictionary/evaluation_set.html
 msgid "using the same sentence pages and new vocabulary snapshots."
 msgstr "s rovnakými stranami s vetami a novými snímkami slovnej zásoby."
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "Menu"
+msgstr "Menu"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "Which language would you like to learn?"
+msgstr "Ktorý jazyk sa chcete učiť?"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "%(language)s dictionaries"
+msgstr "Slovníky – %(language)s"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "Change language"
+msgstr "Zmeniť jazyk"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "No dictionaries are available for this language."
+msgstr "Pre tento jazyk nie sú k dispozícii žiadne slovníky."

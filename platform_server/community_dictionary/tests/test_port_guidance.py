@@ -98,7 +98,7 @@ class PortGuidanceTests(TestCase):
             self.assertEqual((target['new_count'],target['changed_count']), (6,0))
             self.assertEqual(source['url'], target['url'])
             self.assertEqual(source['port_id'], target['port_id'])
-            page = self.client.get(reverse('community_dictionary:home'))
+            page = self.client.get(reverse('community_dictionary:manage'))
             self.assertContains(page,'6 new sentences')
             self.assertContains(page,'available from Swedish')
         self.assertEqual(PortRun.objects.count(), before)

@@ -9,6 +9,7 @@ from unittest.mock import patch
 from django.test import TestCase, SimpleTestCase, Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import strip_tags
 from community_dictionary import homograph_experiments as exp, carrier, porting, port_tasks, sentence_forms as sf
 from community_dictionary.models import Contribution, Entry, PortRun, SentenceWord
 from community_dictionary.services import accept, Conflict
@@ -212,7 +213,7 @@ class ExperimentTests(TestCase):
         self.assertEqual(item.snapshot, {'words':[]})
         self.assertFalse(any(path_for(p).exists() for p in files))
         self.assertEqual(self.client.get(self.url('media',run.pk,item.pk,clip['id'])).status_code,409)
-        self.assertNotContains(self.client.get(self.url('run',run.pk)), 'tail')
+        self.assertNotRegex(strip_tags(self.client.get(self.url('run',run.pk)).content.decode()), r'\btail\b')
 
     def test_extraction_failure_is_not_silently_replaced_and_remains_in_summary(self):
         def fails(text, **kw):

@@ -97,8 +97,8 @@ def set_language(request):
     return response
 
 
-def learning_options(request, *, member=False):
-    """Recommend matching explanations without filtering the existing lists."""
+def learning_options(request, *, member=False, require_choice=False):
+    """Build language choices and recommendations from accessible dictionaries."""
     from . import discovery
     from .permissions import dictionaries_for
 
@@ -117,24 +117,34 @@ def learning_options(request, *, member=False):
     saved = request.session.get('community_learning_languages', {})
     if not isinstance(saved, dict):
         saved = {}
-    requested = request.GET.get('learning', saved.get(ui, ''))
+    remembered = saved.get(ui, '')
+    if require_choice and remembered == 'all':
+        remembered = ''
+    requested = request.GET.get('learning', remembered)
     default = UI_LANGUAGE_CONFIG[ui]['learning_default']
     if requested in names or requested == 'all':
         selected = requested
+    elif remembered in names or remembered == 'all':
+        selected = remembered
+    elif require_choice:
+        selected = ''
     elif default in names:
         selected = default
     else:
         selected = next((key for key, _ in choices if key != ui), choices[0][0] if choices else '')
     if 'learning' in request.GET and (requested in names or requested == 'all'):
         request.session['community_learning_languages'] = {**saved, ui: requested}
+    choosing = require_choice and (not selected or request.GET.get('choose') == '1')
     recommendations = []
     for d in sorted(matching, key=lambda d: (d.pk not in member_ids, d.name.casefold(), d.pk)):
-        if selected != 'all' and language_key(d.language) != selected:
+        if choosing or (selected != 'all' and language_key(d.language) != selected):
             continue
         route = ('dictionary' if d.pk in member_ids else
                  'public-dictionary' if d.public_browsing_enabled else 'discover-dictionary')
         recommendations.append({'name': d.name, 'language': language_label(d.language),
                                 'url': reverse('community_dictionary:' + route, args=[d.pk])})
     return {'learning_choices': choices, 'learning_language': selected,
+            'choosing_language': choosing,
+            'learning_language_label': names.get(selected, _('All learning languages')),
             'learning_recommendations': recommendations,
             'learning_explanation_language': language_label(LANGUAGE_NAMES[ui])}

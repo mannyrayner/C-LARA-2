@@ -137,6 +137,7 @@ urlpatterns = [
     path('<int:pk>/learn-photo/<uuid:study_id>/image/', photo_views.media, name='photo-media'),
     path('<int:pk>/learn-photo/<uuid:study_id>/action/', photo_views.action, name='photo-action'),
     path('', views.home, name='home'),
+    path('manage/', views.manage, name='manage'),
     path('<int:pk>/join/', views.join_dictionary, name='join'),
     path('<int:pk>/', views.dictionary, name='dictionary'),
     path('<int:pk>/people/', views.people, name='people'),

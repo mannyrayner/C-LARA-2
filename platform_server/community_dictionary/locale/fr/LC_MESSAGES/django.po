@@ -7221,3 +7221,23 @@ msgstr "Réévaluer ces pages de phrases"
 #: community_dictionary/templates/community_dictionary/evaluation_set.html
 msgid "using the same sentence pages and new vocabulary snapshots."
 msgstr "avec les mêmes pages de phrases et de nouveaux instantanés du vocabulaire."
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "Menu"
+msgstr "Menu"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "Which language would you like to learn?"
+msgstr "Quelle langue souhaitez-vous apprendre ?"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "%(language)s dictionaries"
+msgstr "Dictionnaires en %(language)s"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "Change language"
+msgstr "Changer de langue"
+
+#: community_dictionary/templates/community_dictionary/home.html
+msgid "No dictionaries are available for this language."
+msgstr "Aucun dictionnaire n’est disponible pour cette langue."
