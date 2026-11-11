@@ -71,7 +71,7 @@ class ParticipationTests(TestCase):
 
     def test_withdrawn_status_on_home_and_dictionary_and_only_own_private_content(self):
         entry = self.mixed(); self.withdraw()
-        for url in [reverse('community_dictionary:home'), self.url('dictionary')]:
+        for url in [reverse('community_dictionary:manage'), self.url('dictionary')]:
             response = self.client.get(url)
             self.assertContains(response, 'Your content is withdrawn')
             self.assertContains(response, 'Restore my content')

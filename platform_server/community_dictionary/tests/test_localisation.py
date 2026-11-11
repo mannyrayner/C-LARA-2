@@ -104,33 +104,37 @@ class LocalisationTests(TestCase):
             self.assertEqual(self.choose('fr', destination=destination)['Location'], url('home'))
             self.assertEqual(self.choose('fr', Client(), destination)['Location'], url('public-home'))
 
-    def test_english_default_prefers_french_and_blank_explanations_mean_english(self):
+    def test_english_choice_and_blank_explanations_mean_english(self):
         french = self.make_dictionary('French for English speakers', 'French', 'English')
         german = self.make_dictionary('German with legacy explanations', 'German', '')
         wrong = self.make_dictionary('English for French speakers')
         response = self.client.get(url('home'))
+        self.assertTrue(response.context['choosing_language'])
+        response = self.client.get(url('home'), {'learning': 'fr'})
         self.assertEqual(response.context['learning_language'], 'fr')
         self.assertEqual(self.names(response), [french.name])
         self.assertEqual(set(dict(response.context['learning_choices'])), {'fr', 'de', 'sv'})
-        # The original member list and discovery selection remain available.
-        self.assertContains(response, self.dictionary.name)
-        self.assertContains(response, wrong.name)
+        self.assertNotContains(response, self.dictionary.name)
+        self.assertNotContains(response, wrong.name)
+        management = self.client.get(url('manage'))
+        self.assertContains(management, self.dictionary.name)
+        self.assertContains(management, wrong.name)
         response = self.client.get(url('home'), {'learning': 'de'})
         self.assertEqual(self.names(response), [german.name])
 
-    def test_french_default_prefers_english_and_matches_language_names_and_codes(self):
+    def test_french_choice_matches_language_names_and_codes(self):
         expected = [self.make_dictionary('English ' + str(index), 'English', spelling)
                     for index, spelling in enumerate(['French', 'fr-CA', ' Français '])]
         self.make_dictionary('German for French speakers', 'German', 'fr')
         other = self.make_dictionary('Swedish for English speakers', 'Swedish', '')
         self.choose('fr')
-        response = self.client.get(url('home'))
+        response = self.client.get(url('home'), {'learning': 'en'})
         self.assertEqual(response.context['learning_language'], 'en')
-        self.assertEqual(response.context['form']['explanation_language'].value(), 'French')
+        self.assertEqual(self.client.get(url('manage')).context['form']['explanation_language'].value(), 'French')
         self.assertEqual(self.names(response), [item.name for item in expected])
         self.assertEqual(set(dict(response.context['learning_choices'])), {'en', 'de'})
-        self.assertContains(response, other.name)
-        self.assertContains(response, self.dictionary.name)
+        self.assertNotContains(response, other.name)
+        self.assertNotContains(response, self.dictionary.name)
 
     def test_explicit_learning_choice_is_remembered_separately_for_each_interface(self):
         self.make_dictionary('English with French explanations')
@@ -141,7 +145,8 @@ class LocalisationTests(TestCase):
         self.assertEqual(self.names(response), [german.name])
         self.assertEqual(self.client.get(url('home')).context['learning_language'], 'de')
         self.choose('en')
-        self.assertEqual(self.client.get(url('home')).context['learning_language'], 'fr')
+        self.assertEqual(self.client.get(url('home')).context['learning_language'], '')
+        self.client.get(url('home'), {'learning': 'fr'})
         self.choose('fr')
         self.assertEqual(self.client.get(url('home')).context['learning_language'], 'de')
         self.client.get(url('home'), {'learning': 'not-a-language'})
@@ -155,7 +160,7 @@ class LocalisationTests(TestCase):
         response = self.client.get(url('home'), {'learning': 'all'})
         self.assertEqual(set(self.names(response)), {english.name, german.name})
         self.assertEqual(response.context['learning_language'], 'all')
-        self.assertEqual(self.client.get(url('home')).context['learning_language'], 'all')
+        self.assertTrue(self.client.get(url('home')).context['choosing_language'])
 
     def test_fallback_uses_an_available_language_and_empty_list_is_valid(self):
         guest = Client()
@@ -187,7 +192,7 @@ class LocalisationTests(TestCase):
                 Participation.objects.create(dictionary=item, user=self.member, withdrawn=True)
             blocked.append(item)
         self.choose('fr')
-        response = self.client.get(url('home'))
+        response = self.client.get(url('home'), {'learning': 'en'})
         recommendations = {row['name']: row['url'] for row in response.context['learning_recommendations']}
         self.assertEqual(recommendations, {
             own.name: url('dictionary', own.pk), public.name: url('public-dictionary', public.pk),

@@ -41,7 +41,7 @@ class WorkflowGuidanceTests(TestCase):
                 self.assertContains(page, '1 picture ready for sentences')
                 self.assertContains(page, 'Rough API estimate')
                 self.assertTrue(page.context['next_step']['approval'])
-                self.assertContains(self.client.get(reverse('community_dictionary:home')), '1 picture ready for sentences')
+                self.assertContains(self.client.get(reverse('community_dictionary:manage')), '1 picture ready for sentences')
         self.assertEqual(LanguagePort.objects.count(), 0)
         self.assertEqual(PortRun.objects.count(), 0)
         self.assertTrue(entry.contributions.filter(kind='image', status='pending').exists())

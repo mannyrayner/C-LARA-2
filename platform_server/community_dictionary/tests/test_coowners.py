@@ -44,7 +44,7 @@ class CoOwnerTests(TestCase):
         row = Membership.objects.get(dictionary=self.dictionary, user=self.outsider)
         self.assertFalse(row.accepted)
         self.client.force_login(self.outsider)
-        self.assertContains(self.client.get(reverse('community_dictionary:home')), 'Co-owner')
+        self.assertContains(self.client.get(reverse('community_dictionary:manage')), 'Co-owner')
         self.assertEqual(self.client.get(self.url('export')).status_code, 404)
         self.assertEqual(self.client.post(self.url('join')).status_code, 302)
         self.assertTrue(is_owner(self.outsider, self.dictionary))
