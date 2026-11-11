@@ -15,6 +15,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
+#: community_dictionary/templates/community_dictionary/login.html
+msgid "Show password"
+msgstr "Afficher le mot de passe"
+
 #: community_dictionary/capture_forms.py:9
 msgid "Type"
 msgstr "Écrire"

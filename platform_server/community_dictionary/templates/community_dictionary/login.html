@@ -8,6 +8,10 @@
   <form method="post" class="stack">
     {% csrf_token %}
     {{ form.as_p }}
+    <label class="password-visibility" hidden>
+      <input type="checkbox" data-password-toggle aria-controls="{{ form.password.id_for_label }}">
+      {% translate "Show password" %}
+    </label>
     <input type="hidden" name="next" value="{{ next }}">
     <button type="submit">{% translate "Log in" %}</button>
   </form>
