@@ -7161,3 +7161,18 @@ msgid ""
 msgstr ""
 "Uložením obrázka sa spustí platená analýza pomocou AI. Obrázok zostane "
 "súkromný, kým nepotvrdíte jeho opis."
+
+msgid "Choose a language"
+msgstr "Vyberte jazyk"
+
+msgid "Dictionary language"
+msgstr "Jazyk slovníka"
+
+msgid "All languages"
+msgstr "Všetky jazyky"
+
+msgid "All dictionaries"
+msgstr "Všetky slovníky"
+
+msgid "Dictionary options"
+msgstr "Možnosti slovníka"
