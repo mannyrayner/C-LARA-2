@@ -85,7 +85,7 @@ def home(request):
 
 @login_required
 def manage(request):
-    from .localisation import interface_explanation_language, learning_options
+    from .localisation import interface_explanation_language, language_key, learning_options
     explanation = interface_explanation_language(request)
     form = DictionaryForm(request.POST or None, initial={'explanation_language': explanation})
     if request.method == 'POST' and form.is_valid():
@@ -96,7 +96,19 @@ def manage(request):
         event(dictionary, request.user, 'create_dictionary')
         return redirect('community_dictionary:dictionary', pk=dictionary.pk)
     from .participation import controls
-    projects = [controls(request.user, d) for d in entitled_dictionaries(request.user)]
+    inventory = list(entitled_dictionaries(request.user))
+    invitations = list(Membership.objects.filter(user=request.user, accepted=False,
+        status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
+    options = learning_options(request, member=True, default_all=True,
+        extra_languages=[d.language for d in inventory] +
+                        [invite.dictionary.language for invite in invitations])
+    selected = options['learning_language']
+
+    def matches_language(dictionary):
+        return selected == 'all' or language_key(dictionary.language) == selected
+
+    projects = [controls(request.user, d) for d in inventory if matches_language(d)]
+    invitations = [invite for invite in invitations if matches_language(invite.dictionary)]
     from django.db.models import Count
     browsable = [row['dictionary'].pk for row in projects if row['can_browse']]
     counts = {(row['dictionary_id'], row['entry_type']): row['total'] for row in
@@ -109,10 +121,11 @@ def manage(request):
             row['sentence_count'] = counts.get((row['dictionary'].pk,'sentence'),0)
             row['word_count'] = counts.get((row['dictionary'].pk,'word'),0)
             row['next_step'] = suggestion(request.user, row['dictionary']) if row['can_browse'] else None
-    invitations = list(Membership.objects.filter(user=request.user, accepted=False,
-        status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
     from . import discovery
-    discovery_page = Paginator(discovery.dictionaries(), 12).get_page(request.GET.get('page'))
+    discoverable = discovery.dictionaries()
+    if selected != 'all':
+        discoverable = discoverable.filter(pk__in=[d.pk for d in discoverable if matches_language(d)])
+    discovery_page = Paginator(discoverable, 12).get_page(request.GET.get('page'))
     return render(request, 'community_dictionary/manage.html', {
         'discovery_rows': [discovery.row(d, request.user) for d in discovery_page],
         'page': discovery_page, 'pending_membership_count': discovery.pending_for(request.user).count(),
@@ -120,7 +133,7 @@ def manage(request):
         'hidden_projects': [row for row in projects if row['dictionary'].hidden],
         'invitations': [invite for invite in invitations if not invite.dictionary.hidden],
         'hidden_invitations': [invite for invite in invitations if invite.dictionary.hidden],
-        'form': form, **learning_options(request, member=True)})
+        'form': form, **options})
 
 
 @login_required

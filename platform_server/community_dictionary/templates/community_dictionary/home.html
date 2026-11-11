@@ -3,7 +3,6 @@
 <section class="learning-home">
   {% if choosing_language %}
     <h1>{% translate "Which language would you like to learn?" %}</h1>
-    <p class="help">{% blocktranslate with language=learning_explanation_language %}Dictionaries with explanations in {{ language }}.{% endblocktranslate %}</p>
     {% if learning_choices %}
       <form method="get" class="language-choices">
         {% for value,label in learning_choices %}
@@ -11,7 +10,7 @@
         {% endfor %}
       </form>
     {% else %}
-      <p>{% blocktranslate with language=learning_explanation_language %}No available dictionaries currently have explanations in {{ language }}.{% endblocktranslate %}</p>
+      <p>{% translate "No dictionaries are available for this language." %}</p>
     {% endif %}
   {% else %}
     <h1>{% blocktranslate with language=learning_language_label %}{{ language }} dictionaries{% endblocktranslate %}</h1>

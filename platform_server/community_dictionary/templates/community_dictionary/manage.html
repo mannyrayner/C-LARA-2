@@ -1,6 +1,13 @@
 {% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
 <h1>{% translate "My dictionaries" %}</h1>
-<p><a href="{% url 'community_dictionary:home' %}?choose=1">{% translate "Choose a learning language" %}</a></p>
+<form method="get" class="learning-language-form">
+  <label for="management-language">{% translate "Learning language" %}</label>
+  <select id="management-language" name="learning">
+    {% for value,label in learning_choices %}<option value="{{ value }}"{% if value == learning_language %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    <option value="all"{% if learning_language == 'all' %} selected{% endif %}>{% translate "All learning languages" %}</option>
+  </select>
+  <button class="secondary" type="submit">{% translate "Show dictionaries" %}</button>
+</form>
 {% if invitations %}<div id="invitations">{% include 'community_dictionary/home_invitations.html' %}</div>{% endif %}
 <p><a href="{% url 'community_dictionary:public-home' %}">{% translate "Find dictionaries" %}</a></p>
 {% if pending_membership_count %}<p><a class="button secondary" href="{% url 'community_dictionary:membership-requests' %}">{% blocktranslate with count=pending_membership_count %}Pending membership requests ({{ count }}){% endblocktranslate %}</a></p>{% endif %}
