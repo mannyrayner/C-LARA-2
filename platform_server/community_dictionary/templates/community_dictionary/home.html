@@ -2,7 +2,7 @@
 {% block content %}
 <section class="learning-home">
   {% if choosing_language %}
-    <h1>{% translate "Which language would you like to learn?" %}</h1>
+    <h1>{% translate "Choose a language" %}</h1>
     {% if learning_choices %}
       <form method="get" class="language-choices">
         {% for value,label in learning_choices %}
@@ -13,7 +13,7 @@
       <p>{% translate "No dictionaries are available for this language." %}</p>
     {% endif %}
   {% else %}
-    <h1>{% blocktranslate with language=learning_language_label %}{{ language }} dictionaries{% endblocktranslate %}</h1>
+    <h1>{% if learning_language == 'all' %}{% translate "All dictionaries" %}{% else %}{% blocktranslate with language=learning_language_label %}{{ language }} dictionaries{% endblocktranslate %}{% endif %}</h1>
     <p><a class="button secondary" href="{% url 'community_dictionary:home' %}?choose=1">{% translate "Change language" %}</a></p>
     <div class="learning-dictionaries">
       {% for item in page %}

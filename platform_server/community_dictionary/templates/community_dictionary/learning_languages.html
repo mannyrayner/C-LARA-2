@@ -1,14 +1,14 @@
 {% load i18n %}
 <section class="panel learning-languages" aria-labelledby="learning-title">
-  <h2 id="learning-title">{% translate "Choose a learning language" %}</h2>
+  <h2 id="learning-title">{% translate "Choose a language" %}</h2>
   <p>{% blocktranslate with language=learning_explanation_language %}Dictionaries with explanations in {{ language }}.{% endblocktranslate %}</p>
   {% if learning_choices %}
   <form method="get" class="learning-language-form">
     {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-    <label for="learning-language">{% translate "Learning language" %}</label>
+    <label for="learning-language">{% translate "Dictionary language" %}</label>
     <select id="learning-language" name="learning">
       {% for value,label in learning_choices %}<option value="{{ value }}"{% if value == learning_language %} selected{% endif %}>{{ label }}</option>{% endfor %}
-      <option value="all"{% if learning_language == 'all' %} selected{% endif %}>{% translate "All learning languages" %}</option>
+      <option value="all"{% if learning_language == 'all' %} selected{% endif %}>{% translate "All languages" %}</option>
     </select>
     <button class="secondary" type="submit">{% translate "Show dictionaries" %}</button>
   </form>

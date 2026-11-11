@@ -7254,3 +7254,18 @@ msgid ""
 msgstr ""
 "Enregistrer l’image lance une analyse payante par l’IA. Votre image reste "
 "privée jusqu’à ce que vous confirmiez sa description."
+
+msgid "Choose a language"
+msgstr "Choisissez une langue"
+
+msgid "Dictionary language"
+msgstr "Langue du dictionnaire"
+
+msgid "All languages"
+msgstr "Toutes les langues"
+
+msgid "All dictionaries"
+msgstr "Tous les dictionnaires"
+
+msgid "Dictionary options"
+msgstr "Options du dictionnaire"

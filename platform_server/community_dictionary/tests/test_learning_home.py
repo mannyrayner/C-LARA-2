@@ -31,7 +31,7 @@ class LearningHomeTests(TestCase):
 
     def test_first_visit_has_languages_and_no_dictionary_cards_or_creation_form(self):
         response = self.client.get(url('home'))
-        self.assertContains(response, 'Which language would you like to learn?')
+        self.assertContains(response, 'Choose a language')
         self.assertContains(response, 'name="learning" value="fr"')
         self.assertContains(response, 'name="learning" value="de"')
         self.assertNotContains(response, self.french.name)

@@ -194,7 +194,7 @@ def dictionary(request, pk):
     from .workflow import suggestion
     from .port_views import no_store
     return no_store(render(request, 'community_dictionary/dictionary.html', context(request, item,
-        next_step=suggestion(request.user, item, details=True), pending_port=pending_port, participation=participation,
+        content_first_browse=True, next_step=suggestion(request.user, item, details=True), pending_port=pending_port, participation=participation,
         cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories)))
 
 
