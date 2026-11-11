@@ -1,0 +1,4 @@
+{% load i18n %}
+{% if dictionary.public_browsing_enabled and not dictionary.hidden and not public_browsing %}<aside class="notice"><strong>{% translate "Public browsing is on." %}</strong> {% translate "Accepted learning material is available to anyone." %} <a href="{% url 'community_dictionary:public-dictionary' dictionary.pk %}">{% translate "View as a visitor" %}</a></aside>{% endif %}
+{% if dictionary.hidden or project.hidden %}<aside class="notice" aria-label="{% translate "Dictionary visibility" %}"><strong>{% translate "Hidden dictionary." %}</strong> {% translate "This dictionary is hidden from the main list." %}
+<a href="{% url 'community_dictionary:home' %}">{% translate "Choose a dictionary" %}</a>{% if owner %} · <a href="{% url 'community_dictionary:settings' dictionary.pk %}#dictionary-visibility">{% translate "Visibility settings" %}</a>{% endif %}</aside>{% endif %}

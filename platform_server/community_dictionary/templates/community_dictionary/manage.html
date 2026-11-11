@@ -1,10 +1,10 @@
 {% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
 <h1>{% translate "My dictionaries" %}</h1>
 <form method="get" class="learning-language-form">
-  <label for="management-language">{% translate "Learning language" %}</label>
+  <label for="management-language">{% translate "Dictionary language" %}</label>
   <select id="management-language" name="learning">
     {% for value,label in learning_choices %}<option value="{{ value }}"{% if value == learning_language %} selected{% endif %}>{{ label }}</option>{% endfor %}
-    <option value="all"{% if learning_language == 'all' %} selected{% endif %}>{% translate "All learning languages" %}</option>
+    <option value="all"{% if learning_language == 'all' %} selected{% endif %}>{% translate "All languages" %}</option>
   </select>
   <button class="secondary" type="submit">{% translate "Show dictionaries" %}</button>
 </form>

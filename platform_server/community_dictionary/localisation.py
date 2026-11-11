@@ -151,6 +151,6 @@ def learning_options(request, *, member=False, require_choice=False,
                                 'url': reverse('community_dictionary:' + route, args=[d.pk])})
     return {'learning_choices': choices, 'learning_language': selected,
             'choosing_language': choosing,
-            'learning_language_label': names.get(selected, _('All learning languages')),
+            'learning_language_label': names.get(selected, _('All languages')),
             'learning_recommendations': recommendations,
             'learning_explanation_language': language_label(LANGUAGE_NAMES[ui])}

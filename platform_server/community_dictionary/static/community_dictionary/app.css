@@ -139,3 +139,9 @@
 .next-step > .panel { margin: 8px 0 0; }
 .entry-help > summary, .recording-settings > summary { min-height: 46px; padding: 10px 0; }
 .recording-settings { margin-top: 12px; }
+.dictionary-options > summary { min-height: 46px; padding: 10px 0; color: var(--teal); }
+.dictionary-options[open] { flex-basis: 100%; }
+.dictionary-options-content { border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: var(--white); }
+.dictionary-option-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 16px; }
+.dictionary-option-links > a { display: inline-flex; align-items: center; min-height: 46px; }
+@media(max-width:700px) { .browse-heading { gap: 6px; margin-bottom: 14px; } }

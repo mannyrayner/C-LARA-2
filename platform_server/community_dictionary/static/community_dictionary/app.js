@@ -6,7 +6,11 @@
   // normal browsing visit leaves the full estimate and approval panel closed.
   const revealNextStep = () => {
     const suggestion = document.querySelector('details#next-step');
-    if (suggestion && window.location.hash === '#next-step') suggestion.open = true;
+    if (suggestion && window.location.hash === '#next-step') {
+      const options = suggestion.closest('details.dictionary-options');
+      if (options) options.open = true;
+      suggestion.open = true;
+    }
   };
   revealNextStep();
   window.addEventListener('hashchange', revealNextStep);
