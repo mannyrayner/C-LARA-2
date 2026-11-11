@@ -101,7 +101,7 @@ class SlovakLocalisationTests(TestCase):
     def test_new_dictionary_explanation_defaults_are_canonical_for_each_interface(self):
         for ui, expected in [('en', 'English'), ('fr', 'French'), ('sk', 'Slovak')]:
             self.choose(ui)
-            response = self.client.get(url('home'))
+            response = self.client.get(url('manage'))
             self.assertEqual(response.context['form']['explanation_language'].value(), expected)
         response = self.client.post(url('home'), {'name': 'Ivana’s dictionary',
             'language': 'English', 'explanation_language': 'Slovak'})
@@ -115,12 +115,12 @@ class SlovakLocalisationTests(TestCase):
         self.make_dictionary('French for Slovak speakers', 'French', 'sk')
         legacy = self.make_dictionary('Legacy English explanations', 'German', '')
         self.choose()
-        response = self.client.get(url('home'))
+        response = self.client.get(url('home'), {'learning': 'en'})
         self.assertEqual(response.context['learning_language'], 'en')
         self.assertEqual(set(dict(response.context['learning_choices'])), {'en', 'fr'})
         self.assertEqual(self.names(response), [item.name for item in expected])
-        self.assertContains(response, self.dictionary.name)
-        self.assertContains(response, legacy.name)
+        self.assertNotContains(response, self.dictionary.name)
+        self.assertNotContains(response, legacy.name)
 
     def test_slovak_fallback_uses_available_language_and_handles_no_matching_dictionary(self):
         guest = Client()
@@ -141,16 +141,17 @@ class SlovakLocalisationTests(TestCase):
         self.choose()
         self.assertEqual(self.names(self.client.get(url('home'), {'learning': 'de'})), [german.name])
         self.choose('fr')
-        self.assertEqual(self.client.get(url('home')).context['learning_language'], 'en')
+        self.assertEqual(self.client.get(url('home')).context['learning_language'], '')
+        self.client.get(url('home'), {'learning': 'en'})
         self.choose('en')
-        self.assertEqual(self.names(self.client.get(url('home'))), [french.name])
+        self.assertEqual(self.names(self.client.get(url('home'), {'learning': 'fr'})), [french.name])
         self.choose()
         self.assertEqual(self.client.get(url('home')).context['learning_language'], 'de')
         self.client.get(url('home'), {'learning': 'invalid'})
         self.assertEqual(self.client.get(url('home')).context['learning_language'], 'de')
         all_languages = self.client.get(url('home'), {'learning': 'all'})
         self.assertEqual(set(self.names(all_languages)), {'English for Slovak speakers', german.name})
-        self.assertEqual(self.client.get(url('home')).context['learning_language'], 'all')
+        self.assertTrue(self.client.get(url('home')).context['choosing_language'])
 
     def test_slovak_recommendations_retain_member_visibility_and_access_rules(self):
         public = self.make_dictionary('Public English')
@@ -168,7 +169,7 @@ class SlovakLocalisationTests(TestCase):
             if status == 'withdrawn':
                 Participation.objects.create(dictionary=restricted, user=self.member, withdrawn=True)
         self.choose()
-        response = self.client.get(url('home'))
+        response = self.client.get(url('home'), {'learning': 'en'})
         self.assertEqual({row['name']: row['url'] for row in response.context['learning_recommendations']}, {
             own.name: url('dictionary', own.pk), public.name: url('public-dictionary', public.pk)})
         self.assertEqual(self.client.get(url('dictionary', private.pk)).status_code, 404)

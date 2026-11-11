@@ -71,6 +71,20 @@ def summary(entry, dictionary):
 
 @login_required
 def home(request):
+    if request.method == 'POST':
+        return manage(request)
+    from .localisation import learning_options
+    options = learning_options(request, member=True, require_choice=True)
+    page = Paginator(options['learning_recommendations'], 12).get_page(request.GET.get('page'))
+    invitations = Membership.objects.filter(user=request.user, accepted=False,
+        status='invited', dictionary__personal=False, dictionary__archived=False).count()
+    return render(request, 'community_dictionary/home.html', {
+        **options, 'page': page, 'learning_home': True,
+        'invitation_count': invitations})
+
+
+@login_required
+def manage(request):
     from .localisation import interface_explanation_language, learning_options
     explanation = interface_explanation_language(request)
     form = DictionaryForm(request.POST or None, initial={'explanation_language': explanation})
@@ -99,7 +113,7 @@ def home(request):
         status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
     from . import discovery
     discovery_page = Paginator(discovery.dictionaries(), 12).get_page(request.GET.get('page'))
-    return render(request, 'community_dictionary/home.html', {
+    return render(request, 'community_dictionary/manage.html', {
         'discovery_rows': [discovery.row(d, request.user) for d in discovery_page],
         'page': discovery_page, 'pending_membership_count': discovery.pending_for(request.user).count(),
         'projects': [row for row in projects if not row['dictionary'].hidden],

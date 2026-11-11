@@ -218,7 +218,7 @@ class ContributionControlTests(TestCase):
         self.assertEqual(m.status, 'inactive')
         self.client.force_login(self.member)
         self.assertEqual(self.client.post(self.url('join')).status_code, 404)
-        self.assertNotContains(self.client.get(reverse('community_dictionary:home')), 'Join dictionary')
+        self.assertNotContains(self.client.get(reverse('community_dictionary:manage')), 'Join dictionary')
 
     def test_old_removal_endpoint_no_longer_deletes_membership(self):
         m = Membership.objects.get(dictionary=self.dictionary, user=self.member)

@@ -77,7 +77,7 @@ class GuidanceScalingTests(TestCase):
         with patch('community_dictionary.workflow.reading',nullcontext) if legacy else nullcontext():
             with patch('community_dictionary.workflow_data.reading',nullcontext) if legacy else nullcontext():
                 with CaptureQueriesContext(connection) as queries:
-                    response=self.client.get(reverse('community_dictionary:home'))
+                    response=self.client.get(reverse('community_dictionary:manage'))
         self.assertEqual(response.status_code,200)
         self.assertNotContains(response,'new sentences')
         return len(queries),time.perf_counter()-started
