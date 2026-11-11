@@ -2,8 +2,7 @@
 {% block title %}{% translate "Picture, confirm and finish" %}{% endblock %}
 {% block content %}
 <h1>{% translate "Picture, confirm and finish" %}</h1>
-<p class="lead">{% translate "Save a picture. Check what it says. Let the app finish the rest." %}</p>
-<p>{% translate "Your picture stays private until you confirm its description. Saving starts AI analysis under the permission you gave in Settings." %}</p>
+<p>{% translate "Saving starts paid AI analysis. Your picture stays private until you confirm its description." %}</p>
 {% if guided_estimate != None %}<p class="help">{% blocktranslate with amount=guided_estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %}</p>{% endif %}
 {% if guided_setup_error %}<p class="notice">{{ guided_setup_error }}</p>{% endif %}
 {% if not guided_mode %}<p><a class="button" href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Enable Picture, confirm and finish in Settings first." %}</a></p>{% else %}
@@ -19,8 +18,12 @@
 {% endif %}
 <button data-save-submit>{% translate "Save picture and suggest a description" %}</button>
 {% include 'community_dictionary/draft_status.html' %}</section></form>{% endif %}
+<details class="entry-help"><summary>{% translate "Help" %}</summary>
+<p>{% translate "Save a picture. Check what it says. Let the app finish the rest." %}</p>
+<p>{% translate "Your picture stays private until you confirm its description. Saving starts AI analysis under the permission you gave in Settings." %}</p>
 <p><a href="{% url 'community_dictionary:new' dictionary.pk %}?usual=1">{% translate "Use the usual contribution form" %}</a> · <a href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Change my workflow" %}</a></p>
-<section class="panel"><h2>{% translate "My recent pictures" %}</h2>
+</details>
+<details class="panel entry-help"><summary>{% translate "My recent pictures" %}</summary>
 <p class="help">{% translate "Private previews are kept for 30 days unless cleared earlier. Shared entries remain in the dictionary." %}</p>
-<ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:guided-detail' dictionary.pk item.pk %}">{% if item.description %}{{ item.description|truncatechars:70 }}{% elif item.result.guided.suggestion.description %}{{ item.result.guided.suggestion.description|truncatechars:70 }}{% else %}{{ dictionary.language }}{% endif %}</a> · {% if item.status == 'feedback' %}{% translate "Description ready" %}{% elif item.status == 'saved' %}{% translate "Shared — check audio progress" %}{% elif item.status == 'failed' or item.status == 'draft' %}{% translate "Needs attention" %}{% else %}{% translate "In progress" %}{% endif %}</li>{% empty %}<li>{% translate "No guided pictures yet." %}</li>{% endfor %}</ul></section>
+<ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:guided-detail' dictionary.pk item.pk %}">{% if item.description %}{{ item.description|truncatechars:70 }}{% elif item.result.guided.suggestion.description %}{{ item.result.guided.suggestion.description|truncatechars:70 }}{% else %}{{ dictionary.language }}{% endif %}</a> · {% if item.status == 'feedback' %}{% translate "Description ready" %}{% elif item.status == 'saved' %}{% translate "Shared — check audio progress" %}{% elif item.status == 'failed' or item.status == 'draft' %}{% translate "Needs attention" %}{% else %}{% translate "In progress" %}{% endif %}</li>{% empty %}<li>{% translate "No guided pictures yet." %}</li>{% endfor %}</ul></details>
 {% endblock %}
