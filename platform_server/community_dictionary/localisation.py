@@ -97,7 +97,8 @@ def set_language(request):
     return response
 
 
-def learning_options(request, *, member=False, require_choice=False):
+def learning_options(request, *, member=False, require_choice=False,
+                     extra_languages=(), default_all=False):
     """Build language choices and recommendations from accessible dictionaries."""
     from . import discovery
     from .permissions import dictionaries_for
@@ -109,17 +110,20 @@ def learning_options(request, *, member=False, require_choice=False):
         member_ids = {d.pk for d in own}
         available.update({d.pk: d for d in own})
     ui = interface_language(request)
-    matching = [d for d in available.values()
-                if language_key(d.explanation_language, explanation=True) == ui
-                and language_key(d.language)]
+    # A signed-in learner chooses the dictionary's learning language. The UI
+    # language must not hide their dictionaries with other explanation languages.
+    matching = [d for d in available.values() if language_key(d.language) and
+                (member or language_key(d.explanation_language, explanation=True) == ui)]
     names = {language_key(d.language): language_label(d.language) for d in matching}
+    # Management also needs choices for hidden dictionaries and invitations;
+    # adding their languages must not make them learning recommendations.
+    names.update({language_key(value): language_label(value) for value in extra_languages
+                  if language_key(value)})
     choices = sorted(names.items(), key=lambda item: item[1].casefold())
     saved = request.session.get('community_learning_languages', {})
     if not isinstance(saved, dict):
         saved = {}
     remembered = saved.get(ui, '')
-    if require_choice and remembered == 'all':
-        remembered = ''
     requested = request.GET.get('learning', remembered)
     default = UI_LANGUAGE_CONFIG[ui]['learning_default']
     if requested in names or requested == 'all':
@@ -128,6 +132,8 @@ def learning_options(request, *, member=False, require_choice=False):
         selected = remembered
     elif require_choice:
         selected = ''
+    elif default_all:
+        selected = 'all'
     elif default in names:
         selected = default
     else:
