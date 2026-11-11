@@ -131,3 +131,9 @@
 .dictionary-choice:hover { border-color: var(--teal); }
 .site-header { flex-direction: row; align-items: center; }
 .site-header .brand { min-width: 0; }
+
+.next-step { margin: 0 0 20px; }
+.next-step > summary { min-height: 46px; padding: 10px 0; }
+.next-step-label { color: var(--muted); font-weight: 400; overflow-wrap: anywhere; }
+.next-step[open] > summary { margin-bottom: 0; }
+.next-step > .panel { margin: 8px 0 0; }

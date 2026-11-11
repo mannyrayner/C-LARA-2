@@ -1,5 +1,7 @@
-{% load i18n %}{% if next_step %}<section class="panel" id="next-step" aria-labelledby="next-step-title">
-<p class="eyebrow">{% translate "Next step" %}</p><h2 id="next-step-title">{{ next_step.label }}</h2>
+{% load i18n %}{% if next_step %}<details class="next-step" id="next-step">
+<summary>{% translate "Next step" %}<span class="next-step-label"> — {{ next_step.label }}</span></summary>
+<section class="panel" aria-labelledby="next-step-title">
+<h2 id="next-step-title">{{ next_step.label }}</h2>
 {% if next_step.approval or next_step.unavailable %}
 <p>{{ next_step.scope }}</p>
 {% if next_step.kind == 'sentences' %}<p>{% blocktranslate with new=next_step.new_count changed=next_step.changed_count %}{{ new }} new · {{ changed }} changed. Existing corrections and recordings in locally edited entries are kept.{% endblocktranslate %}{% if next_step.protected_count %} {% blocktranslate count count=next_step.protected_count %}{{ count }} locally edited entries are protected and excluded.{% plural %}{{ count }} locally edited entries are protected and excluded.{% endblocktranslate %}{% endif %}</p>{% endif %}
@@ -23,4 +25,4 @@
 <p class="help">{% url 'community_dictionary:settings' dictionary.pk as settings_url %}{% blocktranslate %}For a different selection or voice, use <a href="{{ settings_url }}">Settings</a>.{% endblocktranslate %}</p>
 {% else %}<a class="button" href="{{ next_step.url }}">{{ next_step.button }}</a>{% endif %}
 <p class="help">{% url 'community_dictionary:settings' dictionary.pk as settings_url %}{% blocktranslate %}You can turn off these suggestions in <a href="{{ settings_url }}#workflow-suggestions">Settings</a>.{% endblocktranslate %}</p>
-</section>{% endif %}
+</section></details>{% endif %}
