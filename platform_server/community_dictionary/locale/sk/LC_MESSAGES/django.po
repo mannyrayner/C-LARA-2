@@ -7148,3 +7148,16 @@ msgstr "Zmeniť jazyk"
 #: community_dictionary/templates/community_dictionary/home.html
 msgid "No dictionaries are available for this language."
 msgstr "Pre tento jazyk nie sú k dispozícii žiadne slovníky."
+
+msgid "Help"
+msgstr "Pomoc"
+
+msgid "Microphone settings"
+msgstr "Nastavenia mikrofónu"
+
+msgid ""
+"Saving starts paid AI analysis. Your picture stays private until you confirm"
+" its description."
+msgstr ""
+"Uložením obrázka sa spustí platená analýza pomocou AI. Obrázok zostane "
+"súkromný, kým nepotvrdíte jeho opis."

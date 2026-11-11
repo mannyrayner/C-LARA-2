@@ -6,7 +6,8 @@
 {% if setup_error %}<p class="notice">{{ setup_error }}</p>{% else %}
 <section class="panel">
 <p>One photo goes to OpenAI. {% if personal %}Paid through your OpenAI account.{% elif charge_credits %}Paid from your C-LARA credit balance.{% else %}Paid by the server operator.{% endif %}</p>
-<details><summary>Cost and privacy</summary><p class="help">{{ model }} · ${{ prices.input }}/million input tokens and ${{ prices.output }}/million output tokens. A short request usually costs a few cents or less; the actual charge depends on token usage. Limit: {{ daily_limit }} attempts per 24 hours, per learner and per dictionary. An unclear result can still incur a charge. OpenAI sees this photo and the language names; your dictionary’s other content is not sent. OpenAI’s retention rules apply.</p></details>
+<details class="entry-help"><summary>Cost and privacy</summary><p class="help">{{ model }} · ${{ prices.input }}/million input tokens and ${{ prices.output }}/million output tokens. A short request usually costs a few cents or less; the actual charge depends on token usage. Limit: {{ daily_limit }} attempts per 24 hours, per learner and per dictionary. An unclear result can still incur a charge. OpenAI sees this photo and the language names; your dictionary’s other content is not sent. OpenAI’s retention rules apply.</p>
+<p class="help">A private learning attempt lasts 24 hours. Nothing enters the dictionary until you choose to save it. OpenAI’s own retention rules also apply to photos sent for analysis.</p></details>
 <form method="post" enctype="multipart/form-data" class="stack" data-photo-upload>
 {% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.non_field_errors }}
@@ -16,8 +17,7 @@
 <p>{{ form.ai_consent.errors }}<label class="check">{{ form.ai_consent }} {{ form.ai_consent.label }}</label></p>
 <button>Identify this object</button><p role="status" data-photo-status></p>
 </form></section>{% endif %}
-<p class="help">A private learning attempt lasts 24 hours. Nothing enters the dictionary until you choose to save it. OpenAI’s own retention rules also apply to photos sent for analysis.</p>
-{% if recent %}<section class="panel"><h2>Your recent photos</h2><p class="help">If your connection was interrupted, open the existing attempt here.</p><ul>{% for study in recent %}<li><a href="{% url 'community_dictionary:photo-study' dictionary.pk study.pk %}">{{ study.created_at|date:'j M, H:i' }} · {{ study.get_status_display }}</a></li>{% endfor %}</ul></section>{% endif %}
+{% if recent %}<details class="panel entry-help"><summary>Your recent photos</summary><p class="help">If your connection was interrupted, open the existing attempt here.</p><ul>{% for study in recent %}<li><a href="{% url 'community_dictionary:photo-study' dictionary.pk study.pk %}">{{ study.created_at|date:'j M, H:i' }} · {{ study.get_status_display }}</a></li>{% endfor %}</ul></details>{% endif %}
 <p><a href="{% url 'community_dictionary:new' dictionary.pk %}">Add a photo or recording without AI</a></p>
 <script src="{% static 'community_dictionary/photo.js' %}?v=3" defer></script>
 {% endblock %}
