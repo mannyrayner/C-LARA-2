@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "commit": "REPLACE_WITH_FULL_REVIEWED_COMMIT_SHA",
+  "expected_staging": "REPLACE_WITH_FULL_BASELINE_COMMIT_SHA",
+  "lease_minutes": 30
+}
