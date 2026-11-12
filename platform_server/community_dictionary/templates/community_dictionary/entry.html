@@ -2,6 +2,7 @@
 {% block title %}{{ entry.title }}{% endblock %}{% block content %}
 <p class="eyebrow">{% if dictionary.personal %}{% translate "Private collection" %} · {% endif %}{{ dictionary.name }}{% if entry.category %} · {{ entry.category }}{% endif %}</p>
 <div class="page-heading"><h1 dir="{{ dictionary.text_direction }}">{{ entry.title }}</h1><span class="badge {% if not accepted %}pending{% endif %}">{% if accepted %}{% translate "Accepted material" %}{% else %}{% translate "Awaiting review" %}{% endif %}</span></div>
+{% include 'community_dictionary/entry_text_actions.html' %}
 {% if automatic_publication %}<p class="badge">{% if language_check %}{% blocktranslate with username=language_check.checked_by.username %}Language checked by {{ username }}{% endblocktranslate %}{% else %}{% translate "AI-generated · published automatically without human review" %}{% endif %}</p>{% endif %}
 <div class="entry-layout">
   <section>
@@ -24,7 +25,6 @@
       <audio controls preload="none" src="{% url 'community_dictionary:media' dictionary.pk recording.pk %}"></audio>
     </div>{% empty %}<p>{% translate "No accepted recording for this wording yet." %}</p>{% endfor %}
     {% if not audio %}{% include 'community_dictionary/entry_audio_actions.html' %}{% endif %}
-    {% if not entry.word or not entry.meaning %}{% include 'community_dictionary/entry_text_actions.html' %}{% endif %}
   </section>
 </div>
 {% include 'community_dictionary/picture_words.html' %}
@@ -34,7 +34,6 @@
 <details class="panel" id="entry-options"><summary>{% translate "Show more options" %}{% if pending %} <span class="badge pending">{% blocktranslate count count=pending %}{{ count }} awaiting review{% plural %}{{ count }} awaiting review{% endblocktranslate %}</span>{% endif %}</summary>
   {% if image %}{% include 'community_dictionary/entry_picture_actions.html' %}{% if entry.word %}{% include 'community_dictionary/entry_description.html' %}{% endif %}{% endif %}
   {% if audio %}{% include 'community_dictionary/entry_audio_actions.html' %}{% endif %}
-  {% if entry.word and entry.meaning %}{% include 'community_dictionary/entry_text_actions.html' %}{% endif %}
   <p><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}">{% translate "Add a contribution" %}</a></p>
   {% if not can_request and not dictionary.personal %}<p><a href="{% url 'community_dictionary:people' dictionary.pk %}">{% translate "Set up a partnership" %}</a></p>{% endif %}
   {% if owner and not dictionary.personal and not dictionary.tts_enabled %}<p class="help">{% translate "Enable saved spoken audio in" %} <a href="{% url 'community_dictionary:settings' dictionary.pk %}">{% translate "Settings" %}</a>.</p>{% endif %}
