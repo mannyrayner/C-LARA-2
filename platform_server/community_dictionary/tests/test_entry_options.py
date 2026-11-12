@@ -27,14 +27,19 @@ class EntryOptionsTests(TestCase):
         self.assertEqual(body.count('id="entry-options"'), 1)
         return body.split('<details class="panel" id="entry-options">', 1)
 
-    def test_completed_entry_and_word_keep_playback_and_hide_editing(self):
+    def test_completed_entry_and_word_keep_playback_and_show_direct_word_editing(self):
         audio = self.audio()
         for name in ['entry', 'word']:
             with self.subTest(name=name):
                 reading, options = self.reading(name)
                 self.assertIn(self.url('media', audio.pk), reading)
                 self.assertIn('Flag a problem', reading)
-                for label in ['Record audio', 'Create spoken audio', 'Edit words', 'Add a photo']:
+                edit_link = f'href="{self.url("contribute", self.entry.pk)}?wording=1"'
+                self.assertEqual(reading.count(edit_link), 1)
+                self.assertIn('>Edit words<', reading)
+                self.assertLess(reading.index(edit_link), reading.index('Listen and explore') if name == 'entry' else reading.index('Browse by'))
+                self.assertNotIn(edit_link, options)
+                for label in ['Record audio', 'Create spoken audio', 'Add a photo']:
                     self.assertNotIn('>'+label+'<', reading)
                     self.assertIn('>'+label+'<', options)
                 self.assertIn('Cedar', options)
