@@ -1,0 +1,29 @@
+name: Rehearse staging request (no AWS)
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+concurrency:
+  group: staging-request-dry-run
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.event.repository.private == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, verified 2026-11-12
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate original issue event and publish dry-run receipt
+        run: python3 staging_request.py --policy policy.json --event "$GITHUB_EVENT_PATH" --receipt staging-receipt.json
+      - name: Retain receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-dry-run-${{ github.run_id }}-${{ github.run_attempt }}
+          path: staging-receipt.json
+          if-no-files-found: warn
+          retention-days: 30

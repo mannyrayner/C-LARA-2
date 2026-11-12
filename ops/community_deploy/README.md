@@ -22,3 +22,10 @@ python -m unittest discover -s ops/community_deploy/tests -v
 These tests use local temporary repositories and HTTP servers. AWS/GitHub APIs are
 mocked. Native Windows CI is configured but must actually run before its result
 can be claimed. No test submits a real cloud deployment.
+
+The [on-demand staging plan](../../docs/roadmap/community-dictionary-on-demand-staging.md)
+and [dry-run control template](staging_control/README.md) describe the next
+pilot. `staging_request.py` validates issue requests locally and produces a
+truthfully labelled no-AWS receipt. Its workflow belongs only in a separate
+private staging control repository. No production workflow or installed
+controller is changed by that rehearsal.

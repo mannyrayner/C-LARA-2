@@ -59,6 +59,9 @@ must not be copied there by default. Promote the tested commit to production, ra
 rebuilding an unidentified version. Staging improves environmental similarity; it does not
 eliminate the need for checks after a production release.
 
+The [AWS staging plan](community-dictionary-aws-staging.md) details the installation,
+release evidence, recovery rehearsals, and proposed steps for delegating production releases.
+
 Progression should depend on evidence from several successful releases, including a rehearsed
 failure and recovery, rather than a promised calendar date. A useful first acceptance exercise
 is a small visible wording change installed on the laptop, accepted by Rayner, and then

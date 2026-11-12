@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "mode": "dry_run",
+  "repository": "mannyrayner/clara-staging-control",
+  "repository_id": 0,
+  "default_branch": "main",
+  "allowed_sender_ids": [],
+  "max_lease_minutes": 120
+}
