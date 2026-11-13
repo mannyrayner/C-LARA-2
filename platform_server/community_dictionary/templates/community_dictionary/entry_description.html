@@ -1,11 +1,11 @@
 {% load i18n %}
+{% if can_describe_image and image.status == 'pending' %}<p class="help">{% translate "Confirming a description will also accept this picture." %}</p>{% endif %}
 {% if writing_mode and can_describe_image %}
 <p><a class="button" href="{% url 'community_dictionary:writing-image' dictionary.pk image.pk %}">{% translate "Write about this picture" %}</a></p>
 {% elif guided_mode and can_describe_image %}
 <p><a class="button" href="{% url 'community_dictionary:guided-image' dictionary.pk image.pk %}">{% translate "Describe and finish this picture" %}</a></p>
 {% elif can_describe_image %}
 <section class="panel"><h2>{% translate "Describe this picture" %}</h2>
-{% if image.status == 'pending' %}<p class="help">{% translate "Confirming a description will also accept this picture." %}</p>{% endif %}
 <form method="get" action="{% url 'community_dictionary:capture-image' dictionary.pk image.pk %}" data-capture-choice data-dictionary="{{ dictionary.pk }}">
 {% include 'community_dictionary/capture_modes.html' with mode_field=description_modes.input_mode %}
 <p class="help">{% translate "All three routes use AI to prepare a sentence and words for you to review." %}</p>

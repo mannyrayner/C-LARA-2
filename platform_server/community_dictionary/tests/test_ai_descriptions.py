@@ -52,7 +52,8 @@ class AIDescriptionTests(TestCase):
             form=CaptureForm({'input_mode':mode,'input_language':'English','voice':'marin','ai_consent':'on'},dictionary=self.d,existing=True)
             self.assertFalse(form.is_valid()); self.assertIn(field,form.errors)
 
-    def test_entry_offers_three_choices_and_preserves_legacy_fallback(self):
+    def test_manual_entry_offers_three_choices_and_preserves_legacy_fallback(self):
+        self.client.post(self.url('contribution-setting'), {'mode': 'manual'})
         image=self.image(); page=self.client.get(self.url('entry',image.entry_id))
         for label in ['Type','Speak','Suggest a description','data-capture-choice']:
             self.assertContains(page,label)

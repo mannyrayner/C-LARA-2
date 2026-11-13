@@ -37,7 +37,8 @@ def preference(request, dictionary):
     if key not in cache:
         row = ContributionPreference.objects.filter(user=request.user, dictionary=dictionary).first()
         old = getattr(request, 'session', {}).get(f'writing-{key}', {})
-        cache[key] = {'mode': row.mode if row else 'writing' if old.get('enabled') else 'manual',
+        cache[key] = {'mode': row.mode if row else 'writing' if old.get('enabled') else
+                      'guided' if available(dictionary) else 'manual',
                       'consent': row.consent if row else {}}
         request._contribution_preferences = cache
     return cache[key]
