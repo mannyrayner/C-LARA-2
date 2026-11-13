@@ -10,6 +10,7 @@
 {% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ form.non_field_errors }}
 <section class="panel">
 {% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% translate "Picture to describe" %}">
+{% if image.status == 'pending' %}<p class="help">{% translate "Confirming a description will also accept this picture." %}</p>{% endif %}
 {% else %}
 <label class="button photo-button">{% translate "Take photo" %}<input type="file" name="photo" accept="image/*" capture="environment" data-camera></label>
 <label class="file-alternative">{% translate "Or choose a picture" %}<input type="file" name="photo" accept="image/*"></label>
