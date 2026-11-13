@@ -1,4 +1,4 @@
-{% extends 'community_dictionary/base.html' %}{% load i18n %}{% block content %}
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}{% block content %}
 <h1>{% translate "My dictionaries" %}</h1>
 <form method="get" class="learning-language-form">
   <label for="management-language">{% translate "Dictionary language" %}</label>
@@ -20,6 +20,8 @@
 {% if hidden_invitations %}{% include 'community_dictionary/home_invitations.html' with invitations=hidden_invitations %}{% endif %}
 <div class="dictionary-grid">{% for row in hidden_projects %}{% include 'community_dictionary/home_card.html' %}{% endfor %}</div>
 </details>{% endif %}
-<details class="panel" {% if form.errors %}open{% endif %}><summary>{% translate "Create a dictionary" %}</summary><form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button>{% translate "Create dictionary" %}</button></form></details>
+<details class="panel" {% if form.errors %}open{% endif %}><summary>{% translate "Create a dictionary" %}</summary><form method="post" class="stack" data-dictionary-create data-bound="{{ form.is_bound|yesno:'true,false' }}">{% csrf_token %}{{ form.as_p }}<button>{% translate "Create dictionary" %}</button></form></details>
+{{ form.ai_languages|json_script:"dictionary-ai-languages" }}
+<script src="{% static 'community_dictionary/dictionary_create.js' %}" defer></script>
 <section id="discoverable-dictionaries"><h2>{% translate "Discover dictionaries" %}</h2><div class="dictionary-grid">{% for row in discovery_rows %}{% include 'community_dictionary/discovery_card.html' %}{% empty %}<p>{% translate "No dictionaries have been listed yet." %}</p>{% endfor %}</div>{% include 'community_dictionary/public_pagination.html' %}</section>
 {% endblock %}
