@@ -1,6 +1,6 @@
 {% extends 'community_dictionary/base.html' %}{% load i18n %}{% load static %}{% block title %}{% translate "Describe a picture" %}{% endblock %}
 {% block content %}
-{% if google_word_voice %}<p class="notice">{% translate "Word and sentence-form text is sent to Google for audio using the dictionary-selected voice. Google bills the configured project; your personal OpenAI key does not cover those charges. Sentence audio still uses OpenAI." %} {{ google_word_voice }}</p>{% endif %}
+{% if google_audio_fallback %}{% include 'community_dictionary/google_audio_notice.html' %}{% elif google_word_voice %}<p class="notice">{% translate "Word and sentence-form text is sent to Google for audio using the dictionary-selected voice. Google bills the configured project; your personal OpenAI key does not cover those charges. Sentence audio still uses OpenAI." %} {{ google_word_voice }}</p>{% endif %}
 {% translate "AI-suggested description" as default_ai_description %}{% translate "Spoken description" as default_spoken_description %}<h1>{% translate "Describe a picture" %}</h1><p class="lead">{% translate "Type, speak or ask AI to suggest a description of your picture. Confirm the meaning, then save a sentence and its words together." %}</p>
 {% if setup_error %}<p class="notice error">{{ setup_error }}</p>{% endif %}
 <p class="help">{% blocktranslate with value1=counts.remaining value2=counts.limit %}{{ value1 }} of {{ value2 }} picture descriptions remaining for this dictionary in the last 24 hours.{% endblocktranslate %}

@@ -28,12 +28,24 @@ def context(request, dictionary=None, **extra):
     from .learning import mode
     personal_mode = mode(request, dictionary)
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
+    from .google_fallback import language_code as fallback_code
+    run = extra.get('run')
+    google_fallback_audio = bool(dictionary and dictionary.tts_enabled and fallback_code(dictionary.language)) or bool(
+        run and getattr(run, 'options', {}).get('word_audio_policy', {}).get('method') == 'google_gemini')
+    if google_fallback_audio:
+        for value in extra.values():
+            if hasattr(value, 'fields'):
+                for name in ('ai_consent', 'approve', 'permission'):
+                    if name == 'ai_consent' and name in value.fields and page != 'audio-start':
+                        value.fields[name].label = gettext('I have permission for the OpenAI processing described here and to send the relevant text to Google for audio. I approve the estimated costs.')
+                    elif name in {'approve', 'permission'} and name in value.fields:
+                        value.fields[name].label = str(value.fields[name].label) + ' ' + gettext('This approval also permits sending the relevant text and language guidance to Google for synthetic audio, at the estimated costs shown here.')
     google_voice = ''
     if dictionary and page in {'capture-start','capture-image','guided-start','guided-image','contribution-setting','writing-start','writing-image','port-run','port-vocabulary','forms-start','port-start'}:
         from .word_audio import authorised_settings
         settings = authorised_settings(dictionary)
         google_voice = settings.voice if settings else ''
-    return {'google_word_voice':google_voice, 'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and is_owner(request.user, dictionary)), 'primary_owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
+    return {'google_audio_fallback':google_fallback_audio, 'google_word_voice':google_voice, 'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and is_owner(request.user, dictionary)), 'primary_owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(),
         'writing_mode': personal_mode == 'writing', 'guided_mode': personal_mode == 'guided',
         'tools_page': page in {'tools', 'batch-descriptions', 'image-only-copy',
             'mwe-audio', 'mwe-audio-run', 'port-start', 'port-update',

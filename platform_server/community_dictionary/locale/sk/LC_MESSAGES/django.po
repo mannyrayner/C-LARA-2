@@ -7176,3 +7176,24 @@ msgstr "Všetky slovníky"
 
 msgid "Dictionary options"
 msgstr "Možnosti slovníka"
+
+msgid "Enable saved spoken audio"
+msgstr "Povoliť uložené hovorené nahrávky"
+
+msgid "Google will generate audio using"
+msgstr "Google vytvorí nahrávku pomocou"
+
+msgid "I have permission to send this wording to Google and approve the costs shown above."
+msgstr "Mám povolenie odoslať tento text Googlu a schvaľujem vyššie uvedené náklady."
+
+msgid "The text and any language guidance go to Google. Charges use the configured Google project. Normal C-LARA credit accounting applies where enabled. One request; no automatic retry. An interrupted request may still be charged. Listen before saving."
+msgstr "Text a prípadné jazykové pokyny sa odošlú Googlu. Náklady sa účtujú nakonfigurovanému projektu Google. Ak je zapnuté účtovanie kreditov C-LARA, platia bežné pravidlá. Jedna požiadavka bez automatického opakovania. Aj prerušená požiadavka môže byť spoplatnená. Pred uložením si nahrávku vypočujte."
+
+msgid "This approval also permits sending the relevant text and language guidance to Google for synthetic audio, at the estimated costs shown here."
+msgstr "Týmto súhlasom povoľujete aj odoslanie príslušného textu a jazykových pokynov Googlu na vytvorenie syntetickej nahrávky za uvedené odhadované náklady."
+
+msgid "Google Gemini supplies word and sentence audio for this language, using Kore. The relevant text and language guidance go to Google, billed to the configured Google project. OpenAI is still used for the other AI processing described here. A personal OpenAI key does not pay Google charges. Each Google audio attempt is one request, with no automatic retry."
+msgstr "Google Gemini vytvára nahrávky slov a viet v tomto jazyku hlasom Kore. Príslušný text a jazykové pokyny sa odošlú Googlu a účtujú nakonfigurovanému projektu Google. Ostatné tu opísané spracovanie pomocou AI naďalej vykonáva OpenAI. Osobný kľúč OpenAI nehradí náklady Googlu. Každý pokus o nahrávku Google tvorí jedna požiadavka bez automatického opakovania."
+
+msgid "I have permission for the OpenAI processing described here and to send the relevant text to Google for audio. I approve the estimated costs."
+msgstr "Mám povolenie na tu opísané spracovanie pomocou OpenAI a na odoslanie príslušného textu Googlu na vytvorenie nahrávky. Schvaľujem odhadované náklady."

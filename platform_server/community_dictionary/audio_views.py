@@ -9,6 +9,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 
 from projects.billing import credits_enabled, has_minimum_balance_for_compile
@@ -43,7 +44,8 @@ def finish(study, api_key):
         get_dictionary(current.user, current.dictionary_id)
         if (current.status != 'processing' or not current.entry_id or current.entry.archived or
                 not current.dictionary.tts_enabled or stale_study(current) or
-                tts.api_credentials(current.user) != (api_key, current.personal_key)):
+                tts.configuration(current.user, current.dictionary,
+                    speech_kind='sentence' if current.entry.entry_type == 'sentence' else 'entry')[:2] != (api_key, current.personal_key)):
             raise Conflict('The wording, access or audio settings changed. Start again from the entry.')
 
     try:
@@ -83,7 +85,7 @@ def finish(study, api_key):
 
 
 def stale_study(study):
-    if study.entry_id and study.entry.entry_type != 'sentence':
+    if study.entry_id and (study.entry.entry_type != 'sentence' or study.synthesis.get('word_audio_policy', {}).get('method') == 'google_gemini'):
         try: word_audio.validate(study.dictionary, study.synthesis.get('word_audio_policy', {}))
         except Conflict: return True
     return (not study.entry_id or study.entry.text_version != study.source_text_version or
@@ -101,8 +103,11 @@ def start(request, pk, entry_id):
     config, setup_error, policy = None, '', {}
     guidance_model, guidance_prices = '', {}
     try:
-        config = tts.configuration(request.user, dictionary)
-        policy = word_audio.policy(dictionary) if entry.entry_type != 'sentence' else {}
+        config = tts.configuration(request.user, dictionary,
+            speech_kind='sentence' if entry.entry_type == 'sentence' else 'entry')
+        policy = word_audio.policy(dictionary)
+        if entry.entry_type == 'sentence' and policy.get('method') != 'google_gemini':
+            policy = {}
         word_audio.validate(dictionary, policy) if policy else None
         if not entry.word or not entry.current_text_id:
             raise Conflict('Add and accept the wording before creating audio. A dictionary editor can accept proposed words.')
@@ -113,10 +118,13 @@ def start(request, pk, entry_id):
     preferred_voice = VoicePreference.objects.filter(user=request.user, dictionary=dictionary).values_list('voice', flat=True).first() or tts.VOICE
     form = AudioGenerateForm(request.POST or None, initial={
         'source_text_id': entry.current_text_id, 'source_text_version': entry.text_version, 'voice': preferred_voice})
+    if policy.get('method') == 'google_gemini':
+        form.fields['voice'].choices = [(policy['voice'], policy['voice'])]
+        form.initial['voice'] = policy['voice']
     if policy:
         from django.forms import HiddenInput
         form.fields['voice'].widget = HiddenInput()
-        form.fields['ai_consent'].label = 'I have permission to send this wording to Google and approve the costs shown above.'
+        form.fields['ai_consent'].label = gettext('I have permission to send this wording to Google and approve the costs shown above.')
     if request.method == 'POST' and not setup_error and form.is_valid():
         key, personal, code = config
         created = []
@@ -142,7 +150,7 @@ def start(request, pk, entry_id):
             study = AudioStudy.objects.create(dictionary=dictionary, entry=target, user=request.user,
                 expires_at=timezone.now()+timedelta(days=1), source_text=target.word,
                 source_text_id=target.current_text_id, source_text_version=target.text_version,
-                language=dictionary.language, language_code=code, model=policy.get('voice',tts.MODEL), voice=policy.get('voice',form.cleaned_data['voice']),
+                language=dictionary.language, language_code=code, model=policy.get('model',policy.get('voice',tts.MODEL)), voice=policy.get('voice',form.cleaned_data['voice']),
                 personal_key=personal, synthesis={'word_audio_policy':policy} if policy else {},
                 source_meaning=target.meaning if target.entry_type != 'sentence' and pronunciation.homographs(target.word, code) and target.current_meaning_id else '',
                 source_meaning_id=target.current_meaning_id if target.entry_type != 'sentence' and pronunciation.homographs(target.word, code) else None)

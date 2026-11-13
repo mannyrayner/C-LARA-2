@@ -59,6 +59,8 @@ def allowed(study, *, payment=False):
                 (source.text_field and getattr(source.entry,FIELDS[source.text_field][0]+'_id')!=source.pk)):
                 raise Conflict('Some source material changed. Please prepare a fresh suggestion.')
     if payment:
+        if study.usage.get('word_audio_policy', {}).get('method') == 'google_gemini':
+            tts.require_google_credit(study.user)
         if not has_minimum_balance_for_compile(study.user):
             raise Conflict('Your balance is too low to continue generating audio.')
         key,personal=photo_ai.api_credentials(study.user)
@@ -71,7 +73,7 @@ def allowed(study, *, payment=False):
         return key
 
 def charge(study, operation, cost, model, suffix, provider='openai'):
-    if study.personal_key or cost is None:
+    if (study.personal_key and provider == 'openai') or cost is None:
         return
     cost=Decimal(cost).quantize(Decimal('.000001'))
     ledger=None
@@ -82,7 +84,7 @@ def charge(study, operation, cost, model, suffix, provider='openai'):
     AIUsageCharge.objects.create(user=study.user,provider=provider,model=model,
         operation='community_capture',request_type=f'capture:{study.pk}:{suffix}',cost_usd=cost,
         status=AIUsageCharge.STATUS_CHARGED if ledger else AIUsageCharge.STATUS_SKIPPED,ledger_entry=ledger,
-        notes=('Google character tariff estimate before free allowances and tax; provider invoice is authoritative.' if provider=='google' else
+        notes=('Google synthesis usage/estimate before allowances and tax; provider invoice is authoritative.' if provider=='google' else
                'Returned token usage, or estimated TTS duration/input cost; provider invoice is authoritative.'))
 
 def account(study_id, stage, response, *, transcription=False):
