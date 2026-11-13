@@ -19,6 +19,10 @@ Run disposable controller/recovery tests from the repository root:
 python -m unittest discover -s ops/community_deploy/tests -v
 ```
 
+[Repeated-request verification](../../docs/howto/community-repeat-installs.md)
+recognizes an already installed and healthy target without restarting it. Its
+controller/cloud-helper upgrade is separate from ordinary application releases.
+
 These tests use local temporary repositories and HTTP servers. AWS/GitHub APIs are
 mocked. Native Windows CI is configured but must actually run before its result
 can be claimed. No test submits a real cloud deployment.

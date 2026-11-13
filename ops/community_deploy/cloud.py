@@ -29,10 +29,14 @@ def verify_run(run, control_sha):
         raise Stop('laptop_result_is_older_than_24_hours_repeat_laptop_install')
 
 
-def verify_receipt(receipt, request):
-    if (receipt.get('schema') != 1 or receipt.get('status') != 'installed' or
-            receipt.get('target') != 'laptop' or receipt.get('commit') != request['commit'] or
-            receipt.get('previous') != request['expected_laptop']):
+def verify_receipt(receipt, request, target='laptop'):
+    expected = request['expected_' + target]
+    completed = (receipt.get('status') == 'installed' and receipt.get('previous') == expected)
+    verified = (receipt.get('status') == 'already_installed' and
+                receipt.get('previous') == receipt.get('observed_before') == request['commit'] and
+                receipt.get('expected_previous') == expected and receipt.get('operation') == 'verify_existing')
+    if (receipt.get('schema') != 1 or receipt.get('target') != target or
+            receipt.get('commit') != request['commit'] or not (completed or verified)):
         raise Stop('laptop_receipt_does_not_match_release_request')
 
 
@@ -101,11 +105,14 @@ def deploy_aws(request, receipt_file):
             receipt = json.loads(invocation['StandardOutputContent'].strip())
         except ValueError:
             raise Stop('invalid_host_receipt_inspect_command_id') from None
-        if receipt.get('status') != 'installed' or receipt.get('commit') != request['commit'] or receipt.get('target') != 'aws':
-            raise Stop('host_receipt_does_not_confirm_requested_release')
+        try:
+            verify_receipt(receipt, request, 'aws')
+        except Stop:
+            raise Stop('host_receipt_does_not_confirm_requested_release') from None
         receipt.update(command_id=command, laptop_run=laptop_run)
         atomic_json(receipt_file, receipt)
-        print('AWS installed the accepted commit:', request['commit'])
+        print('AWS verified the existing accepted commit:' if receipt['status'] == 'already_installed'
+              else 'AWS installed the accepted commit:', request['commit'])
         return
     raise Stop('polling_timeout_inspect_saved_command_id_do_not_resubmit')
 
