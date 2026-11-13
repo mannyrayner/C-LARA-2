@@ -7,7 +7,7 @@ from community_dictionary import capture, capture_ai, capture_limits, guided, gu
 from community_dictionary.forms import DictionaryForm
 from community_dictionary.guided_views import SALT
 from community_dictionary.models import (PictureCapture, Entry, Contribution, ContributionPreference,
-    DictionaryLearningSettings, Dictionary, Participation)
+    DictionaryLearningSettings, Dictionary, Membership, Participation)
 from community_dictionary.storage import path_for, prepare_upload
 from . import test_picture_capture as fixtures
 from .test_picture_capture import response, speech, RESULT
@@ -283,6 +283,7 @@ class GuidedTests(TestCase):
 class DefaultGuidedTests(TestCase):
     setUp = fixtures.PictureCaptureTests.setUp
     url = fixtures.PictureCaptureTests.url
+    word = fixtures.PictureCaptureTests.word
 
     def upload(self, **extra):
         return self.client.post(self.url('guided-start'), {
@@ -347,6 +348,26 @@ class DefaultGuidedTests(TestCase):
         ContributionPreference.objects.all().delete()
         session = self.client.session; session[f'writing-{self.d.pk}'] = {'enabled': True}; session.save()
         self.assertRedirects(self.client.get(self.url('new')), self.url('writing-start'))
+
+    def test_pending_picture_warning_and_acceptance_survive_the_default_guided_route(self):
+        image = fixtures.PictureCaptureTests.image(self)
+        image.status = 'pending'; image.save(update_fields=['status'])
+        Membership.objects.filter(dictionary=self.d, user=self.user).update(role='editor')
+        page = self.client.get(self.url('guided-image', image.pk))
+        self.assertContains(page, 'Confirming a description will also accept this picture.')
+        quote = page.context['form']['quote'].value()
+        with patch('community_dictionary.guided.queue'), self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.client.post(self.url('guided-image', image.pk), {
+                'submission_id': uuid.uuid4(), 'permission': 'on', 'quote': quote}).status_code, 302)
+        study = PictureCapture.objects.get()
+        with patch('community_dictionary.guided_ai.describe', return_value=response(SUGGESTION)):
+            guided.run(study.pk)
+        image.refresh_from_db(); self.assertEqual(image.status, 'pending')
+        self.assertContains(self.client.get(self.url('guided-detail', study.pk)),
+            'Confirming a description will also accept this picture.')
+        self.client.post(self.url('guided-action', study.pk), {'action': 'approve', 'description': DESCRIPTION})
+        guided.run(study.pk)
+        image.refresh_from_db(); self.assertEqual(image.status, 'accepted')
 
     def test_unavailable_languages_or_disabled_ai_keep_manual_default(self):
         for field, value in [('language', 'Pitjantjatjara'), ('explanation_language', 'unsupported'),

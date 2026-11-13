@@ -57,12 +57,12 @@ class EntryOptionsTests(TestCase):
         self.dictionary.sentence_capture_enabled = True
         self.dictionary.save(update_fields=['sentence_capture_enabled'])
         reading, options = self.reading()
-        self.assertNotIn('Describe this picture', reading)
-        self.assertIn('Describe this picture', options)
+        self.assertNotIn('Describe and finish this picture', reading)
+        self.assertIn('Describe and finish this picture', options)
         add_contributions(self.entry, self.owner, {'word': '', 'edit_text': True}, [], publish=True)
         self.entry.refresh_from_db()
         reading, _ = self.reading()
-        self.assertIn('Describe this picture', reading)
+        self.assertIn('Describe and finish this picture', reading)
         self.assertIn('>Add words<', reading)
 
     def test_sentence_and_picture_words_deduplicate_by_entry_not_spelling(self):
