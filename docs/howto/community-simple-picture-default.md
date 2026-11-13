@@ -22,16 +22,18 @@ needed. The usual contribution form remains accessible from Help.
 
 The existing project website (`mannyrayner/C-LARA`, published from `docs/` at
 `www.c-lara.org`) can provide `https://c-lara.org/d` through the additive static
-page `docs/d/index.html`. It forwards to the canonical Community Dictionaries
-home, which requests login when needed and uses the remembered learning
-language for signed-in users. No new DNS record, certificate, domain purchase
-or AWS service is needed.
+page `docs/d/index.html`. It offers **Browse without signing in**, linking to
+the public `/community-dictionaries/browse/` page, and **Sign in or register**,
+linking to the member home. The member route requests login when needed and
+uses the remembered learning language for signed-in users. No new DNS record,
+certificate, domain purchase or AWS service is needed.
 
-The static page uses only a fixed HTTPS destination, with a visible fallback
-link. It does not accept arbitrary redirect targets or carry query parameters
-between sites. Existing application, login and dictionary URLs remain valid.
-The browser's address bar shows the canonical application URL after forwarding;
-this is a short address to advertise and type, not a new application host.
+The static landing page uses two fixed HTTPS links and works without JavaScript.
+It does not automatically redirect, accept arbitrary redirect targets or carry
+query parameters between sites. Existing application, login and dictionary URLs
+remain valid. The browser's address bar shows the canonical application URL
+after choosing a link; this is a short address to advertise and type, not a new
+application host.
 
 Publish and check the website page separately from the normal laptop/AWS
 application release. The application change itself does not publish the short
