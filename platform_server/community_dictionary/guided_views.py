@@ -1,4 +1,5 @@
 """Mobile guided contribution and durable personal workflow settings."""
+from copy import deepcopy
 from datetime import timedelta
 from django import forms
 from django.contrib import messages
@@ -24,12 +25,33 @@ SALT = 'guided-consent-1'
 
 class ModeForm(forms.Form):
     mode = forms.ChoiceField(label=gettext_lazy('My way of adding pictures'), choices=[
-        ('manual', gettext_lazy('Usual contribution form')),
         ('guided', gettext_lazy('Picture, confirm and finish')),
+        ('manual', gettext_lazy('Usual contribution form')),
         ('writing', gettext_lazy('Writing practice'))])
     permission = forms.BooleanField(required=False, label=gettext_lazy(
         'I have permission to contribute the pictures I upload. I agree to send them to OpenAI automatically for descriptions, and to pay for descriptions and the processing I approve.'))
     quote = forms.CharField(required=False, widget=forms.HiddenInput)
+
+
+class GuidedPictureForm(PictureForm):
+    permission = deepcopy(ModeForm.base_fields['permission'])
+    quote = deepcopy(ModeForm.base_fields['quote'])
+
+    def __init__(self, *args, needs_consent=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['permission'].required = needs_consent
+
+
+def approved_consent(form, user, dictionary):
+    if not form.cleaned_data['permission']:
+        raise Conflict(_('Confirm permission and automatic AI processing before enabling this mode.'))
+    try:
+        consent = signing.loads(form.cleaned_data['quote'], salt=SALT, max_age=600)
+    except signing.BadSignature:
+        raise Conflict(_('Reload Settings to see the current cost estimate.'))
+    if consent != guided.consent_values(user, dictionary):
+        raise Conflict(_('The AI settings changed. Reload Settings and confirm the new estimate.'))
+    return consent
 
 
 class MeaningForm(forms.Form):
@@ -60,12 +82,7 @@ def setting(request, pk):
     try:
         if mode != 'manual': dictionary_for(request, pk)
         if mode == 'guided':
-            if not form.cleaned_data['permission']:
-                raise Conflict(_('Confirm permission and automatic AI processing before enabling this mode.'))
-            try: consent = signing.loads(form.cleaned_data['quote'], salt=SALT, max_age=600)
-            except signing.BadSignature: raise Conflict(_('Reload Settings to see the current cost estimate.'))
-            if consent != guided.consent_values(request.user, dictionary):
-                raise Conflict(_('The AI settings changed. Reload Settings and confirm the new estimate.'))
+            consent = approved_consent(form, request.user, dictionary)
         learning.save_preference(request, dictionary, mode, consent)
     except Conflict as exc: return fail(request, exc, 409)
     messages.success(request, _('Your personal workflow is saved across logins.'))
@@ -118,7 +135,10 @@ def start(request, pk, image_id=None):
     if request.method == 'POST' and learning.mode(request, dictionary) != 'guided':
         return fail(request, _('Enable Picture, confirm and finish in Settings first.'), 409)
     source = get_object_or_404(capture.available_images(request.user, dictionary), pk=image_id) if image_id else None
-    form = PictureForm(request.POST or None, request.FILES or None)
+    setup = settings_context(request, dictionary)
+    needs_consent = not learning.preference(request, dictionary)['consent']
+    form = GuidedPictureForm(request.POST or None, request.FILES or None,
+        needs_consent=needs_consent, initial={'quote': setup['mode_form'].initial['quote']})
     if request.method == 'POST' and form.is_valid():
         try:
             prepared = ((path_for(source.file_path).read_bytes(), 'image/jpeg', '.jpg') if source else
@@ -127,6 +147,9 @@ def start(request, pk, image_id=None):
             def create(paths):
                 current = dictionary_for(request, pk)
                 if source: get_object_or_404(capture.available_images(request.user, current), pk=source.pk)
+                if needs_consent:
+                    consent = approved_consent(form, request.user, current)
+                    learning.save_preference(request, current, 'guided', consent)
                 return url(new_attempt(request, current, paths, prepared, source))
             location = submit_once(request, dictionary, f'guided-picture:{image_id}', create)
             study = guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1])
@@ -138,7 +161,7 @@ def start(request, pk, image_id=None):
     if request.method == 'POST' and form.errors and 'application/json' in request.headers.get('Accept', ''):
         return fail(request, form.errors.as_text())
     return no_store(render(request, 'community_dictionary/guided_start.html', context(request, dictionary,
-        **settings_context(request, dictionary), form=form, image=source,
+        **setup, form=form, image=source, needs_guided_consent=needs_consent,
         recent=PictureCapture.objects.filter(user=request.user, dictionary=dictionary, input_mode='guided',
             expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:8],
         submission_id=request.POST.get('submission_id') or context(request)['submission_id'])))

@@ -3,7 +3,7 @@
 {% block content %}
 <h1>{% translate "Picture, confirm and finish" %}</h1>
 <p>{% translate "Saving starts paid AI analysis. Your picture stays private until you confirm its description." %}</p>
-{% if guided_estimate != None %}<p class="help">{% blocktranslate with amount=guided_estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %}</p>{% endif %}
+{% if not needs_guided_consent and guided_estimate != None %}<p class="help">{% blocktranslate with amount=guided_estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %}</p>{% endif %}
 {% if guided_setup_error %}<p class="notice">{{ guided_setup_error }}</p>{% endif %}
 {% if not guided_mode %}<p><a class="button" href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Enable Picture, confirm and finish in Settings first." %}</a></p>{% else %}
 <form method="post" enctype="multipart/form-data" class="stack" data-draft-form>
@@ -16,11 +16,14 @@
 <img data-photo-preview class="photo-preview" alt="{% translate "Your picture preview" %}" hidden>
 <button type="button" class="quiet" data-clear-photo hidden>{% translate "Remove picture" %}</button>{{ form.photo.errors }}
 {% endif %}
+{% if needs_guided_consent %}
+{% include 'community_dictionary/guided_cost.html' with estimate=guided_estimate personal=guided_personal %}
+{{ form.quote }}<label class="check">{{ form.permission }} <span>{{ form.permission.label }}</span></label>{{ form.permission.errors }}
+{% endif %}
 <button data-save-submit>{% translate "Save picture and suggest a description" %}</button>
 {% include 'community_dictionary/draft_status.html' %}</section></form>{% endif %}
 <details class="entry-help"><summary>{% translate "Help" %}</summary>
 <p>{% translate "Save a picture. Check what it says. Let the app finish the rest." %}</p>
-<p>{% translate "Your picture stays private until you confirm its description. Saving starts AI analysis under the permission you gave in Settings." %}</p>
 <p><a href="{% url 'community_dictionary:new' dictionary.pk %}?usual=1">{% translate "Use the usual contribution form" %}</a> · <a href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Change my workflow" %}</a></p>
 </details>
 <details class="panel entry-help"><summary>{% translate "My recent pictures" %}</summary>

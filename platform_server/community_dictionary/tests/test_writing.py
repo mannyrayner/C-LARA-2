@@ -197,7 +197,7 @@ class WritingTests(TestCase):
         self.assertContains(self.client.get(self.url('dictionary')), 'My writing — start or continue')
         self.assertEqual(self.client.post(self.url('settings'), {'language': 'German'}).status_code, 404)
         other = Client(); other.force_login(self.owner)
-        self.assertContains(other.get(self.url('new')), 'What shall we add?')
+        self.assertRedirects(other.get(self.url('new')), self.url('guided-start'))
         self.client.post(self.url('writing-setting'), {'mode': 'off'})
         self.assertContains(self.client.get(self.url('new')), 'What shall we add?')
 
