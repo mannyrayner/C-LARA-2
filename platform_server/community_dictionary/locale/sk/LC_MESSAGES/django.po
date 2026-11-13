@@ -7197,3 +7197,23 @@ msgstr "Google Gemini vytvára nahrávky slov a viet v tomto jazyku hlasom Kore.
 
 msgid "I have permission for the OpenAI processing described here and to send the relevant text to Google for audio. I approve the estimated costs."
 msgstr "Mám povolenie na tu opísané spracovanie pomocou OpenAI a na odoslanie príslušného textu Googlu na vytvorenie nahrávky. Schvaľujem odhadované náklady."
+
+msgid ""
+"Members can describe a picture by voice or text, confirm its meaning, and "
+"publish a sentence with linked words and synthetic audio. Picture, "
+"description and up to 200 words/meanings are sent to OpenAI. Each request "
+"requires confirmation and incurs API costs."
+msgstr ""
+"Členovia môžu opísať obrázok hlasom alebo textom, potvrdiť jeho význam a "
+"zverejniť vetu s prepojenými slovami a syntetickým zvukom. Obrázok, opis a "
+"najviac 200 slov a významov sa odošlú do OpenAI. Každá požiadavka vyžaduje "
+"potvrdenie a účtujú sa za ňu náklady na API."
+
+msgid ""
+"Owners and editors can approve a shared style and generate pictures from "
+"descriptions. Each request needs permission to send its text to OpenAI and "
+"incurs API costs."
+msgstr ""
+"Vlastníci a editori môžu schváliť spoločný štýl a vytvárať obrázky z opisov."
+" Každá požiadavka vyžaduje povolenie odoslať jej text do OpenAI a účtujú sa "
+"za ňu náklady na API."
