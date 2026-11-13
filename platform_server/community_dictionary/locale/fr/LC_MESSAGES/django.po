@@ -7269,3 +7269,24 @@ msgstr "Tous les dictionnaires"
 
 msgid "Dictionary options"
 msgstr "Options du dictionnaire"
+
+msgid "Enable saved spoken audio"
+msgstr "Activer l’audio parlé enregistré"
+
+msgid "Google will generate audio using"
+msgstr "Google générera l’audio avec"
+
+msgid "I have permission to send this wording to Google and approve the costs shown above."
+msgstr "J’ai l’autorisation d’envoyer ce texte à Google et j’approuve les coûts indiqués ci-dessus."
+
+msgid "The text and any language guidance go to Google. Charges use the configured Google project. Normal C-LARA credit accounting applies where enabled. One request; no automatic retry. An interrupted request may still be charged. Listen before saving."
+msgstr "Le texte et les éventuelles consignes linguistiques sont envoyés à Google. Les frais sont facturés au projet Google configuré. La comptabilisation habituelle des crédits C-LARA s’applique lorsqu’elle est activée. Une seule requête, sans nouvelle tentative automatique. Une requête interrompue peut tout de même être facturée. Écoutez avant d’enregistrer."
+
+msgid "This approval also permits sending the relevant text and language guidance to Google for synthetic audio, at the estimated costs shown here."
+msgstr "Cet accord autorise aussi l’envoi du texte concerné et des consignes linguistiques à Google pour l’audio de synthèse, aux coûts estimés indiqués ici."
+
+msgid "Google Gemini supplies word and sentence audio for this language, using Kore. The relevant text and language guidance go to Google, billed to the configured Google project. OpenAI is still used for the other AI processing described here. A personal OpenAI key does not pay Google charges. Each Google audio attempt is one request, with no automatic retry."
+msgstr "Google Gemini fournit les enregistrements des mots et des phrases dans cette langue avec la voix Kore. Le texte concerné et les consignes linguistiques sont envoyés à Google et facturés au projet Google configuré. OpenAI reste utilisé pour les autres traitements d’IA décrits ici. Une clé OpenAI personnelle ne couvre pas les frais Google. Chaque tentative audio Google correspond à une requête, sans nouvelle tentative automatique."
+
+msgid "I have permission for the OpenAI processing described here and to send the relevant text to Google for audio. I approve the estimated costs."
+msgstr "J’ai l’autorisation pour les traitements OpenAI décrits ici et pour l’envoi du texte concerné à Google pour l’audio. J’approuve les coûts estimés."

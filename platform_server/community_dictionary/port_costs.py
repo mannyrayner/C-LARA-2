@@ -7,6 +7,9 @@ def text_cost(prices, inputs, outputs):
 
 
 def speech(text, language, prices, *, sentence=False, unknown=False):
+    from . import google_fallback
+    if google_fallback.language_code(language):
+        return google_fallback.estimate(text)
     # Short lexical audio, or sentence duration inferred from its length.
     duration = max(2, min(25, len(text)/12)) if sentence else max(2, min(10, len(text)/12))
     cost = tts.estimate_cost(text + 'x'*800, duration)

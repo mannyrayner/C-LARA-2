@@ -76,6 +76,8 @@ def settings(request, pk):
 def groups(dictionary, *, include_reviewed=False, include_matching=False):
     from .audio_review_data import ReviewData
     chosen = word_audio.policy(dictionary)
+    if chosen.get('method') == 'google_gemini':
+        raise Conflict('Google Gemini is already the automatic audio provider for this language. Use Create spoken audio or the normal vocabulary/audio workflow; this conversion tool is for named Cloud TTS voices.')
     if not chosen:
         raise Conflict('Choose a Google voice under Word audio settings first.')
     rows, skipped = [], 0
