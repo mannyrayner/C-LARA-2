@@ -9,11 +9,12 @@ from . import learning
 
 
 class DictionaryForm(forms.ModelForm):
+    creation_defaults = True
     generation_level = forms.ChoiceField(choices=learning.LEVELS, required=False, initial='beginner',
         label=_('Level of AI-generated language'), help_text=_(
             'Guides new picture descriptions. Keep precise words for what the picture shows; simplify the surrounding grammar. Existing entries are kept.'))
-    sentence_capture_enabled = forms.BooleanField(required=False, label=_('Enable Picture descriptions (OpenAI)'), help_text=_('Optional experiment: members describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Contributor confirmation allows immediate publication; editors can check language afterwards. Picture, description and up to 200 words/meanings are sent to OpenAI. Off by default.'))
-    image_generation_enabled = forms.BooleanField(required=False, initial=False, label=_('Enable AI picture generation (OpenAI)'), help_text=_('Owners and editors can approve a shared style and generate pictures from descriptions. Off by default. Each request needs permission to send its text to OpenAI and incurs API costs.'))
+    sentence_capture_enabled = forms.BooleanField(required=False, label=_('Enable Picture descriptions (OpenAI)'), help_text=_('Members can describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Picture, description and up to 200 words/meanings are sent to OpenAI. Each request requires confirmation and incurs API costs.'))
+    image_generation_enabled = forms.BooleanField(required=False, label=_('Enable AI picture generation (OpenAI)'), help_text=_('Owners and editors can approve a shared style and generate pictures from descriptions. Each request needs permission to send its text to OpenAI and incurs API costs.'))
     photo_ai_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable Learn from a photo (OpenAI)'), help_text=_('Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.'))
     tts_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable saved spoken audio'), help_text=_('Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.'))
 
@@ -25,9 +26,23 @@ class DictionaryForm(forms.ModelForm):
                   'text_direction': _('Text direction')}
 
     def __init__(self, *args, **kwargs):
+        provided = kwargs.get('initial') or {}
         super().__init__(*args, **kwargs)
         if self.instance.pk:
             self.initial['generation_level'] = learning.level(self.instance)
+        elif self.creation_defaults:
+            from .tts import LANGUAGES, language_code
+            from .google_fallback import LANGUAGES as extra_languages
+            self.ai_languages = sorted(set(LANGUAGES) | set(LANGUAGES.values()) |
+                                       set(extra_languages) | set(extra_languages.values()))
+            language = self.initial.get('language') or ''
+            supported = not language.strip() or bool(language_code(language))
+            if 'image_generation_enabled' not in provided:
+                self.initial['image_generation_enabled'] = supported
+            if 'sentence_capture_enabled' not in provided:
+                self.initial['sentence_capture_enabled'] = bool(supported and
+                    self.initial.get('tts_enabled', True) and
+                    language_code(self.initial.get('explanation_language') or 'English'))
 
     def save_learning_settings(self):
         from .models import DictionaryLearningSettings
@@ -55,6 +70,7 @@ class DictionaryForm(forms.ModelForm):
 
 
 class DictionarySettingsForm(DictionaryForm):
+    creation_defaults = False
     class Meta(DictionaryForm.Meta):
         fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
 
