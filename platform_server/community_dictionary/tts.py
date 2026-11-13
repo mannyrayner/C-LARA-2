@@ -37,13 +37,26 @@ LANGUAGES = dict(pair.split(':') for pair in (
 
 def language_code(language):
     name = language.strip().lower()
-    return LANGUAGES.get(name) or (name if name in LANGUAGES.values() else None)
+    from .google_fallback import language_code as google_code
+    return LANGUAGES.get(name) or (name if name in LANGUAGES.values() else None) or google_code(language)
 
 
-def configuration(user, dictionary):
+def require_google_credit(user):
+    from projects.billing import get_user_balance_usd, minimum_compile_balance_usd
+    if credits_enabled() and get_user_balance_usd(user) < minimum_compile_balance_usd():
+        raise Conflict('Your C-LARA balance is too low for Google audio. A personal OpenAI key does not pay Google project charges.')
+
+
+def configuration(user, dictionary, *, speech_kind='entry'):
     code = language_code(dictionary.language)
     if not code:
         raise Conflict('Saved TTS is not configured for this language. Please use a human recording.')
+    from . import word_audio
+    policy = word_audio.policy(dictionary)
+    if policy and (speech_kind != 'sentence' or policy.get('method') == 'google_gemini'):
+        # Google uses the server project, never the caller's OpenAI key.
+        require_google_credit(user)
+        return '', False, code
     key, personal = api_credentials(user)
     return key, personal, code
 
@@ -178,7 +191,11 @@ def synthesize(text, *, language, model, voice, api_key, meaning='', meaning_lan
 
 def record_failure(report, exc):
     """Bounded diagnostics: never persist provider messages or private input."""
-    if isinstance(exc, SilentAudio):
+    from .google_tts import GoogleAccessError
+    if isinstance(exc, GoogleAccessError):
+        code = 'google_access'
+        report['google_access_code'] = exc.code
+    elif isinstance(exc, SilentAudio):
         code = 'near_silent'
     elif isinstance(exc, TimeoutError) or type(exc).__name__ == 'APITimeoutError':
         code = 'timeout'
@@ -195,6 +212,14 @@ def record_failure(report, exc):
 
 
 def failure_message(report):
+    if report.get('provider') == 'google' and report.get('failure_code') == 'near_silent':
+        return 'The audio response was silent or too quiet. No automatic retry was sent.'
+    if report.get('failure_code') == 'google_access':
+        if report.get('model') == 'gemini-3.8-flash-tts' and report.get('google_access_code') == 'permission':
+            return 'Google Gemini audio needs the Agent Platform API and prediction permission on the configured project. Ask the site administrator to check Google access.'
+        from .google_tts import GoogleAccessError
+        code = report.get('google_access_code', 'unknown')
+        return str(GoogleAccessError(code if code in {'connection','credentials','sign_in','permission','voices'} else 'unknown', 'speech'))
     return {
         'near_silent': 'Both audio attempts were silent or too quiet.',
         'timeout': 'The audio provider took too long to respond.',
@@ -207,11 +232,11 @@ def failure_message(report):
 
 def record_charge(study):
     """Called once under the attempt's row lock, including known failed-call costs."""
-    if study.personal_key:
+    if study.personal_key and study.synthesis.get('provider', 'openai') == 'openai':
         return
     metadata = {'provider': study.synthesis.get('provider','openai'), 'model': study.synthesis.get('model',study.model), 'operation': 'community_tts',
                 'request_type': f'tts:{study.pk}', 'cost_usd': str(study.cost_usd),
-                'cost_basis': 'google_character_tariff' if study.synthesis.get('provider') == 'google' else 'guidance_tokens_plus_speech_duration_and_input_bytes',
+                'cost_basis': study.synthesis.get('cost_basis') or ('google_character_tariff' if study.synthesis.get('provider') == 'google' else 'guidance_tokens_plus_speech_duration_and_input_bytes'),
                 'synthesis_attempts': len(study.synthesis.get('attempts', [])),
                 'guidance_model': study.synthesis.get('guidance_model'),
                 'duration_seconds': study.duration_seconds, 'input_bytes': len(study.source_text.encode('utf-8'))}
@@ -223,5 +248,5 @@ def record_charge(study):
     AIUsageCharge.objects.create(user=study.user, provider=metadata['provider'],
         model=metadata['model'], operation='community_tts', request_type=f'tts:{study.pk}',
         cost_usd=study.cost_usd, status=AIUsageCharge.STATUS_CHARGED if ledger else AIUsageCharge.STATUS_SKIPPED,
-        notes=('Google character tariff estimate before free allowances and tax; provider invoice is authoritative.' if metadata['provider']=='google' else
+        notes=('Google synthesis usage/estimate before allowances and tax; provider invoice is authoritative.' if metadata['provider']=='google' else
                'Includes returned pronunciation-guidance usage and estimated speech costs for all completed attempts; provider invoice is authoritative.'), ledger_entry=ledger)

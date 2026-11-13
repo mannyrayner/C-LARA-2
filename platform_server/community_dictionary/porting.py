@@ -483,7 +483,7 @@ def record_usage(item, *, audio=False, cost_override=None, suffix='', provider='
         completion_tokens=0 if audio else item.usage.get('output_tokens',0),
         total_tokens=0 if audio else sum(item.usage.values()), cost_usd=cost,
         status=AIUsageCharge.STATUS_CHARGED if run.payer == 'credits' else AIUsageCharge.STATUS_SKIPPED,
-        notes=('Google character tariff estimate before free allowances and tax. ' if provider == 'google' else
+        notes=('Google synthesis usage/estimate before allowances and tax. ' if provider == 'google' else
                'Includes pronunciation guidance token cost and all completed speech attempts estimated from duration/input bytes. ' if audio else 'Returned token usage. ') +
               'Settlement is through the port reservation; individual rows are not debited again.')
 
