@@ -61,7 +61,7 @@ class GuidedTests(TestCase):
         self.assertRedirects(self.client.get(self.url('new')), self.url('guided-start'))
         self.assertContains(self.client.get(self.url('settings')), 'My way of adding pictures')
         other = Client(); other.force_login(self.owner)
-        self.assertContains(other.get(self.url('new')), 'What shall we add?')
+        self.assertRedirects(other.get(self.url('new')), self.url('guided-start'))
         self.assertEqual(self.client.post(self.url('settings'), {'generation_level': 'advanced'}).status_code, 404)
         self.client.post(self.url('contribution-setting'), {'mode': 'manual'})
         self.client.logout(); self.client.force_login(self.user)
@@ -276,6 +276,86 @@ class GuidedTests(TestCase):
         self.assertEqual(learning.level(dictionary), 'high_intermediate')
         self.assertEqual(DictionaryForm().fields['generation_level'].initial, 'beginner')
         self.assertFalse(DictionaryForm({**data, 'generation_level': 'nonsense'}).is_valid())
+
+
+@override_settings(OPENAI_API_KEY='test-only', CREDITS_ENABLED=False,
+    PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class DefaultGuidedTests(TestCase):
+    setUp = fixtures.PictureCaptureTests.setUp
+    url = fixtures.PictureCaptureTests.url
+
+    def upload(self, **extra):
+        return self.client.post(self.url('guided-start'), {
+            'submission_id': uuid.uuid4(), 'photo': picture(), **extra})
+
+    def test_new_member_enters_simple_flow_and_settings_select_it_without_saving_consent(self):
+        self.assertRedirects(self.client.get(self.url('new')), self.url('guided-start'))
+        self.assertContains(self.client.get(self.url('new') + '?usual=1'), 'What shall we add?')
+        page = self.client.get(self.url('guided-start'))
+        self.assertTrue(page.context['needs_guided_consent'])
+        self.assertContains(page, 'name="permission"')
+        self.assertContains(page, 'Save picture and suggest a description')
+        self.assertContains(page, 'OpenAI receives your picture and description.')
+        settings_page = self.client.get(self.url('settings'))
+        self.assertEqual(settings_page.context['mode_form']['mode'].value(), 'guided')
+        self.assertFalse(ContributionPreference.objects.exists())
+        self.ai.assert_not_called(); self.tts.assert_not_called()
+
+    def test_first_picture_needs_permission_and_current_user_scoped_quote(self):
+        quote = self.client.get(self.url('guided-start')).context['form']['quote'].value()
+        with patch('community_dictionary.guided.queue') as queue:
+            missing = self.upload(quote=quote)
+            self.assertEqual(missing.status_code, 200)
+            self.assertIn('permission', missing.context['form'].errors)
+            for value in ['tampered', signing.dumps(guided.consent_values(self.owner, self.d), salt=SALT)]:
+                response = self.upload(permission='on', quote=value)
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context['form'].non_field_errors())
+            with patch('community_dictionary.guided.consent_values',
+                    return_value={**guided.consent_values(self.user, self.d), 'model': 'changed'}):
+                self.assertEqual(self.upload(permission='on', quote=quote).status_code, 200)
+            queue.assert_not_called()
+        self.assertFalse(PictureCapture.objects.exists())
+        self.assertFalse(ContributionPreference.objects.exists())
+        self.ai.assert_not_called(); self.tts.assert_not_called()
+
+    def test_first_approved_upload_saves_personal_permission_and_queues_private_picture(self):
+        quote = self.client.get(self.url('guided-start')).context['form']['quote'].value()
+        with patch('community_dictionary.guided.queue') as queue, self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.upload(permission='on', quote=quote).status_code, 302)
+        study = PictureCapture.objects.get()
+        queue.assert_called_once_with(study.pk)
+        row = ContributionPreference.objects.get(user=self.user, dictionary=self.d)
+        self.assertEqual(row.mode, 'guided')
+        self.assertEqual(row.consent, guided.consent_values(self.user, self.d))
+        self.assertEqual(study.result['guided']['consent'], row.consent)
+        self.assertTrue(path_for(study.file_path).is_file())
+        self.assertFalse(Entry.objects.exists())
+        self.assertFalse(ContributionPreference.objects.filter(user=self.owner).exists())
+        page = self.client.get(self.url('guided-start'))
+        self.assertFalse(page.context['needs_guided_consent'])
+        self.assertNotContains(page, 'name="permission"')
+        self.ai.assert_not_called(); self.tts.assert_not_called()
+
+    def test_explicit_modes_and_legacy_writing_preference_keep_their_meaning(self):
+        for value in ['manual', 'writing']:
+            self.client.post(self.url('contribution-setting'), {'mode': value})
+            if value == 'manual':
+                self.assertContains(self.client.get(self.url('new')), 'What shall we add?')
+            else:
+                self.assertRedirects(self.client.get(self.url('new')), self.url('writing-start'))
+        ContributionPreference.objects.all().delete()
+        session = self.client.session; session[f'writing-{self.d.pk}'] = {'enabled': True}; session.save()
+        self.assertRedirects(self.client.get(self.url('new')), self.url('writing-start'))
+
+    def test_unavailable_languages_or_disabled_ai_keep_manual_default(self):
+        for field, value in [('language', 'Pitjantjatjara'), ('explanation_language', 'unsupported'),
+                             ('tts_enabled', False), ('sentence_capture_enabled', False)]:
+            original = getattr(self.d, field)
+            setattr(self.d, field, value); self.d.save(update_fields=[field])
+            self.assertContains(self.client.get(self.url('new')), 'What shall we add?')
+            self.assertEqual(self.client.get(self.url('settings')).context['mode_form']['mode'].value(), 'manual')
+            setattr(self.d, field, original); self.d.save(update_fields=[field])
 
 
 class GuidedPromptTests(TestCase):
