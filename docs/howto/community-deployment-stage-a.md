@@ -270,7 +270,13 @@ features are not assumed: their availability for private repositories depends on
 
 ## F. Failures and recovery
 
-The receipt reports `installed`, `refused`, `recovered_previous_release`, or `recovery_required`.
+The receipt reports `installed`, `already_installed`, `refused`,
+`recovered_previous_release`, or `recovery_required`. The `already_installed`
+verification requires the separately upgraded controller and cloud helper;
+see [repeated deployment requests](community-repeat-installs.md).
+
+- **Already installed:** the requested target is present and its running server
+  passed verification. No code, static files or server processes were changed.
 
 - **Refused:** inspect the reason. Dirty files, wrong installed versions and busy/stale leases
   are not corrected by deleting or resetting material automatically.

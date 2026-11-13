@@ -281,14 +281,16 @@ class Controller:
 
     def install(self, commit, expected, receipt):
         commit, expected = sha(commit), sha(expected)
-        self.report.update(commit=commit, previous=expected, status='checking')
+        self.report.update(commit=commit, previous=expected, expected_previous=expected, status='checking')
         stopped = False
         owns_gate = False
         gate = self.activity / 'maintenance'
         with locked(self.state):
             try:
                 self.clean()
-                if self.head() != expected:
+                current = self.head()
+                self.report['observed_before'] = current
+                if current not in {expected, commit}:
                     raise Stop('installed_commit_does_not_match_request')
                 origin = self.git('remote', 'get-url', 'origin').stdout.strip()
                 if origin.rstrip('/').removesuffix('.git') != SOURCE.rstrip('/').removesuffix('.git'):
@@ -300,6 +302,25 @@ class Controller:
                 if blocked_paths(paths):
                     raise Stop('schema_dependencies_or_controller_changed_manual_release_required')
                 self.preflight()
+                if current == commit and expected != commit:
+                    # A repeat verifies the completed transition, retaining the
+                    # original ancestry/path checks and the actual prior HEAD.
+                    # Same-SHA bootstrap requests keep their existing behaviour.
+                    if gate.exists():
+                        raise Stop('maintenance_already_active')
+                    if self.target == 'laptop':
+                        session = self.local_session()
+                        if session is None or not session.is_dir() or (session / 'exited').exists():
+                            raise Stop('already_installed_server_is_not_managed')
+                    self.ready(commit)
+                    self.clean()
+                    if self.head() != commit:
+                        raise Stop('checkout_changed_during_verification')
+                    if gate.exists():
+                        raise Stop('maintenance_already_active')
+                    self.report.update(status='already_installed', previous=current,
+                                       operation='verify_existing')
+                    return self.report
                 if self.target == 'aws' or self.port_open():
                     if self.target == 'laptop' and self.local_session() is None:
                         raise Stop('stop_existing_manual_server_once_before_bootstrap')
@@ -406,7 +427,9 @@ def main():
             commit, expected = sha(args.commit), sha(args.expected)
         result = controller.install(commit, expected, args.receipt)
         print(json.dumps(result))
-        return 0 if result['status'] == 'installed' else 1
+        if result['status'] == 'already_installed' and controller.target == 'laptop':
+            print('Already installed and verified: ' + result['commit'], file=sys.stderr)
+        return 0 if result['status'] in {'installed', 'already_installed'} else 1
     except Exception as exc:
         result = {'schema': VERSION, 'status': 'controller_refused',
                   'reason': str(exc) if isinstance(exc, Stop) else 'invalid_configuration_or_request'}
