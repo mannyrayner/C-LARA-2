@@ -245,3 +245,13 @@ class RefreshTests(TestCase):
         self.assertNotContains(page, 'Words and audio are up to date')
         self.assertContains(page, 'Vocabulary needs updating')
         new = self.start(); self.assertNotEqual(new.pk, study.pk)
+
+    def test_an_abandoned_claim_does_not_lock_out_another_editor_indefinitely(self):
+        from community_dictionary.models import Membership
+        old = self.start(); old.status = 'processing'
+        old.result['refresh']['started_at'] = (timezone.now()-timedelta(minutes=16)).isoformat(); old.save()
+        Membership.objects.filter(dictionary=self.d, user=self.user).update(role='co_owner')
+        self.client.force_login(self.user)
+        new = self.start(); old.refresh_from_db()
+        self.assertEqual(old.status, 'failed'); self.assertNotEqual(new.pk, old.pk)
+        self.analyser.assert_not_called()

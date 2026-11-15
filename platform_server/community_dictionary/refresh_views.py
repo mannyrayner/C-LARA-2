@@ -52,6 +52,7 @@ def start(request, pk, entry_id):
                 active = PictureCapture.objects.filter(dictionary=dictionary, saved_entry=current,
                     input_mode='refresh', expires_at__gt=timezone.now()).order_by('-created_at')
                 for old in active:
+                    refresh.recover(old)
                     same_input = old.result.get('refresh', {}).get('consent', {}).get('snapshot') == fresh['snapshot']
                     if same_input and old.status in {'waiting', 'processing', 'ready'} and old.user_id != request.user.pk:
                         raise Conflict(_('An update for this sentence is already running. Check the entry again shortly.'))
