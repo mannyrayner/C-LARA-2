@@ -1,0 +1,23 @@
+{% extends 'community_dictionary/base.html' %}{% load static i18n %}
+{% block title %}{% translate "Update words and audio" %}{% endblock %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p>
+<section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
+<h1>{% if complete %}{% translate "Words and audio are up to date" %}{% else %}{% translate "Updating words and audio" %}{% endif %}</h1>
+<p dir="{{ dictionary.text_direction }}">{{ entry.word }}</p>
+{% if study.status == 'failed' %}
+<p class="notice">{% translate "This attempt could not finish. Your saved wording is safe. A failed or uncertain request is never repeated automatically." %}</p>
+<p><a class="button" href="{% url 'community_dictionary:refresh-start' dictionary.pk entry.pk %}">{% translate "Review a fresh estimate" %}</a></p>
+{% elif study.status == 'saved' and not vocabulary_current %}
+<p class="notice">{% translate "Vocabulary needs updating to match the current sentence and meanings." %}</p><p><a href="{% url 'community_dictionary:refresh-start' dictionary.pk entry.pk %}">{% translate "Review a fresh estimate" %}</a></p>
+{% elif study.status == 'saved' %}
+{% if pending %}<p role="status">{% translate "Word information is updated. Audio is being prepared…" %}</p>{% elif complete %}<p>{% translate "Your wording is kept. Its word information and audio now match." %}</p>{% elif not failed_audio %}<p>{% translate "No accepted recording for this wording yet." %} <a href="{% url 'community_dictionary:refresh-start' dictionary.pk entry.pk %}">{% translate "Review a fresh estimate" %}</a></p>{% endif %}
+{% for clip in failed_audio %}<p class="notice">{{ clip.text }}: {{ clip.failure_reason }}</p>{% endfor %}
+{% if failed_audio and not pending %}<form method="post" action="{% url 'community_dictionary:refresh-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
+<p>{% blocktranslate %}Estimated additional audio cost: US${{ audio_estimate }}. Actual usage can vary.{% endblocktranslate %}</p>
+<label class="check"><input type="checkbox" name="permission" required>{% translate "Retry only missing audio, with the same provider permissions. This is a new paid attempt; successful recordings and text are kept." %}</label>
+<button name="action" value="retry-audio">{% translate "Retry missing audio" %}</button></form>{% endif %}
+{% else %}<p role="status">{% translate "Preparing word information from your corrected sentence…" %}</p>{% endif %}
+<p><a class="button secondary" href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Back to entry" %}</a></p>
+{% if polling %}<p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p>
+<details><summary>{% translate "If progress has stopped" %}</summary><form method="post" action="{% url 'community_dictionary:refresh-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="continue">{% translate "Continue pending work" %}</button></form><p>{% translate "Only unstarted work continues. Requests already sent are not repeated." %}</p></details>{% endif %}
+</section><script src="{% static 'community_dictionary/writing.js' %}" defer></script>{% endblock %}

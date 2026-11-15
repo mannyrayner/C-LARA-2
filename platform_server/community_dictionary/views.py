@@ -13,6 +13,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST, require_http_methods
 
 from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, EntryPictureForm, LinkWordForm, NoteForm, RequestForm
@@ -250,8 +251,14 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, pi
                 if response_to.progress in {'complete', 'withdrawn'}:
                     raise Conflict(gettext('This request has closed. Reload the entry before contributing.'))
             target = entry or Entry.objects.create(dictionary=dictionary, created_by=request.user)
+            before = (target.word, target.meaning)
             publish = bool(is_editor(request.user, dictionary) and form.cleaned_data.get('publish_now'))
             add_contributions(target, request.user, form.cleaned_data, paths, publish=publish, response_to=response_to)
+            target.refresh_from_db()
+            if entry and publish and before != (target.word, target.meaning):
+                from .refresh import available
+                if available(request.user, target):
+                    return reverse('community_dictionary:refresh-start', args=[dictionary.pk, target.pk])
             return entry_url(target)
         scope = f'contribute:{entry.pk if entry else 0}:{request_id or 0}'
         return perform(request, dictionary, scope, create)

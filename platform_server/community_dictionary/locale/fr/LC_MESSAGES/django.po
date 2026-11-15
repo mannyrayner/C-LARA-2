@@ -7311,3 +7311,110 @@ msgstr ""
 "Les propriétaires et les éditeurs peuvent approuver un style commun et "
 "générer des images à partir de descriptions. Chaque demande nécessite "
 "l’autorisation d’envoyer son texte à OpenAI et entraîne des frais d’API."
+
+
+# Sentence editing: vocabulary and audio refresh.
+msgid ""
+"I approve the estimate and have permission to send this sentence, "
+"translation, picture and vocabulary to OpenAI, and the text needed for audio"
+" to the configured speech provider."
+msgstr ""
+"J’approuve l’estimation et j’ai l’autorisation d’envoyer cette phrase, sa "
+"traduction, l’image et le vocabulaire à OpenAI, ainsi que le texte "
+"nécessaire à l’audio au fournisseur vocal configuré."
+
+msgid "The sentence or settings changed. Review a fresh estimate."
+msgstr ""
+"La phrase ou les paramètres ont changé. Consultez une nouvelle estimation."
+
+msgid "Confirm the additional audio costs before retrying."
+msgstr "Confirmez le coût audio supplémentaire avant de réessayer."
+
+msgid "This estimate expired. Review a fresh estimate."
+msgstr "Cette estimation a expiré. Consultez une nouvelle estimation."
+
+msgid ""
+"An update for this sentence is already running. Check the entry again "
+"shortly."
+msgstr ""
+"Une mise à jour de cette phrase est déjà en cours. Revenez à l’entrée dans "
+"quelques instants."
+
+msgid "Update words and audio"
+msgstr "Mettre à jour les mots et l’audio"
+
+msgid "Update words and audio to match your edit?"
+msgstr "Mettre les mots et l’audio en accord avec votre modification ?"
+
+msgid ""
+"Keep this wording exactly. Update its words, meanings and audio together; "
+"reuse anything already current."
+msgstr ""
+"Conserver exactement ce texte. Mettre à jour ensemble les mots, les sens et "
+"l’audio, en réutilisant ce qui est déjà à jour."
+
+msgid "Review a fresh estimate"
+msgstr "Consulter une nouvelle estimation"
+
+msgid "Actual usage can vary."
+msgstr "La consommation réelle peut varier."
+
+msgid "OpenAI charges use your own API key."
+msgstr "Les frais OpenAI sont facturés avec votre propre clé API."
+
+msgid "Update now"
+msgstr "Mettre à jour maintenant"
+
+msgid "Not now"
+msgstr "Pas maintenant"
+
+#, python-format
+msgid "Estimated processing cost: US$%(estimate)s."
+msgstr "Coût de traitement estimé : %(estimate)s USD."
+
+msgid "Words and audio are up to date"
+msgstr "Les mots et l’audio sont à jour"
+
+msgid "Updating words and audio"
+msgstr "Mise à jour des mots et de l’audio"
+
+msgid ""
+"This attempt could not finish. Your saved wording is safe. A failed or "
+"uncertain request is never repeated automatically."
+msgstr ""
+"Cette tentative n’a pas abouti. Votre texte enregistré est conservé. Une "
+"requête échouée ou au résultat incertain n’est jamais répétée "
+"automatiquement."
+
+msgid "Word information is updated. Audio is being prepared…"
+msgstr "Les informations sur les mots sont à jour. Préparation de l’audio…"
+
+msgid "Your wording is kept. Its word information and audio now match."
+msgstr ""
+"Votre texte est conservé. Les informations sur les mots et l’audio lui "
+"correspondent maintenant."
+
+msgid ""
+"Retry only missing audio, with the same provider permissions. This is a new "
+"paid attempt; successful recordings and text are kept."
+msgstr ""
+"Réessayer uniquement l’audio manquant, avec les mêmes autorisations de "
+"traitement. Cette nouvelle tentative est payante ; le texte et les "
+"enregistrements réussis sont conservés."
+
+msgid "Preparing word information from your corrected sentence…"
+msgstr ""
+"Préparation des informations sur les mots à partir de votre phrase corrigée…"
+
+msgid "Only unstarted work continues. Requests already sent are not repeated."
+msgstr ""
+"Seul le travail non commencé est poursuivi. Les requêtes déjà envoyées ne "
+"sont pas répétées."
+
+#, python-format
+msgid ""
+"Estimated additional audio cost: US$%(audio_estimate)s. Actual usage can "
+"vary."
+msgstr ""
+"Coût audio supplémentaire estimé : %(audio_estimate)s USD. La consommation "
+"réelle peut varier."

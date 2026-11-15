@@ -28,6 +28,7 @@ def url(study):
 def own(request,pk,study_id):
     dictionary=get_dictionary(request.user,pk)
     study=get_object_or_404(PictureCapture,dictionary=dictionary,user=request.user,pk=study_id,expires_at__gt=timezone.now())
+    if study.input_mode == 'refresh': raise Http404
     if study.status=='discarded': raise Http404
     return study
 
