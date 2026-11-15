@@ -7217,3 +7217,106 @@ msgstr ""
 "Vlastníci a editori môžu schváliť spoločný štýl a vytvárať obrázky z opisov."
 " Každá požiadavka vyžaduje povolenie odoslať jej text do OpenAI a účtujú sa "
 "za ňu náklady na API."
+
+
+# Sentence editing: vocabulary and audio refresh.
+msgid ""
+"I approve the estimate and have permission to send this sentence, "
+"translation, picture and vocabulary to OpenAI, and the text needed for audio"
+" to the configured speech provider."
+msgstr ""
+"Schvaľujem odhad a mám povolenie odoslať túto vetu, preklad, obrázok a "
+"slovnú zásobu spoločnosti OpenAI a text potrebný na zvuk nastavenému "
+"poskytovateľovi syntézy reči."
+
+msgid "The sentence or settings changed. Review a fresh estimate."
+msgstr "Veta alebo nastavenia sa zmenili. Skontrolujte nový odhad."
+
+msgid "Confirm the additional audio costs before retrying."
+msgstr "Pred ďalším pokusom potvrďte dodatočné náklady na zvuk."
+
+msgid "This estimate expired. Review a fresh estimate."
+msgstr "Platnosť tohto odhadu vypršala. Skontrolujte nový odhad."
+
+msgid ""
+"An update for this sentence is already running. Check the entry again "
+"shortly."
+msgstr ""
+"Aktualizácia tejto vety už prebieha. O chvíľu znova skontrolujte záznam."
+
+msgid "Update words and audio"
+msgstr "Aktualizovať slová a zvuk"
+
+msgid "Update words and audio to match your edit?"
+msgstr "Aktualizovať slová a zvuk podľa vašej úpravy?"
+
+msgid ""
+"Keep this wording exactly. Update its words, meanings and audio together; "
+"reuse anything already current."
+msgstr ""
+"Ponechať presne toto znenie. Spoločne aktualizovať slová, významy a zvuk; "
+"znova použiť všetko, čo je už aktuálne."
+
+msgid "Review a fresh estimate"
+msgstr "Skontrolovať nový odhad"
+
+msgid "Actual usage can vary."
+msgstr "Skutočná spotreba sa môže líšiť."
+
+msgid "OpenAI charges use your own API key."
+msgstr "Poplatky OpenAI sa účtujú cez váš vlastný kľúč API."
+
+msgid "Update now"
+msgstr "Aktualizovať teraz"
+
+msgid "Not now"
+msgstr "Teraz nie"
+
+#, python-format
+msgid "Estimated processing cost: US$%(estimate)s."
+msgstr "Odhadované náklady na spracovanie: %(estimate)s USD."
+
+msgid "Words and audio are up to date"
+msgstr "Slová a zvuk sú aktuálne"
+
+msgid "Updating words and audio"
+msgstr "Aktualizujú sa slová a zvuk"
+
+msgid ""
+"This attempt could not finish. Your saved wording is safe. A failed or "
+"uncertain request is never repeated automatically."
+msgstr ""
+"Tento pokus sa nepodarilo dokončiť. Uložené znenie zostáva zachované. "
+"Neúspešná požiadavka ani požiadavka s neistým výsledkom sa nikdy automaticky"
+" neopakuje."
+
+msgid "Word information is updated. Audio is being prepared…"
+msgstr "Informácie o slovách sú aktualizované. Pripravuje sa zvuk…"
+
+msgid "Your wording is kept. Its word information and audio now match."
+msgstr ""
+"Vaše znenie zostalo zachované. Informácie o slovách a zvuk mu už "
+"zodpovedajú."
+
+msgid ""
+"Retry only missing audio, with the same provider permissions. This is a new "
+"paid attempt; successful recordings and text are kept."
+msgstr ""
+"Znova skúsiť iba chýbajúci zvuk s rovnakými povoleniami pre poskytovateľov. "
+"Ide o nový platený pokus; úspešné nahrávky a text zostanú zachované."
+
+msgid "Preparing word information from your corrected sentence…"
+msgstr "Pripravujú sa informácie o slovách z vašej opravenej vety…"
+
+msgid "Only unstarted work continues. Requests already sent are not repeated."
+msgstr ""
+"Pokračuje iba práca, ktorá sa ešte nezačala. Už odoslané požiadavky sa "
+"neopakujú."
+
+#, python-format
+msgid ""
+"Estimated additional audio cost: US$%(audio_estimate)s. Actual usage can "
+"vary."
+msgstr ""
+"Odhadované dodatočné náklady na zvuk: %(audio_estimate)s USD. Skutočná "
+"spotreba sa môže líšiť."

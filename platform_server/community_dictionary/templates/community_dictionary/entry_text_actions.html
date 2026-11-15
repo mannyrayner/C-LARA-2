@@ -1,2 +1,6 @@
 {% load i18n %}
-<p><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">{% if not entry.word %}{% translate "Add words" %}{% elif not entry.meaning %}{% translate "Add translation" %}{% else %}{% translate "Edit words" %}{% endif %}</a></p>
+<div class="actions"><a class="button secondary" href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">{% if not entry.word %}{% translate "Add words" %}{% elif not entry.meaning %}{% translate "Add translation" %}{% else %}{% translate "Edit words" %}{% endif %}</a>
+{% if editor and entry.entry_type == 'sentence' and entry.word and dictionary.sentence_capture_enabled and dictionary.tts_enabled %}
+<a class="button secondary" href="{% url 'community_dictionary:refresh-start' dictionary.pk entry.pk %}">{% translate "Update words and audio" %}</a>
+{% endif %}
+</div>
