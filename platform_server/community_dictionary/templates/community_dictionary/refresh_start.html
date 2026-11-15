@@ -1,0 +1,19 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Update words and audio" %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p>
+<section class="panel" role="region" aria-labelledby="refresh-heading">
+<h1 id="refresh-heading">{% translate "Update words and audio to match your edit?" %}</h1>
+<p dir="{{ dictionary.text_direction }}">{{ entry.word }}</p>
+<p dir="auto">{{ entry.meaning }}</p>
+<p>{% translate "Keep this wording exactly. Update its words, meanings and audio together; reuse anything already current." %}</p>
+{% if setup_error %}<p class="notice" role="alert">{{ setup_error }}</p><p><a href="{{ request.path }}">{% translate "Review a fresh estimate" %}</a></p>{% endif %}
+{% if estimate != None %}<p>{% blocktranslate with estimate=estimate|floatformat:4 %}Estimated processing cost: US${{ estimate }}.{% endblocktranslate %} {% translate "Actual usage can vary." %}</p>{% if personal %}<p class="help">{% translate "OpenAI charges use your own API key." %}</p>{% endif %}
+<form method="post" class="stack">{% csrf_token %}
+<input type="hidden" name="submission_id" value="{{ submission_id }}">
+{{ form.quote }}{{ form.non_field_errors }}
+<label class="check">{{ form.permission }}{{ form.permission.label }}</label>{{ form.permission.errors }}
+<div class="actions"><button>{% translate "Update now" %}</button><a class="button secondary" href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Not now" %}</a></div>
+</form>{% else %}<p><a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Back to entry" %}</a></p>{% endif %}
+</section>
+{% endblock %}

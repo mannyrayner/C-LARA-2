@@ -58,6 +58,9 @@ def allowed(study, *, payment=False):
             if (source.entry.dictionary_id!=dictionary.pk or (source.status!='accepted' and not permitted_pending) or source.entry.archived or
                 (source.text_field and getattr(source.entry,FIELDS[source.text_field][0]+'_id')!=source.pk)):
                 raise Conflict('Some source material changed. Please prepare a fresh suggestion.')
+    if study.input_mode == 'refresh':
+        from .refresh import validate
+        validate(study, payment=payment)
     if payment:
         if study.usage.get('word_audio_policy', {}).get('method') == 'google_gemini':
             tts.require_google_credit(study.user)
@@ -103,6 +106,8 @@ def account(study_id, stage, response, *, transcription=False):
 def prepare(study_id):
     with transaction.atomic():
         locks(); study=fetch(study_id,True)
+        if study.input_mode == 'refresh':
+            return  # Fixed sentences use the vocabulary-only processor.
         if study.status != ('approved' if study.input_mode in {'writing', 'guided'} else 'waiting'):
             return
         key=allowed(study,payment=True)
@@ -176,6 +181,8 @@ def publish(study_id, user, *, vocabulary=None):
     try:
         with transaction.atomic():
             locks(); study=fetch(study_id,True)
+            if study.input_mode == 'refresh':
+                raise Conflict('Use the sentence update workflow for this attempt.')
             if study.user_id!=user.pk: raise Http404
             allowed(study)
             if study.status=='saved': return study.saved_entry
@@ -314,6 +321,9 @@ def speak(clip_id):
         if clip.entry_id and available_audio(clip):
             clip.status='ready'; clip.save(update_fields=['status']); return
         clip.status='running'; clip.save(update_fields=['status'])
+        if clip.capture.input_mode == 'refresh':
+            clip.report = {'refresh_started_at': timezone.now().isoformat()}
+            clip.save(update_fields=['report'])
     report={}; prepared=None
     def check():
         fresh=CaptureSpeech.objects.select_related('capture__dictionary','capture__user').get(pk=clip_id)
@@ -334,7 +344,7 @@ def speak(clip_id):
         with transaction.atomic():
             locks()
             current=CaptureSpeech.objects.select_for_update().select_related('capture__dictionary','capture__user').get(pk=clip_id)
-            if not current.report:
+            if not current.report or (current.capture.input_mode == 'refresh' and not current.report.get('accounted')):
                 charge(current.capture,'speech',tts.report_cost(report),report.get('model',tts.MODEL),f'speech:{clip_id}', provider=report.get('provider','openai'))
                 current.report={'accounted':True,**report} if current.status!='discarded' else {'accounted':True}
             try: speech_allowed(current)

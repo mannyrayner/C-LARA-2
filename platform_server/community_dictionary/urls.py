@@ -10,10 +10,13 @@ from . import evaluation_views, mwe_audio, audio_evaluation_views
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
-from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review, audio_review_pages
+from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review, audio_review_pages, refresh_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/entries/<int:entry_id>/update-words-audio/', refresh_views.start, name='refresh-start'),
+    path('<int:pk>/word-audio-updates/<uuid:study_id>/', refresh_views.detail, name='refresh-detail'),
+    path('<int:pk>/word-audio-updates/<uuid:study_id>/action/', refresh_views.action, name='refresh-action'),
     path('<int:pk>/evaluate/audio-comparison/new/', audio_evaluation_views.start, name='audio-study-start'),
     path('<int:pk>/evaluate/audio-comparison/prepare/<uuid:run_id>/', audio_evaluation_views.prepare, name='audio-study-prepare'),
     path('<int:pk>/evaluate/audio-comparison/<uuid:set_id>/', audio_evaluation_views.detail, name='audio-study-detail'),
