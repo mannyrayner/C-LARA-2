@@ -67,6 +67,22 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(metrics['partial_sessions'], 1)
         self.assertIsNone(metrics['request_to_first_ready_seconds'])
 
+    def test_already_installed_is_verification_not_a_failed_or_new_install(self):
+        feature = 'DEV-REPEAT'
+        self.request(feature, at='2026-11-03T10:00:00Z', timing='reported_exact')
+        receipt = self.receipt()
+        receipt.update(status='already_installed', previous='a' * 40,
+            expected_previous='b' * 40, observed_before='a' * 40, operation='verify_existing')
+        event = self.journal.import_receipt(feature, receipt)
+        self.assertEqual(event['data']['outcome'], 'already_installed')
+        self.assertEqual(event['data']['expected_previous'], 'b' * 40)
+        report = next(row for row in log.describe(self.journal.read())['features'] if row['feature_id']==feature)
+        self.assertEqual(report['metrics']['unsuccessful_installations'], 0)
+        self.assertIsNone(report['metrics']['request_to_first_laptop_install_seconds'])
+        receipt['observed_before'] = 'invalid'
+        with self.assertRaises(log.Invalid):
+            self.journal.import_receipt(feature, receipt)
+
     def test_open_and_unknown_end_never_count_overnight(self):
         session = self.start()
         self.time = '2026-11-04T10:00:00Z'

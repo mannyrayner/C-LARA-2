@@ -122,10 +122,10 @@ def validate(event):
     if kind in {'installation_finished', 'acceptance', 'revision_requested'} and 'target' not in data:
         raise Invalid('This milestone requires a target.')
     if kind == 'installation_finished':
-        if data.get('outcome') not in {'installed', 'prepared', 'refused', 'controller_refused',
+        if data.get('outcome') not in {'installed', 'already_installed', 'prepared', 'refused', 'controller_refused',
                                      'recovered_previous_release', 'recovery_required'}:
             raise Invalid('Unsupported terminal controller outcome.')
-        if data['outcome'] in {'installed', 'prepared'} and not data.get('commit'):
+        if data['outcome'] in {'installed', 'already_installed', 'prepared'} and not data.get('commit'):
             raise Invalid('A successful installation needs an exact commit.')
     if kind == 'acceptance' and event['actor'] != 'human':
         raise Invalid('Functional acceptance must be attributed to an explicit human report.')
@@ -298,6 +298,11 @@ class Journal:
         data = {'target':receipt['target'], 'outcome':status, 'commit':receipt.get('commit'),
                 'previous':receipt.get('previous'), 'started_at':start, 'source_sha256':digest(receipt),
                 'duration_seconds':(timestamp(end)-timestamp(start)).total_seconds() if start and end else None}
+        for key in ('expected_previous', 'observed_before'):
+            if key in receipt:
+                if not COMMIT.fullmatch(str(receipt[key])):
+                    raise Invalid('Invalid verification commit in receipt.')
+                data[key] = receipt[key]
         if receipt.get('operation'):
             data['operation'] = text(receipt['operation'], 100)
         return self.append(feature, 'installation_finished', 'Controller outcome: '+str(status),
@@ -404,7 +409,7 @@ def describe(events):
                 'partial_sessions':sum(s['coverage']=='partial' for s in sessions),
                 'revision_requests':sum(e['kind']=='revision_requested' for e in rows),
                 'unsuccessful_installations':sum(e['kind']=='installation_finished' and
-                    e['data']['outcome'] not in {'installed','prepared'} for e in rows),
+                    e['data']['outcome'] not in {'installed','already_installed','prepared'} for e in rows),
                 'unsuccessful_workflows':sum(e['kind']=='workflow_finished' and
                     e['data']['conclusion']!='success' for e in rows)}, 'sessions':sessions})
     return {'features':features, 'feature_count':len(features),

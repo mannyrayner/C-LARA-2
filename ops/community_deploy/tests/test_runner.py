@@ -1,5 +1,5 @@
 """Real Git and HTTP/supervisor integration in disposable local directories."""
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timezone
 import importlib.util
 import io
@@ -138,6 +138,65 @@ class GitDeploymentTests(unittest.TestCase):
     def test_wrong_expected_commit_is_refused(self):
         result = self.install(self.change(), 'f' * 40)
         self.assertEqual(result['reason'], 'installed_commit_does_not_match_request')
+        self.assertEqual(result['observed_before'], self.base)
+
+    def test_repeat_verifies_existing_release_without_restarting_or_draining(self):
+        target = self.change()
+        self.assertEqual(self.install(target)['status'], 'installed')
+        session = self.controller.local_session()
+        lease = self.activity / 'active.lease'; lease.touch()
+        with patch.object(self.controller, 'stop_server') as stop, \
+             patch.object(self.controller, 'start_server') as start, \
+             patch.object(self.controller, 'drain') as drain:
+            result = self.install(target)
+        self.assertEqual(result['status'], 'already_installed', result)
+        self.assertEqual(result['previous'], target)
+        self.assertEqual(result['expected_previous'], self.base)
+        self.assertEqual(result['observed_before'], target)
+        self.assertEqual(result['operation'], 'verify_existing')
+        stop.assert_not_called(); start.assert_not_called(); drain.assert_not_called()
+        self.assertEqual(session, self.controller.local_session())
+        self.assertFalse((session / 'exited').exists())
+        self.assertTrue(lease.exists())
+        self.assertFalse((self.activity / 'maintenance').exists())
+        cloud.verify_receipt(result, {'commit': target, 'expected_laptop': self.base})
+
+    def test_repeat_does_not_hide_dirty_files_or_operator_maintenance(self):
+        target = self.change(); self.install(target)
+        note = self.repo / 'my-notes.txt'; note.write_text('keep')
+        self.assertEqual(self.install(target)['reason'], 'checkout_has_local_changes')
+        self.assertEqual(note.read_text(), 'keep'); note.unlink()
+        gate = self.activity / 'maintenance'; gate.write_text('operator')
+        self.assertEqual(self.install(target)['reason'], 'maintenance_already_active')
+        self.assertEqual(gate.read_text(), 'operator')
+
+    def test_repeat_requires_the_running_server_to_match_not_only_git_head(self):
+        self.install(self.base)
+        target = self.change()
+        self.git_at(self.repo, 'fetch', 'origin', 'main')
+        self.git_at(self.repo, 'merge', '--ff-only', target)
+        self.controller.timeout = 1
+        with patch.object(self.controller, 'stop_server') as stop:
+            result = self.install(target)
+        self.assertEqual(result['status'], 'refused')
+        self.assertEqual(result['reason'], 'readiness_or_release_identity_failed')
+        stop.assert_not_called()
+        self.assertEqual(self.controller.head(), target)
+        self.controller.ready(self.base)
+
+    def test_repeat_with_stopped_server_is_refused_without_automatic_restart(self):
+        target = self.change(); self.install(target); self.controller.stop_server()
+        with patch.object(self.controller, 'start_server') as start:
+            result = self.install(target)
+        self.assertEqual(result['reason'], 'already_installed_server_is_not_managed')
+        start.assert_not_called()
+
+    def test_repeat_still_checks_the_original_transition_for_blocked_paths(self):
+        target = self.change('requirements.txt')
+        self.git_at(self.repo, 'fetch', 'origin', 'main')
+        self.git_at(self.repo, 'merge', '--ff-only', target)
+        result = self.install(target)
+        self.assertEqual(result['reason'], 'schema_dependencies_or_controller_changed_manual_release_required')
 
     def test_off_main_commit_is_refused(self):
         self.git_at(self.origin, 'switch', '-c', 'unreviewed')
@@ -225,6 +284,35 @@ class ProtocolTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(runner.Stop):
                 cloud.verify_run(dict(value, **{field:bad}), 'a' * 40)
 
+    def test_existing_release_receipt_binds_actual_state_and_original_request(self):
+        request = {'commit': 'a' * 40, 'expected_laptop': 'b' * 40}
+        receipt = dict(schema=1, target='laptop', status='already_installed', commit='a' * 40,
+            previous='a' * 40, observed_before='a' * 40, expected_previous='b' * 40,
+            operation='verify_existing')
+        cloud.verify_receipt(receipt, request)
+        for field, value in [('previous', 'b' * 40), ('observed_before', 'c' * 40),
+                             ('expected_previous', 'c' * 40), ('operation', ''),
+                             ('commit', 'c' * 40), ('target', 'aws'), ('status', 'installed')]:
+            with self.subTest(field=field), self.assertRaises(runner.Stop):
+                cloud.verify_receipt(dict(receipt, **{field:value}), request)
+        for field in ['observed_before', 'expected_previous', 'operation']:
+            incomplete = dict(receipt); del incomplete[field]
+            with self.subTest(missing=field), self.assertRaises(runner.Stop):
+                cloud.verify_receipt(incomplete, request)
+
+    def test_verified_existing_controller_exit_is_success_with_clear_laptop_message(self):
+        result = dict(status='already_installed', commit='a' * 40)
+        fake = unittest.mock.Mock(target='laptop')
+        fake.install.return_value = result
+        argv = ['runner.py', 'install', '--config', 'unused.json', '--commit', 'a' * 40,
+                '--expected', 'b' * 40, '--receipt', 'unused.json']
+        output, errors = io.StringIO(), io.StringIO()
+        with patch.object(sys, 'argv', argv), patch.object(runner, 'Controller', return_value=fake), \
+             redirect_stdout(output), redirect_stderr(errors):
+            self.assertEqual(runner.main(), 0)
+        self.assertEqual(json.loads(output.getvalue()), result)
+        self.assertIn('Already installed and verified:', errors.getvalue())
+
     def test_aws_needs_the_human_dispatch_before_any_network_call(self):
         with patch.dict(os.environ, {'GITHUB_ACTOR':'agent', 'HUMAN_APPROVER':'manny',
                                     'GITHUB_EVENT_NAME':'workflow_dispatch', 'GITHUB_REF':'refs/heads/main'}):
@@ -251,7 +339,7 @@ class CloudExecutionTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_one_command_and_verified_success_receipt(self):
-        host = dict(schema=1, target='aws', status='installed', commit='a' * 40)
+        host = dict(schema=1, target='aws', status='installed', commit='a' * 40, previous='b' * 40)
         invocation = {'Status':'Success', 'StandardOutputContent':json.dumps(host)}
         reply = subprocess.CompletedProcess([], 0, json.dumps(invocation), '')
         with patch.object(cloud, 'call', return_value={'Command':{'CommandId':'command-1'}}) as send:
@@ -262,6 +350,24 @@ class CloudExecutionTests(unittest.TestCase):
         self.assertIn('CLARA-DeployCode', arguments)
         self.assertIn('1', arguments)
         self.assertEqual(json.loads(self.receipt.read_text())['laptop_run'], 42)
+
+    def test_aws_repeated_request_accepts_only_verified_existing_receipt(self):
+        host = dict(schema=1, target='aws', status='already_installed', commit='a' * 40,
+            previous='a' * 40, observed_before='a' * 40, expected_previous='b' * 40,
+            operation='verify_existing')
+        invocation = {'Status':'Success', 'StandardOutputContent':json.dumps(host)}
+        reply = subprocess.CompletedProcess([], 0, json.dumps(invocation), '')
+        with patch.object(cloud, 'call', return_value={'Command':{'CommandId':'command-1'}}), \
+             patch.object(cloud.subprocess, 'run', return_value=reply), redirect_stdout(io.StringIO()):
+            cloud.deploy_aws(self.request, self.receipt)
+        self.assertEqual(json.loads(self.receipt.read_text())['status'], 'already_installed')
+        for field in ['previous', 'expected_previous', 'observed_before']:
+            changed = dict(host, **{field:'c' * 40})
+            reply = subprocess.CompletedProcess([], 0, json.dumps({
+                'Status':'Success', 'StandardOutputContent':json.dumps(changed)}), '')
+            with patch.object(cloud, 'call', return_value={'Command':{'CommandId':'command-2'}}), \
+                 patch.object(cloud.subprocess, 'run', return_value=reply), self.assertRaises(runner.Stop):
+                cloud.deploy_aws(self.request, self.receipt)
 
     def test_poll_failure_keeps_command_id_without_resubmitting(self):
         reply = subprocess.CompletedProcess([], 1, '', 'Network unavailable')
