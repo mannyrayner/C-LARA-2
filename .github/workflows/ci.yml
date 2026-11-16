@@ -16,14 +16,15 @@ jobs:
       - name: Validate disabled staging bootstrap package without AWS
         run: |
           pip install cfn-lint==1.60.1
-          python ops/community_deploy/package_staging.py --output ../staging-review
-          cfn-lint --region ap-southeast-2 --template ../staging-review/host.cfn.json ../staging-review/runtime.cfn.json
+          python ops/community_deploy/package_staging.py --output "$RUNNER_TEMP/staging-review"
+          cfn-lint --region ap-southeast-2 --template "$RUNNER_TEMP/staging-review/host.cfn.json" "$RUNNER_TEMP/staging-review/runtime.cfn.json"
           bash -n ops/community_deploy/staging_runtime/host-user-data.sh
           sh -n ops/community_deploy/staging_runtime/manage.sh ops/community_deploy/staging_runtime/services.sh
       - uses: actions/upload-artifact@v4
         with:
           name: disabled-staging-bootstrap-review
-          path: ../staging-review/
+          path: ${{ runner.temp }}/staging-review/
+          include-hidden-files: true
           retention-days: 14
 
   deployment-controller:
