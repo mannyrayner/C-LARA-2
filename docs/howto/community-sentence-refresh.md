@@ -1,6 +1,8 @@
 # Refresh words and audio after editing a sentence
 
-Saving an accepted sentence's changed wording or meaning offers **Update words
+Saving an accepted sentence's changed wording or meaning can automatically open a
+[bilingual check and review](community-check-improve.md), with the optional AI
+checkbox on the editing form. With checking disabled, it offers **Update words
 and audio**, with an explicit estimate/processing permission and **Not now**.
 Category-only changes do not interrupt the editor. The same action remains beside
 **Edit words** on the sentence's page, including older edited entries.

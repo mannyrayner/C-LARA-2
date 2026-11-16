@@ -1,0 +1,33 @@
+{% extends 'community_dictionary/base.html' %}{% load static i18n %}
+{% block title %}{% translate "Check and improve" %}{% endblock %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p>
+<section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
+<h1>{% translate "Check and improve" %}</h1>
+{% if polling %}
+<p role="status">{% translate "Checking both descriptions. Your saved wording is safe…" %}</p>
+<p data-writing-status><a href="">{% translate "Refresh its status" %}</a></p>
+<details><summary>{% translate "If progress has stopped" %}</summary><form method="post" action="{% url 'community_dictionary:improve-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="continue">{% translate "Continue pending work" %}</button></form></details>
+{% elif study.status == 'failed' %}
+<p class="notice">{% translate "This attempt could not finish. Your saved wording is safe. A failed or uncertain request is never repeated automatically." %}</p>
+<a href="{% url 'community_dictionary:improve-start' dictionary.pk entry.pk %}">{% translate "Review a fresh estimate" %}</a>
+{% elif study.status == 'ready' %}
+{% if review.outcome == 'consistent' %}<h2>{% translate "The descriptions already match" %}</h2>{% elif review.outcome == 'uncertain' %}<h2>{% translate "Please review the intended meaning" %}</h2>{% else %}<h2>{% translate "Suggested changes" %}</h2>{% endif %}
+{% if review.protected_conflict %}<p class="notice">{% translate "The suggestion did not preserve a previous correction. Your wording has been kept; you can edit it below or request another check." %}</p>{% endif %}
+<p>{{ review.explanation }}</p>
+{% if proposals|length > 1 %}<p>{% translate "Choose the meaning you want to keep. You can edit either suggestion before applying it." %}</p>{% endif %}
+<details><summary>{% translate "Your current descriptions" %}</summary><p dir="auto">{{ entry.word }}</p><p dir="auto">{{ entry.meaning }}</p></details>
+{% for proposal in proposals %}
+<form method="post" class="stack" action="{% url 'community_dictionary:improve-action' dictionary.pk study.pk %}" data-writing-draft>{% csrf_token %}
+<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ proposal.form.choice }}
+{% if proposal.basis == 'word' %}<h3>{% blocktranslate with language=dictionary.language %}Follow the {{ language }} meaning{% endblocktranslate %}</h3>{% elif proposal.basis == 'meaning' %}<h3>{% blocktranslate with language=dictionary.explanation_language %}Follow the {{ language }} meaning{% endblocktranslate %}</h3>{% endif %}
+<p>{{ proposal.form.word.label_tag }}{{ proposal.form.word }}</p><p>{{ proposal.form.meaning.label_tag }}{{ proposal.form.meaning }}</p>
+<p class="help">{% blocktranslate %}Estimated words and audio cost: US${{ estimate }}. Current material is reused; actual usage can vary.{% endblocktranslate %}</p>
+<label class="check">{{ proposal.form.permission }}{{ proposal.form.permission.label }}</label>
+<button name="action" value="apply">{% if proposal.has_suggestion %}{% translate "Apply suggestion and update words and audio" %}{% else %}{% translate "Keep this wording and update words and audio" %}{% endif %}</button>
+</form>
+{% endfor %}
+<form method="post" action="{% url 'community_dictionary:improve-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="keep">{% translate "Keep my wording" %}</button></form>
+<p><a href="{% url 'community_dictionary:improve-start' dictionary.pk entry.pk %}">{% translate "Check again with different instructions" %}</a></p>
+{% endif %}
+<p><a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Back to entry" %}</a></p>
+</section><script src="{% static 'community_dictionary/writing.js' %}" defer></script>{% endblock %}
