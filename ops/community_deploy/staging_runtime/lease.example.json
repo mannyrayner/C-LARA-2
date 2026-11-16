@@ -1,0 +1,9 @@
+{
+  "instance_id": "REPLACE_WITH_STAGING_INSTANCE_ID",
+  "policy_revision": "REPLACE_WITH_REVIEWED_POLICY_SHA",
+  "region": "ap-southeast-2",
+  "state_bucket": "REPLACE_WITH_PRIVATE_STAGING_BUCKET",
+  "state_key": "staging/lifecycle.json",
+  "repo": "/srv/C-LARA-2-staging",
+  "activity_dir": "/var/lib/clara-staging-activity"
+}

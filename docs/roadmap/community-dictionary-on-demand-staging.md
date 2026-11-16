@@ -1,8 +1,11 @@
 # On-demand Community Dictionaries staging pilot
 
-**Updated:** 12 November 2026. **Owner:** Manny Rayner; implementation: Codex.
-**Status:** Detailed plan; offline request rehearsal implemented. No staging
-AWS resources, private control repository or live trigger have been created.
+**Updated:** 16 November 2026. **Owner:** Manny Rayner; implementation: Codex.
+**Status:** Fresh-session private GitHub no-AWS request/receipt rehearsal passed
+using the operator connection. Offline lifecycle/expiry components and staging
+controller support are implemented for review. Requester isolation and
+protected-main enforcement remain open. No staging AWS resources or live AWS
+request handler have been created.
 
 This extends the [staging roadmap](community-dictionary-aws-staging.md) and
 [bootstrap specification](community-dictionary-aws-staging-bootstrap.md).
@@ -178,8 +181,8 @@ host timer supplies the independent second enforcement path.
 | Slice | Deliverable and acceptance | Current state |
 | --- | --- | --- |
 | 1 · Offline requests | Validator, private-workflow template, bounded examples, portable tests, truthful no-AWS receipt | Implemented; no live round trip claimed |
-| 2 · GitHub rehearsal | Operator creates/connects private repo; Codex creates an issue from a fresh session and retrieves its new receipt; wrong identities/malformed requests fail | Needs one-time repository and restricted connection setup; no AWS resources |
-| 3 · Lifecycle code | Coordinator, durable leases/budgets, boot timer, IAM/infrastructure templates and fake-clock/AWS tests | Next code slice |
+| 2 · GitHub rehearsal | Operator creates/connects private repo; Codex creates an issue from a fresh session and retrieves its new receipt; wrong identities/malformed requests fail | Fresh-session round trip and malformed-request refusal passed; restricted identity/protected-main/independent wrong-sender live check pending |
+| 3 · Lifecycle code | Coordinator, durable leases/budgets, boot timer, IAM/infrastructure templates and fake-clock/AWS tests | Offline core/adapters/host guard/controller and permission examples implemented; trusted live handler, probes and exact infrastructure binding remain |
 | 4 · Infrastructure | Reviewed exact resources/permissions and quote; deploy coordinator/watchdog and stopped EC2; verify isolation and expiry | After slice 3 tests and operator resource review |
 | 5 · Baseline/recovery | Same-commit install/login, controlled failed candidate restores baseline, then identical candidate succeeds; expiry works with chat absent | Requires live infrastructure and staging controller/browser support |
 | 6 · Parallel pilot | Three consecutive eligible visible releases, independent sample checks by Manny, reliable shutdown and measured runtime/cost | Compare with laptop path before changing production policy |
@@ -189,6 +192,11 @@ Slice 1: [validator](../../ops/community_deploy/staging_request.py),
 [tests](../../ops/community_deploy/tests/test_staging_request.py).
 Its receipt explicitly disclaims AWS contact, deployment, source verification
 and runtime reservation. Validation success cannot authorize a later live job.
+
+The [lifecycle implementation and remaining integration checklist](../../ops/community_deploy/staging_runtime/README.md)
+describe the offline components. The fixed internal SSM command also carries a
+generated lease identifier, checked against the original active deadline before
+installation. Issue requests cannot select that identity, host, document or command.
 
 Slice 3 must prove: no start before durable admission; old stop cannot affect
 a newer lease; no double reservation for one issue; unavailable state/budget/
