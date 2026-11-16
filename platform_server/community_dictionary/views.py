@@ -239,7 +239,8 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, pi
     elif audio_only:
         form = EntryAudioForm(request.POST or None, request.FILES or None, initial=initial)
     else:
-        form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary, user=request.user)
+        form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary,
+            user=request.user, check_entry=entry if editing else None)
     if request.method == 'POST':
         if not form.is_valid():
             return fail(request, form.errors.as_text())
@@ -252,12 +253,17 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, pi
                     raise Conflict(gettext('This request has closed. Reload the entry before contributing.'))
             target = entry or Entry.objects.create(dictionary=dictionary, created_by=request.user)
             before = (target.word, target.meaning)
+            from .port_vocabulary import sentence_snapshot
+            check_snapshot = sentence_snapshot(target) if form.cleaned_data.get('check_after_save') else None
             publish = bool(is_editor(request.user, dictionary) and form.cleaned_data.get('publish_now'))
             add_contributions(target, request.user, form.cleaned_data, paths, publish=publish, response_to=response_to)
             target.refresh_from_db()
             if entry and publish and before != (target.word, target.meaning):
                 from .refresh import available
                 if available(request.user, target):
+                    if check_snapshot:
+                        from .improve import auto_start
+                        return auto_start(request, target, check_snapshot, form.cleaned_data.get('check_quote', ''))
                     return reverse('community_dictionary:refresh-start', args=[dictionary.pk, target.pk])
             return entry_url(target)
         scope = f'contribute:{entry.pk if entry else 0}:{request_id or 0}'

@@ -7320,3 +7320,106 @@ msgid ""
 msgstr ""
 "Odhadované dodatočné náklady na zvuk: %(audio_estimate)s USD. Skutočná "
 "spotreba sa môže líšiť."
+
+msgid "Check and improve"
+msgstr "Skontrolovať a vylepšiť"
+
+msgid "Anything you would like changed?"
+msgstr "Čo by ste chceli zmeniť?"
+
+msgid "Optional: describe an improvement or a word you want to keep."
+msgstr "Voliteľné: opíšte zlepšenie alebo slovo, ktoré chcete zachovať."
+
+msgid ""
+"I approve the estimate and may send these descriptions, picture and recent "
+"edits to OpenAI for a suggestion."
+msgstr ""
+"Schvaľujem odhad a mám povolenie odoslať tieto opisy, obrázok a nedávne "
+"úpravy službe OpenAI na návrh."
+
+msgid ""
+"Update the words and audio too. I approve the estimate and the existing "
+"provider permissions."
+msgstr ""
+"Aktualizovať aj slová a zvuk. Schvaľujem odhad a existujúce povolenia pre "
+"poskytovateľov."
+
+msgid ""
+"Compare both descriptions and suggest changes for you to review. Your "
+"wording stays saved until you approve a change."
+msgstr ""
+"Porovnať oba opisy a navrhnúť zmeny na kontrolu. Váš text zostane uložený, "
+"kým zmenu neschválite."
+
+msgid "Estimated check cost: US$%(estimate)s. Actual usage can vary."
+msgstr ""
+"Odhadovaná cena kontroly: %(estimate)s USD. Skutočná spotreba sa môže líšiť."
+
+msgid "Check both descriptions"
+msgstr "Skontrolovať oba opisy"
+
+msgid "Checking both descriptions. Your saved wording is safe…"
+msgstr "Kontrolujú sa oba opisy. Váš uložený text je v bezpečí…"
+
+msgid "The descriptions already match"
+msgstr "Opisy sa už zhodujú"
+
+msgid "Please review the intended meaning"
+msgstr "Skontrolujte zamýšľaný význam"
+
+msgid "Suggested changes"
+msgstr "Navrhované zmeny"
+
+msgid ""
+"The suggestion did not preserve a previous correction. Your wording has been"
+" kept; you can edit it below or request another check."
+msgstr ""
+"Návrh nezachoval predchádzajúcu opravu. Váš text zostal zachovaný; môžete ho"
+" upraviť nižšie alebo požiadať o novú kontrolu."
+
+msgid ""
+"Choose the meaning you want to keep. You can edit either suggestion before "
+"applying it."
+msgstr ""
+"Vyberte význam, ktorý chcete zachovať. Pred použitím môžete ktorýkoľvek "
+"návrh upraviť."
+
+msgid "Your current descriptions"
+msgstr "Vaše aktuálne opisy"
+
+msgid "Follow the %(language)s meaning"
+msgstr "Použiť význam textu v jazyku %(language)s"
+
+msgid ""
+"Estimated words and audio cost: US$%(estimate)s. Current material is reused;"
+" actual usage can vary."
+msgstr ""
+"Odhadovaná cena slov a zvuku: %(estimate)s USD. Aktuálne materiály sa "
+"použijú znova; skutočná spotreba sa môže líšiť."
+
+msgid "Apply suggestion and update words and audio"
+msgstr "Použiť návrh a aktualizovať slová a zvuk"
+
+msgid "Keep this wording and update words and audio"
+msgstr "Zachovať tento text a aktualizovať slová a zvuk"
+
+msgid "Keep my wording"
+msgstr "Zachovať môj text"
+
+msgid "Check again with different instructions"
+msgstr "Skontrolovať znova s inými pokynmi"
+
+msgid "Check both descriptions after saving (AI)"
+msgstr "Skontrolovať oba opisy po uložení (AI)"
+
+msgid ""
+"Sends these descriptions, picture and recent edits to OpenAI for a "
+"suggestion. Estimated check cost: US$%(cost)s."
+msgstr ""
+"Odošle opisy, obrázok a nedávne úpravy službe OpenAI na návrh. Odhadovaná "
+"cena kontroly: %(cost)s USD."
+
+msgid "Your edit is saved. Open Check and improve to start a fresh check."
+msgstr ""
+"Vaša úprava je uložená. Otvorte Skontrolovať a vylepšiť a spustite novú "
+"kontrolu."

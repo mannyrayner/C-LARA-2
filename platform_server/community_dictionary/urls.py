@@ -11,9 +11,13 @@ from . import batch_views, public_views, discovery_views, profile_views, public_
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
 from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review, audio_review_pages, refresh_views
+from . import improve_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/entries/<int:entry_id>/check-improve/', improve_views.start, name='improve-start'),
+    path('<int:pk>/entry-checks/<uuid:study_id>/', improve_views.detail, name='improve-detail'),
+    path('<int:pk>/entry-checks/<uuid:study_id>/action/', improve_views.action, name='improve-action'),
     path('<int:pk>/entries/<int:entry_id>/update-words-audio/', refresh_views.start, name='refresh-start'),
     path('<int:pk>/word-audio-updates/<uuid:study_id>/', refresh_views.detail, name='refresh-detail'),
     path('<int:pk>/word-audio-updates/<uuid:study_id>/action/', refresh_views.action, name='refresh-action'),
