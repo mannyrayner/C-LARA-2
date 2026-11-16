@@ -1,0 +1,13 @@
+[Unit]
+Description=Community Dictionaries staging understanding queue
+After=network.target postgresql.service
+[Service]
+User=clara-staging
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2-staging/platform_server
+EnvironmentFile=/etc/clara-staging.env
+ExecStart=/srv/C-LARA-2-staging/.venv/bin/python manage.py process_project_understanding_queue
+Restart=on-failure
+RestartSec=3
+[Install]
+WantedBy=multi-user.target

@@ -30,7 +30,9 @@ truthfully labelled no-AWS receipt. Its workflow belongs only in a separate
 private staging control repository. No production workflow or installed
 controller is changed by that rehearsal.
 
-The [offline lifecycle components](staging_runtime/README.md) add durable session
-ownership/accounting, fixed-resource adapters, a local boot/expiry guard and an
-explicit staging controller target. The live handler, trusted probes and exact
-infrastructure bundle remain separate integration work before provisioning.
+The [integrated staging components](staging_runtime/README.md) include durable
+session accounting, fixed-resource adapters, trusted source/guard/readiness
+verification, a root expiry guard, private fixture/browser checks and disabled
+CloudFormation templates. Follow the [operator bootstrap runbook](../../docs/howto/community-staging-bootstrap.md)
+for the cost checkpoint, account preflight and change-set review. No AWS resources
+or live private workflow have been activated.

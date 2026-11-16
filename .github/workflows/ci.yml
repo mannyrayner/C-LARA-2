@@ -6,6 +6,26 @@ on:
   pull_request:
 
 jobs:
+  staging-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate disabled staging bootstrap package without AWS
+        run: |
+          pip install cfn-lint==1.60.1
+          python ops/community_deploy/package_staging.py --output ../staging-review
+          cfn-lint --region ap-southeast-2 --template ../staging-review/host.cfn.json ../staging-review/runtime.cfn.json
+          bash -n ops/community_deploy/staging_runtime/host-user-data.sh
+          sh -n ops/community_deploy/staging_runtime/manage.sh ops/community_deploy/staging_runtime/services.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disabled-staging-bootstrap-review
+          path: ../staging-review/
+          retention-days: 14
+
   deployment-controller:
     strategy:
       matrix:

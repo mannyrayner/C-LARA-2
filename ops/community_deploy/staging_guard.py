@@ -7,6 +7,7 @@ original deadline and synchronized boot clock have been checked. The process
 then enforces both wall and elapsed time without further cloud access.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -73,6 +74,35 @@ def shutdown():
     subprocess.run(['/usr/bin/systemctl', 'poweroff', '--no-block'], check=True, timeout=10)
 
 
+def marker_path():
+    return Path('/run/clara-staging-deploy/lease.json')
+
+
+def publish_marker(config, lease):
+    path = marker_path()
+    path.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    info = path.parent.stat()
+    require(info.st_uid == 0 and info.st_mode & 0o022 == 0, 'root_owned_marker_directory_required')
+    digest = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    require(digest == config['guard_sha256'], 'installed_guard_digest_mismatch')
+    value = dict(lease, policy_revision=config['policy_revision'],
+                 guard_revision=sha(config['guard_revision']), guard_sha256=digest)
+    temporary = path.with_name(uuid.uuid4().hex + '.tmp')
+    try:
+        with temporary.open('x', encoding='utf-8') as stream:
+            os.chmod(temporary, 0o644)
+            json.dump(value, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def revoke_marker():
+    marker_path().unlink(missing_ok=True)
+
+
 def instance_identity():
     """Use IMDSv2 only, with fixed link-local endpoints and bounded reads."""
     root = 'http://169.254.169.254/latest/'
@@ -91,24 +121,31 @@ def verify_checkout(config, state):
             'boot_checkout_requires_reconciliation')
     for args, expected in [(['rev-parse', 'HEAD'], state['baseline']),
                            (['status', '--porcelain', '--untracked-files=normal'], '')]:
-        result = subprocess.run(['/usr/bin/git', '-C', config['repo'], *args],
+        result = subprocess.run(['/usr/bin/git', '-c', 'safe.directory=' + config['repo'],
+                                 '-C', config['repo'], *args],
                                 capture_output=True, text=True, timeout=10, check=True)
         require(result.stdout.strip() == expected, 'boot_checkout_requires_reconciliation')
 
 
 def run(config, store, clock, elapsed, synchronized, notify, poweroff, sleep=time.sleep,
-        checkout_check=verify_checkout):
+        checkout_check=verify_checkout, publish=None, revoke=None):
     guard = Guard(config['instance_id'], config['policy_revision'], clock, elapsed)
     try:
         state, _token = store.read()
-        guard.arm(state, synchronized())
+        lease = guard.arm(state, synchronized())
         checkout_check(config, state)
+        require(callable(publish) and callable(revoke), 'guard_marker_callbacks_required')
+        publish(config, lease)
         notify()
         while guard.remaining() > 0:
             sleep(min(1, guard.remaining()))
     finally:
         # Missing lease, boot errors, expiry and process interruption all stop the host.
-        poweroff()
+        try:
+            if callable(revoke):
+                revoke()
+        finally:
+            poweroff()
 
 
 def main():
@@ -136,7 +173,8 @@ def main():
                                     '--value'], capture_output=True, text=True, timeout=5, check=True)
             return reply.stdout.strip() == 'yes'
         elapsed = lambda: time.clock_gettime(time.CLOCK_BOOTTIME)
-        run(config, store, time.time, elapsed, synchronized, notify_ready, shutdown)
+        run(config, store, time.time, elapsed, synchronized, notify_ready, shutdown,
+            publish=publish_marker, revoke=revoke_marker)
     except Exception:
         # Catch configuration/import errors that occur before run's own finally.
         if authorized_host:

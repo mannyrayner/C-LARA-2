@@ -75,7 +75,8 @@ class GuardTests(unittest.TestCase):
         def sleep(seconds):
             self.now += seconds; self.elapsed += seconds
         run(self.config, store, lambda: self.now, lambda: self.elapsed,
-            lambda: True, notify, poweroff, sleep=sleep, checkout_check=checkout)
+            lambda: True, notify, poweroff, sleep=sleep, checkout_check=checkout,
+            publish=Mock(), revoke=Mock())
         store.read.assert_called_once()
         notify.assert_called_once()
         poweroff.assert_called_once()
@@ -91,7 +92,8 @@ class GuardTests(unittest.TestCase):
                 store.read.side_effect = StateUnavailable('missing_lease')
             with self.assertRaises(Refused):
                 run(self.config, store, lambda: self.now, lambda: self.elapsed,
-                    lambda: True, notify, poweroff, checkout_check=checkout)
+                    lambda: True, notify, poweroff, checkout_check=checkout,
+                    publish=Mock(), revoke=Mock())
             notify.assert_not_called()
             poweroff.assert_called_once()
 

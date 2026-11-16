@@ -1,6 +1,6 @@
 # Community Dictionaries staging bootstrap
 
-**Status** · Offline lifecycle implementation, 16 November 2026
+**Status** · Integrated offline bootstrap package; AWS not provisioned, 16 November 2026
 
 The [on-demand plan](community-dictionary-on-demand-staging.md) supplies the
 bounded runtime, independent shutdown, lifecycle coordinator and revised cost
@@ -9,8 +9,10 @@ implemented under `ops/community_deploy/staging_control/`. The fresh-session
 GitHub round trip has passed using the setup connection; restricted requester
 isolation remains unverified. Offline lifecycle components and
 [host/permission examples](../../ops/community_deploy/staging_runtime/README.md)
-are prepared. AWS infrastructure and trusted live handler/probe integration
-have not yet been set up.
+are prepared. Trusted handler/probe integration, synthetic fixtures, browser tools and disabled
+provisioning templates are now prepared in source. AWS has not been provisioned.
+Use the [operator runbook](../howto/community-staging-bootstrap.md) for preflight
+and account-specific change-set review.
 
 This specification covers phase A of the [AWS staging plan](community-dictionary-aws-staging.md).
 It ends with a staging deployment that Codex can request and test from a fresh

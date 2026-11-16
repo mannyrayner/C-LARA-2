@@ -2,7 +2,7 @@
 Description=Community Dictionaries bounded staging boot gate
 Wants=network-online.target time-sync.target
 After=network-online.target time-sync.target
-Before=gunicorn-clara-staging.service djangoq-clara-staging.service understanding-clara-staging.service
+Before=gunicorn-clara-staging.service understanding-clara-staging.service
 
 [Service]
 Type=notify
@@ -17,6 +17,9 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
+ReadWritePaths=/run/clara-staging-deploy
+RuntimeDirectory=clara-staging-deploy
+RuntimeDirectoryMode=0755
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 [Install]

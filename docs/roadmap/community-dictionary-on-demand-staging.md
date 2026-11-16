@@ -3,9 +3,9 @@
 **Updated:** 16 November 2026. **Owner:** Manny Rayner; implementation: Codex.
 **Status:** Fresh-session private GitHub no-AWS request/receipt rehearsal passed
 using the operator connection. Offline lifecycle/expiry components and staging
-controller support are implemented for review. Requester isolation and
-protected-main enforcement remain open. No staging AWS resources or live AWS
-request handler have been created.
+controller support, trusted live bindings, fixture/browser tools and disabled
+provisioning templates are implemented for review. Requester isolation and
+protected-main enforcement remain open. No staging AWS resources have been created and the handler has not been activated.
 
 This extends the [staging roadmap](community-dictionary-aws-staging.md) and
 [bootstrap specification](community-dictionary-aws-staging-bootstrap.md).
@@ -58,8 +58,9 @@ during the pilot. CI and development happen while staging is off.
 | Compute at $0.0264/hour, 5–10 hours/week and 52/12 weeks/month | $0.57–1.14 |
 | 24 GiB retained disk, conservative allowance rather than an exact quote | $3.00 |
 | Retained public IPv4, 730 hours at $0.005/hour | $3.65 |
-| Coordination, bounded logs and small state/evidence storage allowance | $0.50–1.00 |
-| Expected total | about $8/month |
+| One staging-only secret | $0.40 |
+| Coordination, two alarms, bounded logs and small state/evidence storage allowance | $1.00 |
+| Expected total | about $8.60–9.20/month |
 | Proposed pilot infrastructure allowance | $10/month |
 
 References: [AWS Sydney Linux price feed](https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/Asia%20Pacific%20%28Sydney%29/Linux/index.json),
@@ -101,8 +102,9 @@ the connection's scope. Those are one-time operator steps. A broad operator
 connection proves event delivery only, not delegated isolation.
 
 For live operation, GitHub OIDC trust is bound to the staging repo/ref. Its
-role can invoke a fixed coordinator alias and the fixed, versioned staging
-SSM document, and read scoped results. **Only the coordinator's role** may
+role can invoke only the fixed live coordinator alias and read its own browser
+fixture metadata/secret. Only the coordinator can submit the fixed, versioned
+staging SSM document and read scoped command results. **Only the coordinator's role** may
 start/stop the configured instance and mutate its state prefix. No role in
 this path may create instances, change IAM/network policy or affect production.
 The host reads only its own boot lease and cannot grant or extend one.
@@ -226,3 +228,10 @@ Removing the laptop gate, delegating production, enabling paid providers or
 raising recurring spending requires a separate concrete decision. Preparation,
 local tests and the no-AWS rehearsal can proceed under Manny's instruction to
 plan and begin implementation.
+
+## Integrated operator package
+
+The [operator runbook](../howto/community-staging-bootstrap.md) now covers the
+disabled-by-default provisioning bundle, source/guard/readiness bindings, private
+fixture and browser checks, cost checkpoint and manual bootstrap/recovery steps.
+No AWS resources or live workflow have been activated.

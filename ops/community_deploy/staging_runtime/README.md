@@ -1,116 +1,55 @@
-# Staging lifecycle and expiry components
+# On-demand staging implementation
 
-**Status: offline implementation, 16 November 2026.** These are reviewable
-components and installation examples. They are not an activated AWS service or
-a complete provisioning bundle. No application release installs these tools.
-
-The private GitHub request/receipt path has passed a fresh-session no-AWS
-rehearsal using the existing operator connection. Restricted requester access,
-protected-main enforcement and an independent unlisted-sender live test remain
-open. The private control workflow continues to run its original dry run only.
-
-## Implemented components
+**Prepared for operator review, 16 November 2026; not provisioned or activated.**
+The complete sequence, cost checkpoint, change-set review, bootstrap, recovery,
+TLS maintenance and cleanup are in the
+[operator runbook](../../../docs/howto/community-staging-bootstrap.md).
+No application release installs these tools and the private workflow still uses
+the existing no-AWS rehearsal.
 
 | Component | Responsibility |
 | --- | --- |
-| `../staging_lifecycle.py` | One durable session, original deadline, monthly reservation/charges, command identity and retained terminal request IDs |
-| `../staging_aws.py` | Conditional S3 state writes and fixed-instance EC2/SSM operations; no AWS client at import |
-| `../staging_guard.py` | Root-owned boot gate and independent local expiry; matching lease, synchronized boot clock and reconciled checkout required |
-| `../staging_install.py` | Fixed SSM entry point; rejects delayed commands for obsolete/expired leases |
-| `../runner.py` | Explicit PostgreSQL/service-managed `staging` target with existing release/recovery safeguards |
+| `../staging_lifecycle.py` | Durable single session, original deadline, budget admission/actual accounting and retained terminal request IDs |
+| `../staging_aws.py` | Fixed EC2/SSM resources, conditional S3 state, bounded SDK calls with one attempt |
+| `../staging_source.py` | Fixed public main ancestry, complete eligible diff, latest exact push/main CI |
+| `../staging_runtime_app.py` | Disabled-by-default handler, original-event validation, independently qualified watchdog, actual guard/readiness probes |
+| `../staging_guard.py` | Root boot gate/expiry outside checkout, synchronized and elapsed clock, root-owned lease marker |
+| `../staging_install.py` | Fixed SSM entry point rejecting delayed/obsolete commands |
+| `../staging_job.py`, `../staging_browser.py` | Short trusted request/deploy/browser/stop job with private synthetic fixture |
+| `../staging_bootstrap_host.py`, `../staging_initialize.py` | Operator-only host preparation and create-only state initialization |
+| `../staging_fault.py` | Operator-only expiring one-use recovery fault for one candidate |
+| `../package_staging.py`, `../staging_templates.py`, `../staging_operator.py` | Deterministic review bundles, disabled CloudFormation templates and private operator inputs; no AWS calls |
 
-The coordinator requires an independently supplied trusted release verifier.
-A dry-run receipt never authorizes admission. Source verification and readiness
-are mandatory integration interfaces, with no permissive default.
+This directory contains host/service/nginx/SSM settings and the uninstalled live
+workflow. App units bind to the root guard. The two actual services are Gunicorn
+and the understanding worker; the initial bounded task queue uses its existing
+in-process implementation. Example IAM/binding JSON from the earlier design is
+illustrative; generated CloudFormation and the runbook are the integrated setup.
 
-All lifecycle mutations must use **one Lambda function with reserved concurrency
-one across all versions**. Conditional S3 writes are an additional stale-writer
-fence, not a replacement for serialization of EC2/SSM effects. Configure SDK
-clients with bounded connect/read timeouts and **one total attempt** for
-mutations and state writes. An uncertain result must not be retried blindly.
+One Lambda function serializes both aliases with reserved concurrency one across
+versions. Conditional writes also fence stale state, but do not serialize cloud
+effects alone. Intent precedes mutations; unknown start/stop/SSM outcomes are
+never retried blindly. They retain ownership and require operator reconciliation.
+Duplicates cannot reopen or extend a request. Missing/corrupt state refuses
+admission; there is no routine reset action.
 
-Reservation and operation intent are persisted before a cloud mutation. Unknown
-starts/stops retain ownership even when one later observation says stopped;
-the original API might complete late. Operator reconciliation is required.
-The routine path has no state-reset or reconciliation operation. Missing or
-corrupt state blocks admission; initialise it only through reviewed bootstrap.
+The watchdog alone updates its heartbeat. The root guard checks the boot lease,
+reconciled checkout, guard digest and synchronized clock, then enforces the earlier
+of absolute and elapsed deadlines without subsequent cloud access. Root-owned
+readiness metadata binds HTTPS to the original lease/deadline/revisions/hash.
+Instance-initiated shutdown must be stop. Real stop/drain behaviour needs rehearsal.
 
-Duplicates never reopen a closed request or extend its deadline. Retention is
-bounded and refuses admission when full, without deleting replay protection.
-Reservations span both UTC months at a boundary. Actual charges conservatively
-cover admission through confirmed stop, including startup and overshoot;
-unused reservation is released only then. Runtime accounting is not a bill cap.
-A stopped host with an unfinished installation blocks the next session until
-the checkout is reconciled. Confirmed code recovery keeps the previous baseline
-and records that candidate as a failed deployment.
-
-The guard enforces the earlier of absolute time and elapsed time, without
-further cloud reads. Linux uses `CLOCK_BOOTTIME` to include suspended time.
-Reboot during installation is refused. Root systemd `ExecStopPost` requests
-shutdown on guard exit, and each app/worker unit binds its lifetime to the
-guard. Verify instance-initiated shutdown is **stop**, not terminate. Service
-stop/drain limits and actual poweroff still need live rehearsal.
-
-## Installation examples
-
-All examples contain placeholders; actual identifiers/credentials belong in the
-private operator setup. None is automatically installed or applied.
-
-| File | Intended use |
-| --- | --- |
-| `lease.example.json` | Root-owned `/etc/clara-staging-lease.json`, protected from app writes |
-| `clara-staging-lease.service` | Root boot gate; isolated trusted Python/SDK environment outside checkout |
-| `app-lease.conf` | Drop-in on each of the three staging app/worker units only |
-| `services.sh` | Fixed staging service set under `/opt/clara-staging-deploy/` |
-| `ssm-document.json` | Reviewed version of `CLARA-DeployStaging` with internal generated `LeaseId` |
-| `coordinator-policy.example.json` | Fixed instance/document/state object/log group permissions |
-| `requester-policy.example.json` | GitHub role may invoke only the coordinator alias |
-| `requester-trust.example.json` | OIDC trust bound to the private staging repo and `main` ref |
-| `host-policy.example.json` | Own-lease read and minimal SSM registration/channel permissions |
-| `bindings.example.json` | Review checklist, deliberately `live_enabled: false` |
-
-The host policy omits parameter-store access. Verify actual SSM registration
-and commands with this restricted role before changing it. Use a reviewed SDK
-supporting conditional S3 `PutObject`.
-
-## Remaining integration before provisioning
-
-This slice supplies no externally callable Lambda handler. Complete and test:
-
-1. Trusted original-event admission: verified repo/sender IDs and protected ref,
-   source/main ancestry, green CI, eligible diff and actual baseline. Bind this
-   verifier in trusted code, never to a boolean from an issue.
-2. Guard probe: actual function-wide concurrency, enabled Scheduler target/alias,
-   installed guard revision and shutdown setting. Check quota permits reserved
-   concurrency one; AWS requires at least 100 units left unreserved.
-3. Readiness probe: guarded host identity and SHA through the gated staging
-   endpoint. Connect short jobs/browser evidence without holding Actions idle
-   during human inspection.
-4. Exact infrastructure change set, host/network/local PostgreSQL/DNS/TLS config,
-   current itemised quote and reviewed initial-state bootstrap. The examples
-   above are components of that bundle, not a complete stack.
-5. Private fixture/browser suite and operator reconciliation procedure. Inspect
-   API/SSM history and actual checkout after unknown operations; a single stopped
-   observation does not resolve an uncertain start/stop request.
-
-Then run the baseline, controlled recovery and expiry rehearsals in the
-[bootstrap specification](../../../docs/roadmap/community-dictionary-aws-staging-bootstrap.md).
-Offline tests establish no live IAM isolation, SSM registration, Linux service
-installation, host poweroff or browser acceptance.
-
-## Offline verification
+Offline checks:
 
 ```bash
 python -m unittest discover -s ops/community_deploy/tests -v
+python ops/community_deploy/package_staging.py --output ../staging-bundle
+cfn-lint --region ap-southeast-2 --template ../staging-bundle/host.cfn.json ../staging-bundle/runtime.cfn.json
 ```
 
-Tests use fake clocks/cloud clients and disposable local Git checkouts. They
-cover interruption/unknown operations, duplicate/stale requests, month-boundary
-budgets, code recovery, missing guards/state, restarts, clock changes, shutdown
-without later cloud access and stale internal SSM commands. No test calls AWS
-or an operating-system poweroff command.
-
-Primary AWS references checked during implementation:
-[S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html),
-[function-wide reserved concurrency](https://docs.aws.amazon.com/lambda/latest/api/API_PutFunctionConcurrency.html),
-[instance-initiated shutdown](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_ChangingInstanceInitiatedShutdownBehavior.html).
+Tests use fake cloud clients, clocks and disposable checkouts; no test calls AWS
+or poweroff. Django tests exercise fixture repeatability and actual private
+entry/media authorization. Live IAM isolation, SSM registration, Linux services,
+DNS/TLS, browser acceptance and shutdown remain explicitly unproven. The
+fresh-session dry run proved the setup connection's reachability, not a narrow
+requester identity. Complete the runbook's preflight before activating anything.
