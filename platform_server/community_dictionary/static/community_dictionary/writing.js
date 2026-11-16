@@ -2,11 +2,13 @@
 (() => {
   'use strict';
   const gettext = window.gettext || (s => s);
-  const draft = document.querySelector('[data-writing-draft]');
-  if (draft) {
+  const drafts = document.querySelectorAll('[data-writing-draft]');
+  if (drafts.length) {
     let dirty = false;
-    draft.addEventListener('input', () => { dirty = true; });
-    draft.addEventListener('submit', () => { dirty = false; });
+    drafts.forEach(draft => {
+      draft.addEventListener('input', () => { dirty = true; });
+      draft.addEventListener('submit', () => { dirty = false; });
+    });
     window.addEventListener('beforeunload', event => {
       if (dirty) { event.preventDefault(); event.returnValue = ''; }
     });

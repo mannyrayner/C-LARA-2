@@ -26,7 +26,7 @@
 <button name="action" value="apply">{% if proposal.has_suggestion %}{% translate "Apply suggestion and update words and audio" %}{% else %}{% translate "Keep this wording and update words and audio" %}{% endif %}</button>
 </form>
 {% endfor %}
-<form method="post" action="{% url 'community_dictionary:improve-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="keep">{% translate "Keep my wording" %}</button></form>
+<form method="post" data-writing-draft action="{% url 'community_dictionary:improve-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="keep">{% translate "Keep my wording" %}</button></form>
 <p><a href="{% url 'community_dictionary:improve-start' dictionary.pk entry.pk %}">{% translate "Check again with different instructions" %}</a></p>
 {% endif %}
 <p><a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Back to entry" %}</a></p>
