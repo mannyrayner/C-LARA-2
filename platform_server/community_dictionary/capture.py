@@ -61,8 +61,11 @@ def allowed(study, *, payment=False):
     if study.input_mode == 'refresh':
         from .refresh import validate
         validate(study, payment=payment)
+    if study.input_mode == 'improve':
+        from .improve import validate
+        validate(study, payment=payment)
     if payment:
-        if study.usage.get('word_audio_policy', {}).get('method') == 'google_gemini':
+        if study.input_mode != 'improve' and study.usage.get('word_audio_policy', {}).get('method') == 'google_gemini':
             tts.require_google_credit(study.user)
         if not has_minimum_balance_for_compile(study.user):
             raise Conflict('Your balance is too low to continue generating audio.')
@@ -106,7 +109,7 @@ def account(study_id, stage, response, *, transcription=False):
 def prepare(study_id):
     with transaction.atomic():
         locks(); study=fetch(study_id,True)
-        if study.input_mode == 'refresh':
+        if study.input_mode in {'refresh', 'improve'}:
             return  # Fixed sentences use the vocabulary-only processor.
         if study.status != ('approved' if study.input_mode in {'writing', 'guided'} else 'waiting'):
             return
@@ -181,7 +184,7 @@ def publish(study_id, user, *, vocabulary=None):
     try:
         with transaction.atomic():
             locks(); study=fetch(study_id,True)
-            if study.input_mode == 'refresh':
+            if study.input_mode in {'refresh', 'improve'}:
                 raise Conflict('Use the sentence update workflow for this attempt.')
             if study.user_id!=user.pk: raise Http404
             allowed(study)

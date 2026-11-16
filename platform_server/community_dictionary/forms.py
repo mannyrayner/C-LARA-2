@@ -142,7 +142,7 @@ class ContributionForm(UploadForm):
     text_snapshot = forms.CharField(required=False, widget=forms.HiddenInput)
     publish_now = forms.BooleanField(required=False)
 
-    def __init__(self, *args, dictionary=None, user=None, **kwargs):
+    def __init__(self, *args, dictionary=None, user=None, check_entry=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['meaning'].label = gettext('Meaning or translation (optional)')
         self.fields['meaning'].widget.attrs.update(rows=2, placeholder=gettext('A translation or short explanation'))
@@ -157,6 +157,21 @@ class ContributionForm(UploadForm):
             self.fields['word'].label = gettext('Word or phrase in %(language)s (optional)') % {'language': language_label(dictionary.language)}
             if dictionary.explanation_language:
                 self.fields['meaning'].label = gettext('Meaning or translation in %(language)s (optional)') % {'language': language_label(dictionary.explanation_language)}
+        if check_entry and user:
+            from . import improve, refresh
+            from .services import Conflict
+            from django.core import signing
+            if refresh.available(user, check_entry):
+                try:
+                    quote = improve.quote_values(user, check_entry)
+                    self.fields['check_after_save'] = forms.BooleanField(required=False, initial=True,
+                        label=_('Check both descriptions after saving (AI)'),
+                        help_text=gettext('Sends these descriptions, picture and recent edits to OpenAI for a suggestion. Estimated check cost: US$%(cost)s.') % {
+                            'cost': str(improve.check_estimate(quote['policy']['rates']))})
+                    self.fields['check_quote'] = forms.CharField(required=False,max_length=16000,widget=forms.HiddenInput,
+                        initial=signing.dumps(quote,salt=improve.SALT))
+                except Conflict:
+                    pass  # Editing remains available when AI is unconfigured.
 
     def clean(self):
         data = super().clean()

@@ -1,0 +1,14 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Check and improve" %}{% endblock %}
+{% block content %}<p class="eyebrow">{{ dictionary.name }}</p>
+<section class="panel"><h1>{% translate "Check and improve" %}</h1>
+<p dir="{{ dictionary.text_direction }}">{{ entry.word }}</p><p dir="auto">{{ entry.meaning }}</p>
+<p>{% translate "Compare both descriptions and suggest changes for you to review. Your wording stays saved until you approve a change." %}</p>
+{% if setup_error %}<p class="notice" role="alert">{{ setup_error }}</p><p><a href="">{% translate "Review a fresh estimate" %}</a></p>{% endif %}
+{% if estimate != None %}<form method="post" class="stack">{% csrf_token %}
+<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ form.quote }}{{ form.non_field_errors }}
+<p>{{ form.notes.label_tag }}{{ form.notes }}{{ form.notes.errors }}</p>
+<p class="help">{% blocktranslate %}Estimated check cost: US${{ estimate }}. Actual usage can vary.{% endblocktranslate %}</p>
+<label class="check">{{ form.permission }}{{ form.permission.label }}</label>{{ form.permission.errors }}
+<div class="actions"><button>{% translate "Check both descriptions" %}</button><a class="button secondary" href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Not now" %}</a></div>
+</form>{% else %}<a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">{% translate "Back to entry" %}</a>{% endif %}</section>{% endblock %}

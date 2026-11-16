@@ -7418,3 +7418,108 @@ msgid ""
 msgstr ""
 "Coût audio supplémentaire estimé : %(audio_estimate)s USD. La consommation "
 "réelle peut varier."
+
+msgid "Check and improve"
+msgstr "Vérifier et améliorer"
+
+msgid "Anything you would like changed?"
+msgstr "Que souhaites-tu modifier ?"
+
+msgid "Optional: describe an improvement or a word you want to keep."
+msgstr "Facultatif : indique une amélioration ou un mot à conserver."
+
+msgid ""
+"I approve the estimate and may send these descriptions, picture and recent "
+"edits to OpenAI for a suggestion."
+msgstr ""
+"J’approuve l’estimation et j’ai l’autorisation d’envoyer ces descriptions, "
+"l’image et les modifications récentes à OpenAI pour obtenir une suggestion."
+
+msgid ""
+"Update the words and audio too. I approve the estimate and the existing "
+"provider permissions."
+msgstr ""
+"Mettre aussi les mots et l’audio à jour. J’approuve l’estimation et les "
+"autorisations existantes des services utilisés."
+
+msgid ""
+"Compare both descriptions and suggest changes for you to review. Your "
+"wording stays saved until you approve a change."
+msgstr ""
+"Comparer les deux descriptions et proposer des modifications à vérifier. Ton"
+" texte est conservé jusqu’à ton approbation."
+
+msgid "Estimated check cost: US$%(estimate)s. Actual usage can vary."
+msgstr ""
+"Coût estimé de la vérification : %(estimate)s $US. Le coût réel peut varier."
+
+msgid "Check both descriptions"
+msgstr "Vérifier les deux descriptions"
+
+msgid "Checking both descriptions. Your saved wording is safe…"
+msgstr ""
+"Vérification des deux descriptions. Ton texte enregistré est conservé…"
+
+msgid "The descriptions already match"
+msgstr "Les descriptions correspondent déjà"
+
+msgid "Please review the intended meaning"
+msgstr "Vérifie le sens souhaité"
+
+msgid "Suggested changes"
+msgstr "Modifications proposées"
+
+msgid ""
+"The suggestion did not preserve a previous correction. Your wording has been"
+" kept; you can edit it below or request another check."
+msgstr ""
+"La suggestion n’a pas conservé une correction précédente. Ton texte est "
+"conservé ; tu peux le modifier ci-dessous ou demander une nouvelle "
+"vérification."
+
+msgid ""
+"Choose the meaning you want to keep. You can edit either suggestion before "
+"applying it."
+msgstr ""
+"Choisis le sens à conserver. Tu peux modifier chaque suggestion avant de "
+"l’appliquer."
+
+msgid "Your current descriptions"
+msgstr "Tes descriptions actuelles"
+
+msgid "Follow the %(language)s meaning"
+msgstr "Suivre le sens du texte en %(language)s"
+
+msgid ""
+"Estimated words and audio cost: US$%(estimate)s. Current material is reused;"
+" actual usage can vary."
+msgstr ""
+"Coût estimé des mots et de l’audio : %(estimate)s $US. Les éléments à jour "
+"sont réutilisés ; le coût réel peut varier."
+
+msgid "Apply suggestion and update words and audio"
+msgstr "Appliquer la suggestion et mettre les mots et l’audio à jour"
+
+msgid "Keep this wording and update words and audio"
+msgstr "Garder ce texte et mettre les mots et l’audio à jour"
+
+msgid "Keep my wording"
+msgstr "Garder mon texte"
+
+msgid "Check again with different instructions"
+msgstr "Vérifier avec d’autres indications"
+
+msgid "Check both descriptions after saving (AI)"
+msgstr "Vérifier les deux descriptions après enregistrement (IA)"
+
+msgid ""
+"Sends these descriptions, picture and recent edits to OpenAI for a "
+"suggestion. Estimated check cost: US$%(cost)s."
+msgstr ""
+"Envoie les descriptions, l’image et les modifications récentes à OpenAI pour"
+" obtenir une suggestion. Coût estimé : %(cost)s $US."
+
+msgid "Your edit is saved. Open Check and improve to start a fresh check."
+msgstr ""
+"Ta modification est enregistrée. Ouvre Vérifier et améliorer pour lancer une"
+" nouvelle vérification."
