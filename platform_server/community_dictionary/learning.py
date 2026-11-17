@@ -37,9 +37,11 @@ def preference(request, dictionary):
     if key not in cache:
         row = ContributionPreference.objects.filter(user=request.user, dictionary=dictionary).first()
         old = getattr(request, 'session', {}).get(f'writing-{key}', {})
+        consent = dict(row.consent) if row else {}
+        choices = consent.pop('_guided_choices', {})
         cache[key] = {'mode': row.mode if row else 'writing' if old.get('enabled') else
                       'guided' if available(dictionary) else 'manual',
-                      'consent': row.consent if row else {}}
+                      'consent': consent, 'choices': choices}
         request._contribution_preferences = cache
     return cache[key]
 
@@ -55,9 +57,24 @@ def mode(request, dictionary):
 
 
 def save_preference(request, dictionary, mode, consent=None):
+    choices = preference(request, dictionary).get('choices', {})
+    consent = dict(consent or {})
+    if choices:
+        consent['_guided_choices'] = choices
     ContributionPreference.objects.update_or_create(user=request.user, dictionary=dictionary,
-        defaults={'mode': mode, 'consent': consent or {}, 'updated_at': timezone.now()})
+        defaults={'mode': mode, 'consent': consent, 'updated_at': timezone.now()})
     request.session.pop(f'writing-{dictionary.pk}', None)
+    request._contribution_preferences = {}
+
+
+def save_guided_choices(request, dictionary, choices):
+    """UI metadata is separate from paid consent, using the existing JSON store."""
+    row, _created = ContributionPreference.objects.get_or_create(user=request.user, dictionary=dictionary,
+        defaults={'mode': mode(request, dictionary)})
+    consent = dict(row.consent)
+    consent['_guided_choices'] = choices
+    row.consent, row.updated_at = consent, timezone.now()
+    row.save(update_fields=['consent', 'updated_at'])
     request._contribution_preferences = {}
 
 

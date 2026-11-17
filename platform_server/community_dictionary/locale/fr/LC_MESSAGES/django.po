@@ -7523,3 +7523,191 @@ msgid "Your edit is saved. Open Check and improve to start a fresh check."
 msgstr ""
 "Ta modification est enregistrée. Ouvre Vérifier et améliorer pour lancer une"
 " nouvelle vérification."
+
+msgid "Start with a picture"
+msgstr "Commencer par une image"
+
+msgid "Start with words"
+msgstr "Commencer par des mots"
+
+msgid "Where would you like to start?"
+msgstr "Par quoi souhaitez-vous commencer ?"
+
+msgid "How would you like to enter your words?"
+msgstr "Comment souhaitez-vous saisir votre texte ?"
+
+msgid "Photorealistic"
+msgstr "Photoréaliste"
+
+msgid "Simple colour illustration"
+msgstr "Illustration simple en couleur"
+
+msgid "Cartoon"
+msgstr "Dessin humoristique"
+
+msgid "Watercolour"
+msgstr "Aquarelle"
+
+msgid "Describe another style…"
+msgstr "Décrire un autre style…"
+
+msgid "Picture style"
+msgstr "Style de l’image"
+
+msgid "Style name"
+msgstr "Nom du style"
+
+msgid "Style description"
+msgstr "Description du style"
+
+msgid "Choose a style for your picture. You can change this later."
+msgstr ""
+"Choisissez un style pour votre image. Vous pourrez le modifier plus tard."
+
+msgid "Generate picture"
+msgstr "Créer l’image"
+
+msgid "Check my words"
+msgstr "Vérifier mon texte"
+
+msgid ""
+"Your words are kept exactly as you confirm them. Speech is transcribed for "
+"you to check first."
+msgstr ""
+"Votre texte est conservé exactement tel que vous le confirmez. Si vous "
+"parlez, vous vérifiez d’abord la transcription."
+
+msgid ""
+"I agree to send my words, recording if used, and style description to "
+"OpenAI, generate a picture, and pay the estimated costs shown here."
+msgstr ""
+"J’accepte d’envoyer mon texte, mon enregistrement éventuel et la description"
+" du style à OpenAI, de créer une image et de payer les frais estimés "
+"indiqués ici."
+
+msgid ""
+"Rough total estimate, including the picture, words and audio: US$%(amount)s."
+" Actual usage varies."
+msgstr ""
+"Estimation totale, image, mots et audio compris : %(amount)s $ US. Le coût "
+"réel peut varier."
+
+msgid "Check your words"
+msgstr "Vérifiez votre texte"
+
+msgid "Correct the transcription before generating your picture."
+msgstr "Corrigez la transcription avant de créer votre image."
+
+msgid "Your words and picture"
+msgstr "Votre texte et votre image"
+
+msgid "Use these words and finish"
+msgstr "Utiliser ce texte et terminer"
+
+msgid ""
+"This shares your words and AI-generated picture and creates the translation,"
+" linked words and audio."
+msgstr ""
+"Cela partage votre texte et l’image créée par l’IA et prépare la traduction,"
+" les mots associés et l’audio."
+
+msgid "Change words or style"
+msgstr "Modifier le texte ou le style"
+
+msgid "Transcribing your words…"
+msgstr "Transcription en cours…"
+
+msgid "Generating your picture…"
+msgstr "Création de votre image…"
+
+msgid ""
+"Your confirmed words were kept exactly. The translation, vocabulary and "
+"synthetic audio were generated automatically and may still need checking."
+msgstr ""
+"Votre texte confirmé a été conservé exactement. La traduction, le "
+"vocabulaire et l’audio de synthèse ont été créés automatiquement et peuvent "
+"encore nécessiter une vérification."
+
+msgid ""
+"This attempt could not finish. Your words are saved privately. No failed AI "
+"request is repeated automatically."
+msgstr ""
+"Cette tentative n’a pas pu aboutir. Votre texte reste enregistré en privé. "
+"Aucune requête IA ayant échoué n’est relancée automatiquement."
+
+msgid ""
+"Your picture and words are kept. Only the remaining text and audio "
+"processing is retried."
+msgstr ""
+"Votre image et votre texte sont conservés. Seul le traitement restant du "
+"texte et de l’audio est relancé."
+
+msgid "Start again with these words"
+msgstr "Recommencer avec ce texte"
+
+msgid ""
+"Your words are saved privately. AI processing has not started; check your "
+"credit and daily allowance."
+msgstr ""
+"Votre texte est enregistré en privé. Le traitement IA n’a pas commencé ; "
+"vérifiez votre crédit et votre quota quotidien."
+
+msgid "Reload this page to see the current picture-generation estimate."
+msgstr ""
+"Rechargez cette page pour voir l’estimation actuelle du coût de création "
+"d’image."
+
+msgid ""
+"The AI settings changed. Reload this page and confirm the new estimate."
+msgstr ""
+"Les paramètres IA ont changé. Rechargez cette page et confirmez la nouvelle "
+"estimation."
+
+msgid ""
+"The AI settings changed. Start a new preview with the current estimate."
+msgstr ""
+"Les paramètres IA ont changé. Créez un nouvel aperçu avec l’estimation "
+"actuelle."
+
+msgid "The image settings changed. Start a new preview."
+msgstr "Les paramètres d’image ont changé. Créez un nouvel aperçu."
+
+msgid "You can save up to 20 picture styles per dictionary."
+msgstr "Vous pouvez enregistrer jusqu’à 20 styles d’image par dictionnaire."
+
+msgid "This preview belongs to another user."
+msgstr "Cet aperçu appartient à une autre personne."
+
+msgid "Open the current preview before continuing."
+msgstr "Ouvrez l’aperçu actuel avant de continuer."
+
+msgid "Your balance is too low to generate this picture."
+msgstr "Votre crédit est insuffisant pour créer cette image."
+
+msgid ""
+"The daily image-generation limit has been reached. Please try tomorrow."
+msgstr ""
+"Le quota quotidien de création d’images est atteint. Réessayez demain."
+
+msgid ""
+"Your previous image is still being generated. Open its recent attempt before"
+" starting another."
+msgstr ""
+"Votre image précédente est encore en cours de création. Ouvrez cette "
+"tentative avant d’en commencer une autre."
+
+msgid "The owner can enable AI picture generation in Settings."
+msgstr ""
+"Le propriétaire peut activer la création d’images par IA dans les "
+"paramètres."
+
+msgid "Start with a picture when using an existing picture."
+msgstr ""
+"Pour utiliser une image existante, choisissez « Commencer par une image »."
+
+msgid ""
+"The final words must match the words used to generate this picture. Start a "
+"new preview to change them."
+msgstr ""
+"Le texte final doit être identique à celui utilisé pour créer cette image. "
+"Créez un nouvel aperçu pour le modifier."

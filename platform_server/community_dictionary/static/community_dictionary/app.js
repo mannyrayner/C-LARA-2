@@ -223,6 +223,13 @@
           if (data.get('input_mode') !== 'voice') data.delete('audio');
           if (data.get('input_mode') !== 'text') data.set('description', '');
         }
+        if (form.matches('[data-guided-start]')) {
+          if (data.get('start_with') === 'words') {
+            data.delete('photo');
+            if (data.get('words_mode') !== 'voice') data.delete('audio');
+            else data.delete('words');
+          } else data.delete('audio');
+        }
         timeout = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: controller.signal});
         const type = response.headers.get('Content-Type') || '';

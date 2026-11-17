@@ -47,6 +47,9 @@ def allowed(study, *, payment=False):
         study.status=='discarded' or study.expires_at<=timezone.now()):
         raise Conflict('The capture settings or your participation changed. Start again from the dictionary.')
     word_audio.validate(dictionary, study.usage.get('word_audio_policy', {}))
+    if study.input_mode == 'guided' and study.result.get('guided', {}).get('words'):
+        from .guided_words import permitted
+        permitted(study, payment=payment)
     permitted_images=image_statuses(study.user,dictionary)
     if study.source_image_id and not Contribution.objects.filter(pk=study.source_image_id,
             entry__dictionary=dictionary,entry__archived=False,status__in=permitted_images,kind='image').exclude(file_path='').exists():
@@ -74,7 +77,10 @@ def allowed(study, *, payment=False):
             raise Conflict('Your API payment settings changed. Start a fresh capture.')
         if study.input_mode == 'guided':
             from .guided import consent_values
-            if study.result['guided']['consent'] != consent_values(study.user, dictionary):
+            expected = consent_values(study.user, dictionary)
+            if study.result['guided'].get('words'):
+                expected = {**expected, 'words_version': 'guided-words-1'}
+            if study.result['guided']['consent'] != expected:
                 raise Conflict('The AI prices, payment or dictionary settings changed. Renew the picture workflow in Settings and start a new attempt.')
         return key
 
@@ -132,7 +138,10 @@ def prepare(study_id):
         response=capture_ai.interpret(path_for(study.file_path).read_bytes(),{
             'target_language':study.language,'explanation_language':study.explanation_language,
             'generation_level': generation_level,
-            'input_language':study.input_language,'input_mode':{'writing':'approved-writing', 'guided':'approved-picture'}.get(study.input_mode, study.input_mode),
+            'input_language':study.input_language,'input_mode':(
+                'approved-writing' if study.input_mode == 'guided' and study.result['guided'].get('words') and
+                study.input_language == study.language else
+                {'writing':'approved-writing', 'guided':'approved-picture'}.get(study.input_mode, study.input_mode)),
             'description':description,'vocabulary':words},model=study.model,api_key=key)
         account(study.pk,'interpretation',response)
         result=capture_ai.parse(response)
@@ -142,7 +151,8 @@ def prepare(study_id):
                 raise ValueError('approved_writing_changed')
             result['writing'] = study.result['writing']
         if study.input_mode == 'guided':
-            if result['outcome'] != 'ready' or result['translation'] != description:
+            field = 'sentence' if study.result['guided'].get('words') and study.input_language == study.language else 'translation'
+            if result['outcome'] != 'ready' or result[field] != description:
                 raise ValueError('approved_picture_meaning_changed')
             result['guided'] = study.result['guided']
         # A model-supplied ID is only a candidate, not an authorization or edit.
@@ -193,9 +203,10 @@ def publish(study_id, user, *, vocabulary=None):
             data=dict(study.result)
             if study.input_mode == 'writing' and data.get('sentence') != data.get('writing',{}).get('approved_text'):
                 raise Conflict('The final sentence must match the version you approved.')
-            if study.input_mode == 'guided' and (not data.get('guided', {}).get('approved_description') or
-                    data.get('translation') != data['guided']['approved_description']):
-                raise Conflict('The final meaning must match the description you approved.')
+            if study.input_mode == 'guided':
+                field = 'sentence' if data.get('guided', {}).get('words') and study.input_language == study.language else 'translation'
+                if not data.get('guided', {}).get('approved_description') or data.get(field) != data['guided']['approved_description']:
+                    raise Conflict('The final meaning must match the description you approved.')
             if vocabulary is not None:
                 # Revalidate under the same lock as publication. No IDs supplied by
                 # the browser are trusted; matching below is by local lemma/sense.
@@ -230,10 +241,17 @@ def publish(study_id, user, *, vocabulary=None):
                 provenance.update(guided_picture=True, guided_recipe=data['guided']['version'],
                     generation_level=data['guided']['level'], vocabulary_generated_automatically=True,
                     target_language_generated_automatically=True)
+                if data['guided'].get('words'):
+                    provenance.update(started_with_words=True, authoritative_language=study.input_language,
+                        target_language_generated_automatically=study.input_language != study.language)
             source=study.source_image
+            image_provenance = source.provenance if source else {'origin': 'human'}
+            if study.input_mode == 'guided' and data['guided'].get('words'):
+                from .guided_words import image_provenance as generated_provenance
+                image_provenance = generated_provenance(study)
             image=Contribution.objects.create(entry=entry,kind='image',status='accepted',
                 author=source.author if source else user,controlled_by=(source.controlled_by or source.author) if source else user,
-                shared_from=source,provenance=source.provenance if source else {'origin':'human'},
+                shared_from=source,provenance=image_provenance,
                 **write_upload((path_for(study.file_path).read_bytes(),'image/jpeg','.jpg'),study.dictionary_id,paths))
             entry.selected_image=image; entry.save(update_fields=['selected_image'])
             sentence=component(entry,user,'word',data['sentence'],provenance,[image])
@@ -383,6 +401,12 @@ def discard(query):
     """Erase private previews; never remove separately published contributions."""
     for study in query.select_for_update():
         paths=[study.file_path,study.recording_path]+list(study.speech.exclude(file_path='').values_list('file_path',flat=True))
+        image_attempt = study.result.get('guided', {}).get('words', {}).get('image_attempt')
+        if image_attempt:
+            from .image_generation import discard_studies
+            from .models import ImageStudy
+            discard_studies(ImageStudy.objects.filter(pk=image_attempt, user_id=study.user_id,
+                dictionary_id=study.dictionary_id))
         study.status='discarded'; study.result={}; study.description=''; study.file_path=study.recording_path=''
         study.save(update_fields=['status','result','description','file_path','recording_path'])
         study.speech.update(status='discarded',text='',meaning='',file_path='',report={})

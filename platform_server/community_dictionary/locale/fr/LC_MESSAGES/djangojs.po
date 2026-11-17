@@ -862,3 +862,9 @@ msgstr "vertical"
 
 msgid "Refresh to check progress. Your saved writing is safe."
 msgstr "Actualisez pour vérifier l’avancement. Votre texte enregistré est en sécurité."
+
+msgid "Generate picture"
+msgstr "Créer l’image"
+
+msgid "Check my words"
+msgstr "Vérifier mon texte"
