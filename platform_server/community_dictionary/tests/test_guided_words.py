@@ -1,5 +1,10 @@
 """Words stay authoritative through paid image generation and publication."""
 import uuid
+import json
+import shutil
+import subprocess
+from pathlib import Path
+from html.parser import HTMLParser
 from types import SimpleNamespace
 from unittest.mock import patch
 from django.test import TestCase, Client, override_settings
@@ -259,6 +264,37 @@ class GuidedWordsTests(TestCase):
         for code, label in [('fr', 'Commencer par des mots'), ('sk', 'Začať slovami')]:
             self.client.cookies['community_ui_language'] = code
             self.assertContains(self.client.get(self.url('guided-start')), label)
+
+    def test_initial_route_fieldsets_exclude_inactive_inputs_from_native_validation(self):
+        class Groups(HTMLParser):
+            def __init__(self): super().__init__(); self.groups = {}
+            def handle_starttag(self, tag, attrs):
+                if tag == 'fieldset':
+                    values = dict(attrs)
+                    for name in ['data-guided-picture', 'data-guided-words', 'data-guided-speak', 'data-guided-custom']:
+                        if name in values: self.groups[name] = values
+        parser = Groups(); parser.feed(self.client.get(self.url('guided-start')).content.decode())
+        self.assertNotIn('disabled', parser.groups['data-guided-picture'])
+        for name in ['data-guided-words', 'data-guided-speak', 'data-guided-custom']:
+            self.assertIn('disabled', parser.groups[name])
+        self.preview()
+        parser = Groups(); parser.feed(self.client.get(self.url('guided-start')).content.decode())
+        self.assertIn('disabled', parser.groups['data-guided-picture'])
+        self.assertNotIn('disabled', parser.groups['data-guided-words'])
+
+    def test_generate_button_native_validation_and_draft_startup(self):
+        node = shutil.which('node')
+        if not node or subprocess.run([node, '-e', "require('jsdom')"], capture_output=True).returncode:
+            self.skipTest('Optional DOM submission check needs Node and jsdom; no production dependency is added.')
+        initial = self.client.get(self.url('guided-start')).content.decode()
+        self.preview()
+        sticky = self.client.get(self.url('guided-start')).content.decode()
+        static = Path(__file__).resolve().parents[1] / 'static' / 'community_dictionary'
+        payload = {'initial': initial, 'sticky': sticky,
+            'app': (static / 'app.js').read_text(), 'guided': (static / 'guided_start.js').read_text()}
+        result = subprocess.run([node, str(Path(__file__).with_name('guided_words_browser.cjs'))],
+            input=json.dumps(payload), text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 def picture_audio():

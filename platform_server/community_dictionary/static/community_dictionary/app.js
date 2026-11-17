@@ -176,8 +176,10 @@
       }
     } catch (_) { status(gettext('Draft recovery is unavailable on this device. Keep this page open until you save.')); }
     ready = true;
-    form.dispatchEvent(new Event('community-draft-ready'));
     initialControls.forEach(([el, disabled]) => { el.disabled = disabled; });
+    // Route handlers run after the startup lock is lifted, so their inactive
+    // fieldsets stay disabled when a local draft has been restored.
+    form.dispatchEvent(new Event('community-draft-ready'));
     const recorderRoot = form.querySelector('[data-recorder]');
     if (recorderRoot && window.CommunityRecorder) {
       recorder = window.CommunityRecorder(recorderRoot, async file => {

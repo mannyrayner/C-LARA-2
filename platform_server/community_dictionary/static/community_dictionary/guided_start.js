@@ -13,7 +13,13 @@
       'guided-custom': form.elements.picture_style?.value === 'custom'};
     Object.entries(panels).forEach(([key, show]) => {
       const panel = form.querySelector(`[data-${key}]`);
-      if (panel) panel.hidden = !show;
+      if (panel) {
+        panel.hidden = !show;
+        // Hidden controls still participate in native browser validation.
+        // A disabled fieldset excludes its entire inactive route from both
+        // validation and FormData, while retaining its recoverable draft.
+        panel.disabled = !show;
+      }
     });
     const button = form.querySelector('[data-words-submit]');
     if (button) button.textContent = voice ? gettext('Check my words') : gettext('Generate picture');
