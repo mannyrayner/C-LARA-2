@@ -153,6 +153,7 @@ def start(request, pk, entry_id=None):
                 finish(created[0], key)
             return redirect(url)
     recent = ImageStudy.objects.filter(dictionary=dictionary, user=request.user, entry=entry,
+        kind='entry' if entry else 'style',
         expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:5]
     return render(request, 'community_dictionary/image_start.html', context(request, dictionary,
         entry=entry, style=style, style_sample=style_sample, form=form, recent=recent,

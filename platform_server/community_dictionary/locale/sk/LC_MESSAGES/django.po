@@ -7423,3 +7423,181 @@ msgid "Your edit is saved. Open Check and improve to start a fresh check."
 msgstr ""
 "Vaša úprava je uložená. Otvorte Skontrolovať a vylepšiť a spustite novú "
 "kontrolu."
+
+msgid "Start with a picture"
+msgstr "Začať obrázkom"
+
+msgid "Start with words"
+msgstr "Začať slovami"
+
+msgid "Where would you like to start?"
+msgstr "Čím chcete začať?"
+
+msgid "How would you like to enter your words?"
+msgstr "Ako chcete zadať svoj text?"
+
+msgid "Photorealistic"
+msgstr "Fotorealistický"
+
+msgid "Simple colour illustration"
+msgstr "Jednoduchá farebná ilustrácia"
+
+msgid "Cartoon"
+msgstr "Kreslený obrázok"
+
+msgid "Watercolour"
+msgstr "Akvarel"
+
+msgid "Describe another style…"
+msgstr "Opísať iný štýl…"
+
+msgid "Picture style"
+msgstr "Štýl obrázka"
+
+msgid "Style name"
+msgstr "Názov štýlu"
+
+msgid "Style description"
+msgstr "Opis štýlu"
+
+msgid "Choose a style for your picture. You can change this later."
+msgstr "Vyberte štýl obrázka. Neskôr ho môžete zmeniť."
+
+msgid "Generate picture"
+msgstr "Vytvoriť obrázok"
+
+msgid "Check my words"
+msgstr "Skontrolovať môj text"
+
+msgid ""
+"Your words are kept exactly as you confirm them. Speech is transcribed for "
+"you to check first."
+msgstr ""
+"Váš text sa zachová presne tak, ako ho potvrdíte. Pri hovorenom vstupe "
+"najprv skontrolujete prepis."
+
+msgid ""
+"I agree to send my words, recording if used, and style description to "
+"OpenAI, generate a picture, and pay the estimated costs shown here."
+msgstr ""
+"Súhlasím s odoslaním svojho textu, prípadnej nahrávky a opisu štýlu "
+"spoločnosti OpenAI, s vytvorením obrázka a s úhradou uvedených odhadovaných "
+"nákladov."
+
+msgid ""
+"Rough total estimate, including the picture, words and audio: US$%(amount)s."
+" Actual usage varies."
+msgstr ""
+"Približný celkový odhad vrátane obrázka, slov a zvuku: %(amount)s USD. "
+"Skutočné náklady sa môžu líšiť."
+
+msgid "Check your words"
+msgstr "Skontrolujte svoj text"
+
+msgid "Correct the transcription before generating your picture."
+msgstr "Pred vytvorením obrázka opravte prepis."
+
+msgid "Your words and picture"
+msgstr "Váš text a obrázok"
+
+msgid "Use these words and finish"
+msgstr "Použiť tento text a dokončiť"
+
+msgid ""
+"This shares your words and AI-generated picture and creates the translation,"
+" linked words and audio."
+msgstr ""
+"Týmto sa zdieľa váš text a obrázok vytvorený AI a pripraví sa preklad, "
+"prepojené slová a zvuk."
+
+msgid "Change words or style"
+msgstr "Zmeniť text alebo štýl"
+
+msgid "Transcribing your words…"
+msgstr "Prepisujeme váš hlasový vstup…"
+
+msgid "Generating your picture…"
+msgstr "Vytvárame váš obrázok…"
+
+msgid ""
+"Your confirmed words were kept exactly. The translation, vocabulary and "
+"synthetic audio were generated automatically and may still need checking."
+msgstr ""
+"Váš potvrdený text sa zachoval presne. Preklad, slovná zásoba a syntetický "
+"zvuk boli vytvorené automaticky a môžu ešte vyžadovať kontrolu."
+
+msgid ""
+"This attempt could not finish. Your words are saved privately. No failed AI "
+"request is repeated automatically."
+msgstr ""
+"Tento pokus sa nepodarilo dokončiť. Váš text je uložený súkromne. Žiadna "
+"neúspešná požiadavka AI sa automaticky neopakuje."
+
+msgid ""
+"Your picture and words are kept. Only the remaining text and audio "
+"processing is retried."
+msgstr ""
+"Váš obrázok a text sa zachovajú. Zopakuje sa len zostávajúce spracovanie "
+"textu a zvuku."
+
+msgid "Start again with these words"
+msgstr "Začať znova s týmto textom"
+
+msgid ""
+"Your words are saved privately. AI processing has not started; check your "
+"credit and daily allowance."
+msgstr ""
+"Váš text je uložený súkromne. Spracovanie AI sa ešte nezačalo; skontrolujte "
+"si kredit a denný limit."
+
+msgid "Reload this page to see the current picture-generation estimate."
+msgstr ""
+"Obnovte stránku, aby ste videli aktuálny odhad nákladov na vytvorenie "
+"obrázka."
+
+msgid ""
+"The AI settings changed. Reload this page and confirm the new estimate."
+msgstr "Nastavenia AI sa zmenili. Obnovte stránku a potvrďte nový odhad."
+
+msgid ""
+"The AI settings changed. Start a new preview with the current estimate."
+msgstr "Nastavenia AI sa zmenili. Vytvorte nový náhľad s aktuálnym odhadom."
+
+msgid "The image settings changed. Start a new preview."
+msgstr "Nastavenia obrázkov sa zmenili. Vytvorte nový náhľad."
+
+msgid "You can save up to 20 picture styles per dictionary."
+msgstr "Pre každý slovník si môžete uložiť najviac 20 štýlov obrázkov."
+
+msgid "This preview belongs to another user."
+msgstr "Tento náhľad patrí inému používateľovi."
+
+msgid "Open the current preview before continuing."
+msgstr "Pred pokračovaním otvorte aktuálny náhľad."
+
+msgid "Your balance is too low to generate this picture."
+msgstr "Na vytvorenie tohto obrázka nemáte dostatočný kredit."
+
+msgid ""
+"The daily image-generation limit has been reached. Please try tomorrow."
+msgstr "Bol dosiahnutý denný limit vytvárania obrázkov. Skúste to zajtra."
+
+msgid ""
+"Your previous image is still being generated. Open its recent attempt before"
+" starting another."
+msgstr ""
+"Váš predchádzajúci obrázok sa ešte vytvára. Pred začatím ďalšieho otvorte "
+"tento pokus."
+
+msgid "The owner can enable AI picture generation in Settings."
+msgstr "Vlastník môže v nastaveniach povoliť vytváranie obrázkov pomocou AI."
+
+msgid "Start with a picture when using an existing picture."
+msgstr "Ak používate existujúci obrázok, vyberte možnosť Začať obrázkom."
+
+msgid ""
+"The final words must match the words used to generate this picture. Start a "
+"new preview to change them."
+msgstr ""
+"Konečný text sa musí zhodovať s textom použitým na vytvorenie obrázka. Ak ho"
+" chcete zmeniť, vytvorte nový náhľad."

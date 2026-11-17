@@ -160,6 +160,9 @@
       if (existing) {
         existing.values.forEach(([name, value]) => {
           const element = form.elements.namedItem(name);
+          // Recover content, but display the current estimate and ask for fresh
+          // words/image permission. The receipt ignores this quote's timestamp.
+          if (form.matches('[data-guided-start]') && ['words_quote', 'words_permission'].includes(name)) return;
           // Old drafts may contain the former consent checkbox. Do not restore
           // its value into the new explicit Save/permission submit button.
           if (element && name !== 'csrfmiddlewaretoken' && !['file', 'submit', 'button'].includes(element.type)) {
@@ -222,6 +225,13 @@
           // Retain unused drafts locally, but send only the chosen input mode.
           if (data.get('input_mode') !== 'voice') data.delete('audio');
           if (data.get('input_mode') !== 'text') data.set('description', '');
+        }
+        if (form.matches('[data-guided-start]')) {
+          if (data.get('start_with') === 'words') {
+            data.delete('photo');
+            if (data.get('words_mode') !== 'voice') data.delete('audio');
+            else data.delete('words');
+          } else data.delete('audio');
         }
         timeout = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: controller.signal});

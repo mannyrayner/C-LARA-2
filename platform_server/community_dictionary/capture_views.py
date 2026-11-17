@@ -212,6 +212,10 @@ def media(request,pk,study_id,kind):
     try: capture.allowed(study)
     except Conflict: raise Http404
     if kind=='picture': relative,mime=study.file_path,'image/jpeg'
+    elif kind=='recording' and study.input_mode == 'guided' and study.result.get('guided', {}).get('words'):
+        import mimetypes
+        relative = study.recording_path
+        mime = mimetypes.guess_type(relative)[0] or 'application/octet-stream'
     elif kind=='feedback':
         clip=get_object_or_404(study.speech,kind='feedback',status='ready')
         relative,mime=clip.file_path,'audio/wav'
