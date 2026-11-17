@@ -160,6 +160,9 @@
       if (existing) {
         existing.values.forEach(([name, value]) => {
           const element = form.elements.namedItem(name);
+          // Recover content, but display the current estimate and ask for fresh
+          // words/image permission. The receipt ignores this quote's timestamp.
+          if (form.matches('[data-guided-start]') && ['words_quote', 'words_permission'].includes(name)) return;
           // Old drafts may contain the former consent checkbox. Do not restore
           // its value into the new explicit Save/permission submit button.
           if (element && name !== 'csrfmiddlewaretoken' && !['file', 'submit', 'button'].includes(element.type)) {

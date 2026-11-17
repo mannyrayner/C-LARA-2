@@ -18,9 +18,10 @@ def event(dictionary, user, action, entry=None, detail=''):
     Event.objects.create(dictionary=dictionary, actor=user, action=action, entry=entry, detail=detail[:400])
 
 
-def digest_request(request):
+def digest_request(request, ignore_fields=()):
     digest = hashlib.sha256()
-    fields = [(key, request.POST.getlist(key)) for key in sorted(request.POST) if key not in {'csrfmiddlewaretoken', 'submission_id'}]
+    fields = [(key, request.POST.getlist(key)) for key in sorted(request.POST)
+        if key not in {'csrfmiddlewaretoken', 'submission_id', *ignore_fields}]
     digest.update(json.dumps(fields, ensure_ascii=False).encode())
     for key in sorted(request.FILES):
         for upload in request.FILES.getlist(key):
@@ -31,13 +32,13 @@ def digest_request(request):
     return digest.hexdigest()
 
 
-def submit_once(request, dictionary, scope, callback):
+def submit_once(request, dictionary, scope, callback, *, ignore_fields=()):
     """The receipt and all database writes commit together. Rollbacks remove new files."""
     try:
         token = uuid.UUID(request.POST.get('submission_id', ''))
     except (ValueError, AttributeError):
         raise Conflict('The submission identifier is missing. Reload the form and try again.')
-    digest = digest_request(request)
+    digest = digest_request(request, ignore_fields)
 
     def replay():
         receipt = Submission.objects.get(token=token)

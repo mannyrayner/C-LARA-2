@@ -133,7 +133,8 @@ class GuidedWordsTests(TestCase):
         quote = self.client.get(self.url('guided-start')).context['words_form']['words_quote'].value()
         study = self.start(submission_id=token, words_quote=quote)
         with patch('community_dictionary.guided_words.approved_quote', side_effect=Conflict('Expired quote')):
-            self.assertEqual(self.start(submission_id=token, words_quote=quote).pk, study.pk)
+            self.assertEqual(self.start(submission_id=token, words_quote='refreshed quote').pk, study.pk)
+        self.assertEqual(self.post_words(submission_id=token, words='A different picture.', words_quote=quote).status_code, 200)
         for _ in range(3): guided.run(study.pk)
         for _ in range(2): self.finish(study)
         self.assertEqual(self.images.call_count, 1)

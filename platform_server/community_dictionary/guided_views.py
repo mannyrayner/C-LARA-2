@@ -163,7 +163,9 @@ def start(request, pk, image_id=None):
                 current = dictionary_for(request, pk)
                 current_quote = guided_words.approved_quote(words_form, request.user, current)
                 return url(guided_words.new_attempt(request, current, paths, words_form, current_quote))
-            location = submit_once(request, dictionary, 'guided-words', create_words)
+            # A refreshed signed estimate is not new content. Replay the same
+            # saved words before admitting any new paid work.
+            location = submit_once(request, dictionary, 'guided-words', create_words, ignore_fields=('words_quote',))
             error = begin_saved(guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1]))
             if error: messages.warning(request, error)
             return saved(request, location)
