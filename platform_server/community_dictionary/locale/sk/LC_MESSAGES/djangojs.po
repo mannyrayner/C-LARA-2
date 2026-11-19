@@ -877,3 +877,16 @@ msgstr "Koncept bol obnovený. Pred odoslaním potvrďte aktuálny odhad."
 msgid "Your practice has not been submitted. Leaving can discard your draft."
 msgstr ""
 "Vaše precvičovanie nebolo odoslané. Pri odchode môžete stratiť koncept."
+
+msgid "Hide words"
+msgstr "Skryť slová"
+
+msgid "Hide sentence"
+msgstr "Skryť vetu"
+
+msgid "This recording could not play. Try the player controls."
+msgstr ""
+"Túto nahrávku sa nepodarilo prehrať. Skúste ovládacie prvky prehrávača."
+
+msgid "Stop recording before listening to a hint."
+msgstr "Pred vypočutím pomôcky zastavte nahrávanie."

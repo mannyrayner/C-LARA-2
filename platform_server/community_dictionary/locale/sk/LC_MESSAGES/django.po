@@ -7952,3 +7952,42 @@ msgstr ""
 "poplatok za prepis (približne 0,005 USD za 90 sekúnd). Skutočná spotreba sa "
 "môže líšiť. Vytvorenie hovorenej verzie je voliteľné a účtuje sa osobitne. "
 "Opakované prehrávanie je bezplatné."
+
+msgid "Hints"
+msgstr "Pomôcky"
+
+msgid "Vocabulary"
+msgstr "Slovná zásoba"
+
+msgid "Show words"
+msgstr "Zobraziť slová"
+
+msgid "Listen to words"
+msgstr "Vypočuť si slová"
+
+msgid "Some words have no recording yet."
+msgstr "Niektoré slová ešte nemajú nahrávku."
+
+msgid "No saved vocabulary is available for this picture."
+msgstr "K tomuto obrázku nie je k dispozícii uložená slovná zásoba."
+
+msgid "One possible description"
+msgstr "Jeden z možných opisov"
+
+msgid "Show sentence"
+msgstr "Zobraziť vetu"
+
+msgid "Listen to sentence"
+msgstr "Vypočuť si vetu"
+
+msgid "No saved sentence is available for this picture."
+msgstr "K tomuto obrázku nie je k dispozícii uložená veta."
+
+msgid "Hint audio"
+msgstr "Zvuková pomôcka"
+
+msgid "Stop"
+msgstr "Zastaviť"
+
+msgid "Reload this page to start a new practice attempt."
+msgstr "Obnovte túto stránku a začnite nový pokus."

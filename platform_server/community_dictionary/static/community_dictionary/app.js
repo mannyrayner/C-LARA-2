@@ -93,6 +93,11 @@
       clearTimeout(timer);
       timer = setTimeout(persist, 250);
     }
+    form.addEventListener('community-practice-hint-used', () => {
+      // Preserve help used with an existing learner draft, without treating a
+      // hint alone as unsaved work or prompting before choosing another image.
+      if (privatePractice && dirty) { revision += 1; void persist(); }
+    });
     function preview(kind) {
       if (previews[kind]) URL.revokeObjectURL(previews[kind]);
       const target = form.querySelector(kind === 'audio' ? '[data-audio-preview]' : '[data-photo-preview]');

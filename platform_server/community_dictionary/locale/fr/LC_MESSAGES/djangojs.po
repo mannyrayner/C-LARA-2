@@ -898,3 +898,16 @@ msgid "Your practice has not been submitted. Leaving can discard your draft."
 msgstr ""
 "Votre exercice n’a pas été envoyé. Quitter la page peut entraîner la perte "
 "du brouillon."
+
+msgid "Hide words"
+msgstr "Masquer les mots"
+
+msgid "Hide sentence"
+msgstr "Masquer la phrase"
+
+msgid "This recording could not play. Try the player controls."
+msgstr ""
+"Impossible de lire cet enregistrement. Essayez les commandes du lecteur."
+
+msgid "Stop recording before listening to a hint."
+msgstr "Arrêtez l’enregistrement avant d’écouter un indice."

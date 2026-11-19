@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy as L_
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from . import capture, capture_limits, picture_practice as practice, tts, writing
+from . import capture, capture_limits, picture_practice as practice, practice_hints, tts, writing
 from .models import PictureCapture, CaptureSpeech, Participation
 from .permissions import get_dictionary
 from .port_views import no_store
@@ -57,6 +57,13 @@ class PracticeForm(forms.Form):
         ('unspecified', L_('Not specified')), *LEVELS])
     share_log = forms.BooleanField(required=False, label=L_(
         'Share this attempt’s diagnostic log with dictionary owners for improving feedback.'))
+    hints_used = forms.CharField(required=False, max_length=100, widget=forms.HiddenInput)
+
+    def clean_hints_used(self):
+        try:
+            return practice_hints.parse_usage(self.cleaned_data.get('hints_used'))
+        except (ValueError, TypeError):
+            raise forms.ValidationError(_('Reload this page to start a new practice attempt.'))
 
     def __init__(self, *args, dictionary, transcript=False, needs_permission=True, **kwargs):
         super().__init__(*args, **kwargs)
@@ -168,6 +175,7 @@ def start(request, pk):
                         'stage': 'transcribe' if audio else 'review', 'original_text': form.cleaned_data.get('description', ''),
                         'level': form.cleaned_data.get('level') or 'unspecified',
                         'share_log': form.cleaned_data['share_log'], 'confirmed': False,
+                        'hints_used': form.cleaned_data['hints_used'],
                         'diagnostics': {'schema': 1, 'prompt_version': practice.practice_review.VERSION, 'events': []},
                         'feedback_language': form.cleaned_data['feedback_language']}})
                 study.sources.add(source)
@@ -185,7 +193,9 @@ def start(request, pk):
     recent = PictureCapture.objects.filter(dictionary=dictionary, user=request.user, input_mode='practice',
         expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:8]
     return no_store(render(request, 'community_dictionary/picture_practice_start.html', context(request, dictionary,
-        form=form, image=image, recent=recent, category=category, needs_permission=needs_permission, **config,
+        form=form, image=image, hints=practice_hints.material(image, dictionary),
+        hint_language=tts.language_code(dictionary.language), recent=recent,
+        category=category, needs_permission=needs_permission, **config,
         submission_id=request.POST.get('submission_id') or context(request)['submission_id'])))
 
 
@@ -258,6 +268,7 @@ def action(request, pk, study_id):
                             'quote': values, 'mode': old_info['mode'], 'stage': 'review', 'confirmed': True,
                             'original_text': form.cleaned_data['description'], 'transcript': old_info.get('transcript', ''),
                             'parent_attempt': str(old.pk), 'category': old_info.get('category', ''),
+                            'hints_used': old_info.get('hints_used'),
                             'level': form.cleaned_data.get('level') or 'unspecified', 'share_log': form.cleaned_data['share_log'],
                             'feedback_language': form.cleaned_data['feedback_language'],
                             'diagnostics': {'schema': 1, 'prompt_version': practice.practice_review.VERSION, 'events': []}}})
@@ -361,6 +372,7 @@ def diagnostic_log(request, pk):
             'learner_id': study.user_id, 'source_image_id': study.source_image_id,
             'language': study.language, 'feedback_language': info.get('feedback_language'),
             'input_mode': info.get('mode'), 'proficiency': info.get('level', 'unspecified'),
+            'hints_used': info.get('hints_used'),
             'status': study.status, 'model': study.model, 'app_recipe': info.get('quote', {}).get('version'),
             'raw_transcript': info.get('transcript', ''), 'submitted_text': info.get('original_text', ''),
             'normalised_text': info.get('heard', ''), 'confirmed_by_learner': info.get('confirmed', False),
