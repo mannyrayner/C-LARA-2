@@ -39,14 +39,19 @@
     const kind = button.dataset.hintReveal;
     const text = hints.querySelector(`[data-hint-text="${kind}"]`);
     const label = button.textContent;
+    const hideLabel = kind === 'words' ? gettext('Hide words') : gettext('Hide sentence');
     text.hidden = true;
     button.hidden = false;
     button.addEventListener('click', () => {
       text.hidden = !text.hidden;
       button.setAttribute('aria-expanded', String(!text.hidden));
-      button.textContent = text.hidden ? label : gettext(kind === 'words' ? 'Hide words' : 'Hide sentence');
+      button.textContent = text.hidden ? label : hideLabel;
       if (!text.hidden) used(`${kind}_text`);
     });
+  });
+  const lemmas = hints.querySelector('[data-hint-lemmas]');
+  lemmas?.addEventListener('toggle', () => {
+    if (lemmas.open && hints.open && !hints.querySelector('[data-hint-text="words"]').hidden) used('lemmas_text');
   });
   function stop() {
     revision++;

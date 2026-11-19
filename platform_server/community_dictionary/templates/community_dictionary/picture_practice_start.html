@@ -35,7 +35,7 @@
 </div><p data-submit-error class="error" role="alert" tabindex="-1" hidden></p>
 </form>
 <p><a class="button secondary" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?skip={{ image.pk }}&amp;category={{ category|urlencode }}">{% translate "Another picture" %}</a></p>
-</section></div><script src="{% static 'community_dictionary/picture_practice.js' %}?v=3" defer></script>
+</section></div><script src="{% static 'community_dictionary/picture_practice.js' %}?v=4" defer></script>
 {% else %}<p>{% translate "No accepted pictures are available. Add a picture or choose another category." %}</p>{% endif %}
 <details class="panel entry-help"><summary>{% translate "Practice history and logs" %}</summary>
 <p><a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}">{% translate "Download my practice log" %}</a>{% if owner %} · <a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}?shared=1&amp;view=1&amp;limit=20">{% translate "View shared practice logs" %}</a>{% endif %}</p>
