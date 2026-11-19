@@ -7,11 +7,15 @@
 <button type="button" class="secondary" data-hint-reveal="words" aria-controls="hint-words" aria-expanded="false" hidden>{% translate "Show words" %}</button>
 {% if hints.word_audio_count %}<button type="button" class="secondary" data-hint-listen="words" hidden>{% translate "Listen to words" %}</button>{% endif %}
 </div>
-<ul id="hint-words" data-hint-text="words" lang="{{ hint_language }}" dir="{{ dictionary.text_direction }}">
-{% for row in hints.words %}<li><span>{{ row.entry.word }}</span>{% if row.meaning %}<details class="word-translation"><summary>{% translate "Meaning" %}</summary><span dir="auto">{{ row.meaning }}</span></details>{% endif %}</li>{% endfor %}
-</ul>
+<div id="hint-words" data-hint-text="words" lang="{{ hint_language }}" dir="{{ dictionary.text_direction }}">
+<ul>{% for row in hints.words %}<li><span>{{ row.text }}</span>{% if row.meaning %}<details class="word-translation"><summary>{% translate "Meaning" %}</summary><span dir="auto">{{ row.meaning }}</span></details>{% endif %}</li>{% endfor %}</ul>
+{% if hints.has_dictionary_forms %}<details data-hint-lemmas><summary>{% translate "Dictionary forms" %}</summary>
+<ul>{% for row in hints.words %}<li>{% if row.is_inflected %}<span>{{ row.text }}</span> → {% endif %}<span>{{ row.entry.word }}</span>{% if row.dictionary_meaning %} · <span dir="auto">{{ row.dictionary_meaning }}</span>{% endif %}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+</div>
 <div data-hint-fallback>
-{% for row in hints.words %}{% if row.audio %}<audio controls preload="none" data-hint-source="words" aria-label="{% blocktranslate with word=row.entry.word %}Listen to {{ word }}{% endblocktranslate %}" src="{% url 'community_dictionary:media' dictionary.pk row.audio.pk %}"></audio>{% endif %}{% endfor %}
+{% for row in hints.words %}{% if row.audio %}<audio controls preload="none" data-hint-source="words" aria-label="{% blocktranslate with word=row.text %}Listen to {{ word }}{% endblocktranslate %}" src="{% url 'community_dictionary:media' dictionary.pk row.audio.pk %}"></audio>{% endif %}{% endfor %}
 </div>
 {% if hints.word_audio_count < hints.words|length %}<p class="help">{% translate "Some words have no recording yet." %}</p>{% endif %}
 {% else %}<p class="help">{% translate "No saved vocabulary is available for this picture." %}</p>{% endif %}

@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const {JSDOM} = require('jsdom');
 const payload = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-async function setup({recovered=false, missing=false}={}) {
-  const dom = new JSDOM(missing ? payload.missing : payload.html, {
+async function setup({recovered=false, missing=false, inflected=false}={}) {
+  const dom = new JSDOM(inflected ? payload.inflected : missing ? payload.missing : payload.html, {
     url:'https://example.test/practise/describe/?image=1', runScripts:'outside-only'});
   const w = dom.window, d = w.document, plays = [], posts = [], writes = [];
   let rejectPlay = false;
@@ -123,6 +123,23 @@ async function missing() {
     assert.equal(x.posts.length,0);
   } finally {x.dom.window.close();}
 }
-(async()=>{await controls();await recovery();await playbackFailureAndRecording();await missing();
+async function contextual() {
+  const x=await setup({inflected:true});
+  try {
+    const lemmas=x.hints.querySelector('[data-hint-lemmas]');
+    assert.equal(x.text('words').hidden,true); assert.equal(lemmas.open,false);
+    x.reveal('words').click();
+    const primary=x.text('words').querySelector(':scope > ul');
+    assert.match(primary.textContent,/gatti/); assert.match(primary.textContent,/dormono/);
+    assert.doesNotMatch(primary.textContent,/dormire/);
+    assert.equal(lemmas.open,false,'Dictionary forms stay collapsed after revealing words');
+    lemmas.open=true; await tick();
+    assert.ok(x.usage().includes('lemmas_text')); assert.match(lemmas.textContent,/dormire/);
+    x.listen('words').click(); await tick();
+    assert.equal(x.text('sentence').hidden,true);
+    assert.ok(x.usage().includes('words_audio')); assert.equal(x.posts.length,0);
+  } finally {x.dom.window.close();}
+}
+(async()=>{await controls();await recovery();await playbackFailureAndRecording();await missing();await contextual();
   console.log('Hints passed: independent text/audio, playlist, missing material, private usage and recovery.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

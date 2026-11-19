@@ -8110,3 +8110,6 @@ msgstr "Arrêter"
 
 msgid "Reload this page to start a new practice attempt."
 msgstr "Rechargez cette page pour commencer un nouvel essai."
+
+msgid "Dictionary forms"
+msgstr "Formes du dictionnaire"

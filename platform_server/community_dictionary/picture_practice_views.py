@@ -176,6 +176,7 @@ def start(request, pk):
                         'level': form.cleaned_data.get('level') or 'unspecified',
                         'share_log': form.cleaned_data['share_log'], 'confirmed': False,
                         'hints_used': form.cleaned_data['hints_used'],
+                        'hint_recipe': practice_hints.VERSION,
                         'diagnostics': {'schema': 1, 'prompt_version': practice.practice_review.VERSION, 'events': []},
                         'feedback_language': form.cleaned_data['feedback_language']}})
                 study.sources.add(source)
@@ -269,6 +270,7 @@ def action(request, pk, study_id):
                             'original_text': form.cleaned_data['description'], 'transcript': old_info.get('transcript', ''),
                             'parent_attempt': str(old.pk), 'category': old_info.get('category', ''),
                             'hints_used': old_info.get('hints_used'),
+                            'hint_recipe': old_info.get('hint_recipe'),
                             'level': form.cleaned_data.get('level') or 'unspecified', 'share_log': form.cleaned_data['share_log'],
                             'feedback_language': form.cleaned_data['feedback_language'],
                             'diagnostics': {'schema': 1, 'prompt_version': practice.practice_review.VERSION, 'events': []}}})
@@ -373,6 +375,7 @@ def diagnostic_log(request, pk):
             'language': study.language, 'feedback_language': info.get('feedback_language'),
             'input_mode': info.get('mode'), 'proficiency': info.get('level', 'unspecified'),
             'hints_used': info.get('hints_used'),
+            'hint_recipe': info.get('hint_recipe'),
             'status': study.status, 'model': study.model, 'app_recipe': info.get('quote', {}).get('version'),
             'raw_transcript': info.get('transcript', ''), 'submitted_text': info.get('original_text', ''),
             'normalised_text': info.get('heard', ''), 'confirmed_by_learner': info.get('confirmed', False),

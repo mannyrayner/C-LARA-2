@@ -7991,3 +7991,6 @@ msgstr "Zastaviť"
 
 msgid "Reload this page to start a new practice attempt."
 msgstr "Obnovte túto stránku a začnite nový pokus."
+
+msgid "Dictionary forms"
+msgstr "Slovníkové tvary"
