@@ -37,7 +37,7 @@ Do not translate, extract vocabulary, grade the learner, or claim expert verific
 
 
 def review(photo, *, text, language, feedback_language, model, api_key,
-           instructions=INSTRUCTIONS, schema=SCHEMA):
+           instructions=INSTRUCTIONS, schema=SCHEMA, context=None):
     with Image.open(io.BytesIO(photo)) as image:
         image = image.convert('RGB')
         image.thumbnail((1024, 1024))
@@ -47,7 +47,8 @@ def review(photo, *, text, language, feedback_language, model, api_key,
         return client.responses.create(model=model, instructions=instructions,
             input=[{'role': 'user', 'content': [
                 {'type': 'input_text', 'text': json.dumps({'text': text,
-                    'target_language': language, 'feedback_language': feedback_language}, ensure_ascii=False)},
+                    'target_language': language, 'feedback_language': feedback_language,
+                    **({'practice_context': context} if context is not None else {})}, ensure_ascii=False)},
                 {'type': 'input_image', 'detail': 'auto', 'image_url':
                     'data:image/jpeg;base64,' + base64.b64encode(output.getvalue()).decode('ascii')}]}],
             text={'format': {'type': 'json_schema', 'name': 'writing_feedback',

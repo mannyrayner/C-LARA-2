@@ -1,66 +1,105 @@
 # Describe a picture: private speaking and writing practice
 
-Open a dictionary, choose **Practise → Describe a picture**, then speak or type
-in its text language. A few words, a description, a story or imagined dialogue
-are all welcome. **Show an example** keeps the existing caption out of the way.
-Only current accepted pictures are offered; the current category is respected.
-**Another picture** avoids the same image file when another one is available.
+Open **Practise → Describe a picture**. Speak or type a few words in the dictionary's
+text language. A description, imagined story or dialogue is welcome. Current
+accepted pictures are selected within the chosen category. Another picture avoids
+the same image file when another is available.
 
-For speech, record or upload a short clip, then choose **Check what I said**.
-The app transcribes it and waits. Correct the transcript or use **Try again** to
-record another attempt. **Use these words and get feedback** checks exactly the
-confirmed words with the image. Typed input goes straight to feedback.
+The first request authorises a practice session. The permission checkbox is then
+hidden for up to two hours, until logout or **End practice session**, or until
+payment/pricing/dictionary settings change. The session is scoped to the signed-in
+user and dictionary. Optional listening still requires pressing its priced button;
+replaying an already generated clip is free.
 
-Feedback briefly explains what the AI understood, shows a version preserving the
-learner's intention, and explains necessary changes. Optional style suggestions
-are separate and unapplied. A clarification question is possible. This is
-feedback on text, including a confirmed transcript; it does not assess
-pronunciation, accent or speaking fluency. AI judgments can be wrong.
+Upload, microphone, feedback-language, voice and proficiency settings are inside
+**More options**. These preferences persist independently of contribution settings.
+There is no inferred proficiency assessment: the optional self-report guides
+explanations, and must never be used to discard unusual vocabulary.
 
-**Try again** starts a separate attempt on the same picture; typed text is
-prefilled for revision, while speech can be recorded again. **Listen to this
-version** explicitly requests private synthetic audio, for supported OpenAI TTS
-languages with saved audio enabled. Replaying the resulting clip is free.
-Nothing is published or added to the dictionary. There is no automatic image,
-translation, vocabulary, word-audio or entry-audio generation. Saving a practice
-answer as a dictionary entry is outside this first version.
+## Speech recognition and feedback
 
-## Cost, access and recovery
+Spoken attempts normally proceed directly from recognition to image-aware review.
+The page shows actual stages: recognising words, then checking what was heard and
+preparing feedback. There is no invented percentage or simulated streaming.
 
-- A signed estimate and explicit consent precede each feedback/transcription
-  submission. Text uses one bounded image-and-text call; speech adds one
-  transcription call. Optional listening has its own estimate and button.
-- Practice uses the existing dictionary/account picture-description allowance,
-  payment checks and usage accounting. Failed/discarded attempts still count.
-  Ordinary feedback does not require a working word-audio provider or TTS setup.
-- Input method, explanation language and synthetic voice persist per user and
-  dictionary independently of contribution workflow preferences.
-- Private attempts and audio use existing 30-day expiration and withdrawal
-  cleanup. **Clear this practice attempt** erases its private content earlier.
-  Device draft recovery follows the existing IndexedDB mechanism and may be
-  cleared separately with **Discard local draft**.
-- Attempts are available only to their author while they remain a member. Owners
-  cannot inspect another member's attempts through these pages. Withdrawal,
-  archival, participation changes and capture-policy changes invalidate access.
-- A chosen image is pinned in the URL, so page reload/draft recovery cannot pair
-  old words with a newly randomized image. Recovered permission and estimates
-  are not reused; confirm the current estimate.
-- Each paid stage commits a claim before contacting a provider, with no SDK
-  retries. Reloads, repeated taps and background redelivery do not repeat a
-  claimed call. A failed/uncertain stage needs an explicit new attempt.
-  **Continue pending work** only starts unclaimed stages.
-- This is a signed-in activity; public practice games remain free and read-only.
+The review receives input mode and proficiency explicitly. For speech:
 
-## Implementation and validation
+- Punctuation, capitalisation and written abbreviation notation are representation,
+  not learner mistakes. Swedish `tvn` → `tv:n` can be normalised without criticism.
+- The server blocks a proposed normalisation that changes the sequence of letters
+  or digits, including diacritics. No language-specific substitution dictionary
+  silently turns `bordstuk` into `bordsduk` or `smicke` into `smycke`.
+- Suspect recognition, proposed lexical replacements, and spelling corrections
+  that change letters are treated as uncertainty before the learner confirms the
+  transcript. The app asks one short question and suppresses critical feedback.
+- A confirmation/edit permits one additional paid review on the same attempt,
+  accounted separately. Recognition is not repeated. Further uncertainty requires
+  a revision, rather than an automatic loop.
+- Genuine contextual grammar remains available for feedback. This distinction is
+  heuristic: the reviewer sees the transcript and image, not the waveform, so it
+  can still misclassify an error. Larger real-user samples are needed for tuning.
+- Spelling feedback remains available for typed answers. Neither modality produces
+  a pronunciation, fluency or proficiency score.
 
-Uses `PictureCapture(input_mode='practice')` and private `CaptureSpeech` clips;
-no database migration or new dependency is needed. Entry publishers explicitly
-reject this mode. Existing writing feedback supplies image serialization and
-strict correction validation, with a separate bounded practice schema/prompt.
+The main result is short, with at most two learning points. **More feedback** opens
+full corrections and optional stylistic suggestions. **Words and practice log →
+Correct the transcript or edit my words** starts a separate private review from
+edited text without buying another transcription. **Try again** offers the same
+picture; **Another picture** selects another one. Optional **Listen** creates a
+private corrected-sentence clip. No dictionary entries, translations, vocabulary
+or new pictures are generated by practice.
 
-Tests cover transcription confirmation/editing, the actual rendered button's
-DOM submission in both input modes and asynchronous draft recovery, idempotency,
-payment/allowances, preference isolation, private access, source withdrawal during
-provider processing, publication rejection and optional audio. Provider calls
-are mocked; laptop testing is still needed for real Italian feedback quality,
-microphone behavior and listening comfort.
+## Tuning logs and learner reports
+
+Private `PictureCapture` JSON retains the following for up to 30 days:
+
+- input modality, languages, optional proficiency, model and prompt/recipe versions;
+- raw ASR transcript, normalised representation, learner-confirmed words and feedback;
+- recognition questions, suspect surfaces, server decisions and suppressed written-form edits;
+- bounded review output (including validation failures), actual stage timestamps,
+  elapsed durations, returned usage/charges and parent attempt references;
+- optional learner labels, notes and “what I actually said” corrections.
+
+Server operational logs contain attempt IDs, stages and error types, not learner
+words, audio, images, API credentials or provider output. JSON exports exclude
+media bytes, private storage paths and credentials. Returned usage is evidence of
+usage, not proof that the feedback is correct. Recognition uncertainty is a model
+judgment, not an acoustic confidence measurement.
+
+**Practice history and logs → Download my practice log** exports only the signed-in
+learner's attempts. **Words and practice log** on an attempt allows a problem
+report, intended wording, and sharing/revocation. A sharing-only submission does
+not invent a success/error label. Reporting makes no AI calls.
+
+**Share this attempt’s diagnostic log with dictionary owners** is optional and off
+by default. When selected it permits active owners/co-owners to inspect that
+attempt's diagnostic text, including transcripts and feedback, through **View
+shared practice logs**. It grants no access to unshared attempts or private
+recordings. The sharing choice can be revoked on the attempt. No new role or broad
+administrative visibility is granted.
+
+The authenticated endpoint is `practise/describe/log/`: default download of one's
+own logs; `?shared=1&view=1&limit=20` is an inline view for owners/co-owners of
+explicitly shared logs. `limit` is bounded to 1–200. Source withdrawal, dictionary
+archival, expired/cleared attempts and learner participation withdrawal invalidate
+log access as well as practice access. Export responses are private/no-store.
+
+## Safety of retries and deployment
+
+Each provider stage commits a claim before network I/O; receipts and separate
+accounting keys prevent duplicate paid requests on repeated taps or redelivery.
+Failed/discarded attempts still count toward the existing account/dictionary
+allowance. Failed or uncertain network requests never repeat automatically.
+Clearing an attempt removes its private logs and media through existing cleanup.
+
+No migration, application dependency or deployment-permission change is needed.
+Existing first-version feedback remains private history; new attempts use the new
+review recipe. A session must authorise the new recipe before paid work proceeds.
+
+Regression coverage includes Swedish notation and suspect-word cases, preserved
+grammar errors, typed spelling, mode/level provider payloads, session scope and
+expiry, uncertainty confirmation accounting, real rendered-button submission,
+asynchronous draft recovery, optional audio, private/shared log access and
+revocation/withdrawal, validation failures and learner reports. Provider requests
+are mocked. Real speech and pedagogical quality are tested on the laptop before
+AWS; shared production logs can then support a larger tuning sample.
