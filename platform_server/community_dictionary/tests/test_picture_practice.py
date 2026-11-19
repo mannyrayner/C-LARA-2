@@ -93,7 +93,7 @@ class PicturePracticeTests(TestCase):
         page = self.client.get(self.url('picture-practice-detail', study.pk))
         self.assertContains(page, FEEDBACK['understood'])
         self.assertContains(page, 'Try again')
-        self.assertContains(page, 'Listen')
+        self.assertContains(page, 'Generate spoken version')
         self.assertContains(page, 'not pronunciation')
         for _ in range(2): practice.run(study.pk)
         self.assertEqual(self.review.call_count, 1)

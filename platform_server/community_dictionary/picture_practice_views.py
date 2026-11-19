@@ -20,6 +20,7 @@ from .services import Conflict, submit_once
 from .storage import path_for, prepare_upload, write_upload
 from .views import context, fail, saved
 from .voices import VOICE_CHOICES
+from .practice_costs import summary as cost_summary
 from .learning import LEVELS
 
 SALT = 'picture-practice-2'
@@ -203,7 +204,7 @@ def page(request, dictionary, study, form=None):
     polling = study.status in {'waiting', 'processing'} or bool(clip and clip.status in {'waiting', 'running'})
     return no_store(render(request, 'community_dictionary/picture_practice_detail.html', context(request, dictionary,
         study=study, info=info, feedback=feedback, form=form, polling=polling, clip=clip,
-        needs_permission=needs_permission,
+        needs_permission=needs_permission, cost_summary=cost_summary(study),
         highlighted=writing.changes(info.get('original_text', ''), feedback.get('text', '')),
         audio_estimate=tts.estimate_cost(feedback.get('text', ''), 30),
         can_listen=dictionary.tts_enabled and tts.language_code(dictionary.language) in tts.LANGUAGES.values(), **config,
@@ -368,6 +369,7 @@ def diagnostic_log(request, pk):
             'diagnostics': info.get('diagnostics', {}), 'user_report': info.get('user_report', {}),
             'user_reports': info.get('user_reports', []), 'parent_attempt': info.get('parent_attempt'),
             'usage': study.usage, 'shared_with_owners': bool(info.get('share_log'))})
+        rows[-1]['cost_summary'] = cost_summary(study)
     response = JsonResponse({'schema': 'picture-practice-log-1', 'dictionary_id': dictionary.pk,
         'scope': 'shared_with_owners' if shared else 'my_attempts', 'limit': limit, 'attempts': rows},
         json_dumps_params={'ensure_ascii': False, 'indent': 2})
