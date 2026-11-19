@@ -1,6 +1,7 @@
 """Picture capture lifecycle. Never hold a database transaction across a provider call."""
 from datetime import timedelta
 from decimal import Decimal
+import hashlib
 import logging
 from django.conf import settings
 from django.db import transaction
@@ -87,17 +88,27 @@ def allowed(study, *, payment=False):
                 raise Conflict('The AI prices, payment or dictionary settings changed. Renew the picture workflow in Settings and start a new attempt.')
         return key
 
+def charge_request_type(study, suffix):
+    value = f'capture:{study.pk}:{suffix}'
+    if len(value) > AIUsageCharge._meta.get_field('request_type').max_length:
+        # Keep the capture UUID and a stable stage identifier. PostgreSQL
+        # enforces this field's limit; SQLite silently accepts longer values.
+        value = f'capture:{study.pk}:{hashlib.sha256(suffix.encode()).hexdigest()[:16]}'
+    return value
+
+
 def charge(study, operation, cost, model, suffix, provider='openai'):
     if (study.personal_key and provider == 'openai') or cost is None:
         return
     cost=Decimal(cost).quantize(Decimal('.000001'))
+    request_type = charge_request_type(study, suffix)
     ledger=None
     if cost and credits_enabled():
         ledger=apply_credit_delta(user=study.user,amount_usd=-cost,entry_type=CreditLedgerEntry.ENTRY_USAGE,
             description='Community picture description: '+operation,
-            metadata={'provider':provider,'model':model,'operation':operation,'request_type':f'capture:{study.pk}:{suffix}','cost_usd':str(cost)})
+            metadata={'provider':provider,'model':model,'operation':operation,'request_type':request_type,'cost_usd':str(cost)})
     AIUsageCharge.objects.create(user=study.user,provider=provider,model=model,
-        operation='community_capture',request_type=f'capture:{study.pk}:{suffix}',cost_usd=cost,
+        operation='community_capture',request_type=request_type,cost_usd=cost,
         status=AIUsageCharge.STATUS_CHARGED if ledger else AIUsageCharge.STATUS_SKIPPED,ledger_entry=ledger,
         notes=('Google synthesis usage/estimate before allowances and tax; provider invoice is authoritative.' if provider=='google' else
                'Returned token usage, or estimated TTS duration/input cost; provider invoice is authoritative.'))

@@ -16,6 +16,7 @@ from community_dictionary.models import PictureCapture, Contribution, Entry, Cap
 from community_dictionary.services import Conflict
 from . import test_picture_capture as fixtures
 from .test_workflow import recording as audio
+from projects.models import AIUsageCharge, CreditAccount
 
 ORIGINAL = 'Il gatto sono felice.'
 CORRECTED = 'Il gatto è felice.'
@@ -66,6 +67,65 @@ class PicturePracticeTests(TestCase):
         study.refresh_from_db()
         self.assertEqual(study.status, 'feedback')
         return study
+
+    def strict_charge_save(self):
+        # SQLite does not enforce varchar lengths. Validate the production
+        # database contract on every real charge insert in these workflow tests.
+        save = AIUsageCharge.save
+        def validated_save(row, *args, **kwargs):
+            AIUsageCharge._meta.get_field('request_type').clean(row.request_type, row)
+            return save(row, *args, **kwargs)
+        return patch.object(AIUsageCharge, 'save', validated_save)
+
+    @override_settings(CREDITS_ENABLED=True)
+    def test_voice_and_spoken_feedback_fit_production_charge_field(self):
+        CreditAccount.objects.update_or_create(user=self.user, defaults={'balance_usd': '100'})
+        study = self.attempt('voice')
+        with self.strict_charge_save():
+            practice.run(study.pk)
+            study.refresh_from_db()
+            self.assertEqual(study.status, 'feedback')
+            self.assertEqual(self.act(study, 'listen', permission='yes').status_code, 302)
+            practice.run(study.pk)
+            practice.run(study.pk)
+        self.assertEqual(CaptureSpeech.objects.get().status, 'ready')
+        self.assertEqual(self.asr.call_count, 1)
+        self.assertEqual(self.review.call_count, 1)
+        self.assertEqual(self.tts.call_count, 1)
+        refs = list(AIUsageCharge.objects.values_list('request_type', flat=True))
+        self.assertEqual(len(refs), 3)
+        self.assertEqual(len(set(refs)), 3)
+        self.assertTrue(all(str(study.pk) in ref and len(ref) <= 64 for ref in refs))
+        self.assertIn('practice_transcription', study.usage)
+        # Existing shorter accounting references remain unchanged.
+        self.assertIn(f'capture:{study.pk}:practice_feedback', refs)
+        for charge in AIUsageCharge.objects.select_related('ledger_entry'):
+            self.assertEqual(charge.status, AIUsageCharge.STATUS_CHARGED)
+            self.assertEqual(charge.ledger_entry.metadata['request_type'], charge.request_type)
+        self.assertEqual(AIUsageCharge.objects.get(model='gpt-4o-mini-transcribe').ledger_entry.metadata['operation'],
+            'practice_transcription')
+
+    def test_confirmed_speech_review_fits_production_charge_field(self):
+        study = self.attempt('voice')
+        self.review.return_value = fixtures.response({**FEEDBACK, 'text': ORIGINAL,
+            'outcome': 'clarify', 'question': 'Did I hear gatto?',
+            'recognition_question': 'Did I hear gatto?', 'suspect_words': ['gatto'], 'corrections': []})
+        with self.strict_charge_save():
+            practice.run(study.pk)
+            study.refresh_from_db()
+            self.assertEqual(study.status, 'transcript')
+            self.assertEqual(self.act(study, 'check', mode='text', description=ORIGINAL,
+                feedback_language='English', voice='marin', permission='on',
+                quote=signing.dumps(practice.quote(self.user, self.d), salt=SALT)).status_code, 302)
+            self.review.return_value = fixtures.response(FEEDBACK)
+            practice.run(study.pk)
+            practice.run(study.pk)
+        study.refresh_from_db()
+        self.assertEqual(study.status, 'feedback')
+        self.assertIn('practice_feedback_confirmed', study.usage)
+        self.assertEqual(AIUsageCharge.objects.count(), 3)
+        self.assertEqual(self.asr.call_count, 1)
+        self.assertEqual(self.review.call_count, 2)
 
     def test_entry_point_pins_picture_without_rows_or_calls_and_hides_example(self):
         page = self.client.get(self.url('practice'))
