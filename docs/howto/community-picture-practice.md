@@ -120,3 +120,20 @@ Unknown usage, pending calls and uncertain audio costs are labelled explicitly;
 a partial sum is never labelled a complete total. Edited attempts do not count
 recognition or reviews already incurred in the earlier attempt a second time.
 These estimates describe AI usage, not hosting or final provider invoices.
+
+## AWS speech accounting repair — 19 November 2026
+
+Speech could finish its provider request but fail when storing the charge:
+`capture:<UUID>:practice_transcription` exceeded the billing reference's
+64-character database limit. PostgreSQL enforces that limit; SQLite does not.
+Confirmed feedback and generated-speech references could also exceed it.
+
+Overlong references now keep the full capture UUID and use a stable digest for
+the stage suffix. Short existing references, full operation names in ledger
+metadata, accounting stage keys, tariffs and retry rules are unchanged. This
+requires no migration. Workflow regressions validate the field's length on
+charge inserts even under SQLite, including voice, confirmation and optional
+spoken feedback. The original references fail those regressions.
+
+After installing the repair, explicitly start a new speech attempt. Existing
+failed attempts remain private and do not restart provider requests automatically.
