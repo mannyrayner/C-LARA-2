@@ -8008,3 +8008,66 @@ msgstr "Ce que j’ai réellement dit (facultatif)"
 
 msgid "Words and practice log"
 msgstr "Mots et journal de pratique"
+
+msgid "Speech recognition"
+msgstr "Reconnaissance vocale"
+
+msgid "AI image review and language feedback"
+msgstr "Analyse de l’image et commentaires linguistiques par l’IA"
+
+msgid "AI review after confirmation"
+msgstr "Analyse par l’IA après confirmation"
+
+msgid "Spoken version generation"
+msgstr "Création de la version parlée"
+
+msgid "Generate spoken version"
+msgstr "Créer une version parlée"
+
+msgid "Play the AI-generated spoken version. Replaying is free."
+msgstr "Écoutez la version parlée créée par l’IA. La réécoute est gratuite."
+
+msgid "Generating the spoken version…"
+msgstr "Création de la version parlée…"
+
+msgid "Cost so far is unavailable or pending."
+msgstr "Le coût actuel n’est pas encore disponible."
+
+msgid "Cost details"
+msgstr "Détail des coûts"
+
+msgid "Unavailable or pending"
+msgstr "Indisponible ou en cours"
+
+msgid "Estimated cost so far: US$%(amount)s."
+msgstr "Coût estimé jusqu’ici : %(amount)s $US."
+
+msgid ""
+"Known cost so far: US$%(amount)s; some usage is unavailable or pending."
+msgstr ""
+"Coût connu jusqu’ici : %(amount)s $US ; certaines données d’utilisation sont"
+" indisponibles ou en cours."
+
+msgid ""
+"Includes recorded recognition, AI review and any generated speech for this "
+"attempt. Optional speech generation is extra until requested; replaying "
+"saved audio makes no AI call. Costs use returned usage and configured "
+"prices; speech generation uses a duration estimate. Unknown usage is not "
+"counted as zero."
+msgstr ""
+"Inclut la reconnaissance, l’analyse par l’IA et toute création audio "
+"enregistrées pour cet essai. La création audio facultative est un supplément"
+" jusqu’à sa demande ; réécouter un enregistrement ne fait aucun appel à "
+"l’IA. Les coûts utilisent les données d’utilisation reçues et les tarifs "
+"configurés ; la création audio repose sur une durée estimée. Une "
+"consommation inconnue n’est pas comptée comme nulle."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Generating a "
+"spoken version is optional and charged separately. Replaying it is free."
+msgstr ""
+"Coût estimé des commentaires : %(amount)s $US. La parole ajoute un petit "
+"coût de transcription (environ 0,005 $US pour 90 secondes). Le coût réel "
+"varie. Créer une version parlée est facultatif et facturé séparément. La "
+"réécoute est gratuite."

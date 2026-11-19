@@ -14,11 +14,11 @@
 {% else %}
 <p class="meaning" dir="auto">{{ feedback.text }}</p>
 {% if feedback.corrections %}<ul>{% for correction in feedback.corrections|slice:':2' %}<li dir="auto">{{ correction.reason }}</li>{% endfor %}</ul>{% else %}<p>{% translate "No correction was needed." %}</p>{% endif %}
-{% if clip.status == 'ready' %}<audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'feedback' %}"></audio>
-{% elif clip.status == 'waiting' or clip.status == 'running' %}<p role="status">{% translate "Preparing audio…" %}</p>
+{% if clip.status == 'ready' %}<p class="help">{% translate "Play the AI-generated spoken version. Replaying is free." %}</p><audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'feedback' %}"></audio>
+{% elif clip.status == 'waiting' or clip.status == 'running' %}<p role="status">{% translate "Generating the spoken version…" %}</p>
 {% elif clip %}<p class="notice">{% translate "Audio could not finish. It will not be retried automatically." %}</p>
 {% elif can_listen %}<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
-<button name="action" value="listen" class="secondary">{% translate "Listen" %} · ~US${{ audio_estimate|floatformat:4 }}</button></form>{% endif %}
+<button name="action" value="listen" class="secondary">{% translate "Generate spoken version" %} · +~US${{ audio_estimate|floatformat:4 }}</button></form>{% endif %}
 {% endif %}
 {% if feedback.understood or feedback.corrections or feedback.suggestions %}<details><summary>{% translate "More feedback" %}</summary>
 {% if feedback.understood %}<p dir="auto">{{ feedback.understood }}</p>{% endif %}
@@ -30,8 +30,12 @@
 {% if study.status == 'transcript' or study.status == 'feedback' or study.status == 'failed' %}
 <p><a class="button" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?image={{ study.source_image_id }}&amp;from={{ study.pk }}&amp;category={{ info.category|urlencode }}">{% translate "Try again" %}</a> <a class="button secondary" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?skip={{ study.source_image_id }}&amp;category={{ info.category|urlencode }}">{% translate "Another picture" %}</a></p>{% endif %}
 {% if polling %}<p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p><details><summary>{% translate "If progress has stopped" %}</summary><form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="continue" class="secondary">{% translate "Continue pending work" %}</button></form></details>{% endif %}
+{% if study.status == 'feedback' or study.status == 'transcript' %}<p class="help">{% if cost_summary.has_known %}{% if cost_summary.complete %}{% blocktranslate with amount=cost_summary.known_total|floatformat:4 %}Estimated cost so far: US${{ amount }}.{% endblocktranslate %}{% else %}{% blocktranslate with amount=cost_summary.known_total|floatformat:4 %}Known cost so far: US${{ amount }}; some usage is unavailable or pending.{% endblocktranslate %}{% endif %}{% else %}{% translate "Cost so far is unavailable or pending." %}{% endif %}</p>{% endif %}
 <details class="entry-help"><summary>{% translate "Words and practice log" %}</summary>
-<p dir="auto">{{ info.heard|default:info.original_text }}</p>
+<details><summary>{% translate "Cost details" %}</summary>
+<ul>{% for row in cost_summary.items %}<li>{{ row.label }}: {% if row.cost != None %}~US${{ row.cost|floatformat:6 }}{% else %}{% translate "Unavailable or pending" %}{% endif %}</li>{% endfor %}</ul>
+<p class="help">{% translate "Includes recorded recognition, AI review and any generated speech for this attempt. Optional speech generation is extra until requested; replaying saved audio makes no AI call. Costs use returned usage and configured prices; speech generation uses a duration estimate. Unknown usage is not counted as zero." %}</p>
+</details><p dir="auto">{{ info.heard|default:info.original_text }}</p>
 {% if study.status == 'feedback' or study.status == 'failed' %}<details><summary>{% translate "Correct the transcript or edit my words" %}</summary>{% include 'community_dictionary/practice_edit.html' %}</details>{% endif %}
 <form method="post" action="{% url 'community_dictionary:picture-practice-report' dictionary.pk study.pk %}" class="stack">{% csrf_token %}
 <label>{% translate "Feedback on this attempt" %}<select name="problem"><option value="">{% translate "Sharing choice only" %}</option><option value="recognition">{% translate "Recognition mistake" %}</option><option value="feedback">{% translate "Feedback mistake" %}</option><option value="helpful">{% translate "Helpful feedback" %}</option><option value="other">{% translate "Other" %}</option></select></label>

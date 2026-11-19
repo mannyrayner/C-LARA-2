@@ -7888,3 +7888,67 @@ msgstr "Čo som skutočne povedal(a) (voliteľné)"
 
 msgid "Words and practice log"
 msgstr "Slová a záznam precvičovania"
+
+msgid "Speech recognition"
+msgstr "Rozpoznávanie reči"
+
+msgid "AI image review and language feedback"
+msgstr "Analýza obrázka a jazyková spätná väzba AI"
+
+msgid "AI review after confirmation"
+msgstr "Kontrola AI po potvrdení"
+
+msgid "Spoken version generation"
+msgstr "Vytvorenie hovorenej verzie"
+
+msgid "Generate spoken version"
+msgstr "Vytvoriť hovorenú verziu"
+
+msgid "Play the AI-generated spoken version. Replaying is free."
+msgstr ""
+"Prehrajte si hovorenú verziu vytvorenú AI. Opakované prehrávanie je "
+"bezplatné."
+
+msgid "Generating the spoken version…"
+msgstr "Vytváranie hovorenej verzie…"
+
+msgid "Cost so far is unavailable or pending."
+msgstr "Doterajšia cena nie je k dispozícii alebo sa ešte spracúva."
+
+msgid "Cost details"
+msgstr "Podrobnosti o nákladoch"
+
+msgid "Unavailable or pending"
+msgstr "Nedostupné alebo sa spracúva"
+
+msgid "Estimated cost so far: US$%(amount)s."
+msgstr "Doterajšia odhadovaná cena: %(amount)s USD."
+
+msgid ""
+"Known cost so far: US$%(amount)s; some usage is unavailable or pending."
+msgstr ""
+"Doterajšie známe náklady: %(amount)s USD; niektoré údaje o spotrebe nie sú k"
+" dispozícii alebo sa ešte spracúvajú."
+
+msgid ""
+"Includes recorded recognition, AI review and any generated speech for this "
+"attempt. Optional speech generation is extra until requested; replaying "
+"saved audio makes no AI call. Costs use returned usage and configured "
+"prices; speech generation uses a duration estimate. Unknown usage is not "
+"counted as zero."
+msgstr ""
+"Zahŕňa zaznamenané rozpoznávanie, kontrolu AI a vytvorenú reč pre tento "
+"pokus. Voliteľné vytvorenie reči je dodatočný náklad až do jeho vyžiadania; "
+"opakované prehrávanie uloženého zvuku nevolá AI. Náklady vychádzajú z "
+"vrátenej spotreby a nastavených cien; tvorba reči používa odhad trvania. "
+"Neznáma spotreba sa nepočíta ako nulová."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Generating a "
+"spoken version is optional and charged separately. Replaying it is free."
+msgstr ""
+"Približný odhad ceny spätnej väzby: %(amount)s USD. Reč pridáva malý "
+"poplatok za prepis (približne 0,005 USD za 90 sekúnd). Skutočná spotreba sa "
+"môže líšiť. Vytvorenie hovorenej verzie je voliteľné a účtuje sa osobitne. "
+"Opakované prehrávanie je bezplatné."
