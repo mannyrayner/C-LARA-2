@@ -1,0 +1,44 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block title %}{% translate "Describe a picture" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Describe a picture" %} · {{ dictionary.language }}</h1>
+<p><a href="{% url 'community_dictionary:picture-practice' dictionary.pk %}">{% translate "My recent practice" %}</a></p>
+<div class="capture-layout"><img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="{% translate "Picture to describe" %}">
+<section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
+{% if study.status == 'transcript' %}
+<h2>{% translate "Is this what you said?" %}</h2>
+<p>{% translate "Correct the transcript if needed, or try recording again. Feedback will use the words you confirm." %}</p>
+<audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'recording' %}"></audio>
+<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}" class="stack" data-writing-draft>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="mode" value="text">
+{{ form.non_field_errors }}{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}
+<details><summary>{% translate "Feedback and voice options" %}</summary><p>{{ form.feedback_language.label_tag }}{{ form.feedback_language }}{{ form.feedback_language.errors }}</p><p>{{ form.voice.label_tag }}{{ form.voice }}{{ form.voice.errors }}</p></details>
+{% include 'community_dictionary/picture_practice_cost.html' %}{{ form.quote }}{{ form.quote.errors }}
+<label class="check">{{ form.permission }} <span>{{ form.permission.label }}</span></label>{{ form.permission.errors }}
+<button name="action" value="check" {% if setup_error %}disabled{% endif %}>{% translate "Use these words and get feedback" %}</button></form>
+{% elif study.status == 'feedback' %}
+<h2>{% translate "What I understood" %}</h2><p dir="auto">{{ feedback.understood }}</p>
+<details><summary>{% translate "Your original" %}</summary><p dir="auto">{{ info.original_text }}</p></details>
+{% if feedback.outcome == 'clarify' %}<p class="notice" dir="auto">{{ feedback.question }}</p>
+{% else %}<h2>{% translate "Suggested version" %}</h2>
+<p class="meaning" dir="auto">{% for piece in highlighted %}{% if piece.changed %}<mark>{{ piece.text }}</mark>{% else %}{{ piece.text }}{% endif %}{% endfor %}</p>
+{% if feedback.corrections %}<ul>{% for correction in feedback.corrections %}<li><p dir="auto">{{ correction.before }} → <strong>{{ correction.after }}</strong></p><p dir="auto">{{ correction.reason }}</p></li>{% endfor %}</ul>{% else %}<p>{% translate "No correction was needed." %}</p>{% endif %}
+{% if feedback.suggestions %}<details><summary>{% translate "Optional improvements — not applied" %}</summary><ul>{% for suggestion in feedback.suggestions %}<li dir="auto">{{ suggestion }}</li>{% endfor %}</ul></details>{% endif %}
+{% if clip.status == 'ready' %}<audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'feedback' %}"></audio>
+{% elif clip.status == 'waiting' or clip.status == 'running' %}<p role="status">{% translate "Preparing audio…" %}</p>
+{% elif clip %}<p class="notice">{% translate "Audio could not finish. It will not be retried automatically." %}</p>
+{% elif can_listen %}<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
+<p class="help">{% blocktranslate with amount=audio_estimate|floatformat:4 %}Optional audio estimate: US${{ amount }}. Actual usage varies. Replaying saved audio is free.{% endblocktranslate %}</p>
+<button name="action" value="listen" class="secondary">{% translate "Listen to this version" %}</button></form>{% endif %}
+{% endif %}
+{% elif study.status == 'failed' %}<p class="notice">{% translate "This attempt could not finish. Your saved words and recording stay private. No failed AI request is repeated automatically." %}</p><p dir="auto">{{ info.original_text }}</p>
+{% else %}<p role="status">{% if info.stage == 'transcribe' %}{% translate "Checking what you said…" %}{% else %}{% translate "Preparing your feedback…" %}{% endif %}</p>{% endif %}
+{% if study.status == 'transcript' or study.status == 'feedback' or study.status == 'failed' %}
+<p><a class="button" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?image={{ study.source_image_id }}&amp;from={{ study.pk }}&amp;category={{ info.category|urlencode }}">{% translate "Try again" %}</a></p>
+<p><a class="button secondary" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?skip={{ study.source_image_id }}&amp;category={{ info.category|urlencode }}">{% translate "Another picture" %}</a></p>{% endif %}
+{% if polling %}<p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p>
+<details><summary>{% translate "If progress has stopped" %}</summary><form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="continue" class="secondary">{% translate "Continue pending work" %}</button></form><p>{% translate "This starts only work that has not begun. It never repeats an in-flight request." %}</p></details>{% endif %}
+<p class="help">{% translate "Private practice — nothing is added to the dictionary. AI feedback may be mistaken. Speech feedback concerns your confirmed words, not pronunciation." %}</p>
+<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="discard" class="quiet">{% translate "Clear this practice attempt" %}</button></form>
+</section></div><script src="{% static 'community_dictionary/writing.js' %}" defer></script>
+{% endblock %}

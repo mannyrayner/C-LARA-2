@@ -39,6 +39,7 @@ def preference(request, dictionary):
         old = getattr(request, 'session', {}).get(f'writing-{key}', {})
         consent = dict(row.consent) if row else {}
         choices = consent.pop('_guided_choices', {})
+        consent.pop('_picture_practice', None)  # UI preferences are never paid workflow consent.
         cache[key] = {'mode': row.mode if row else 'writing' if old.get('enabled') else
                       'guided' if available(dictionary) else 'manual',
                       'consent': consent, 'choices': choices}
@@ -59,6 +60,9 @@ def mode(request, dictionary):
 def save_preference(request, dictionary, mode, consent=None):
     choices = preference(request, dictionary).get('choices', {})
     consent = dict(consent or {})
+    row = ContributionPreference.objects.filter(user=request.user, dictionary=dictionary).first()
+    if row and row.consent.get('_picture_practice'):
+        consent['_picture_practice'] = row.consent['_picture_practice']
     if choices:
         consent['_guided_choices'] = choices
     ContributionPreference.objects.update_or_create(user=request.user, dictionary=dictionary,

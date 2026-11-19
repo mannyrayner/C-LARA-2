@@ -675,7 +675,7 @@ class PictureCapture(models.Model):
     saved_entry = models.ForeignKey(Entry, null=True, on_delete=models.SET_NULL, related_name='+')
 
     def save(self, *args, **kwargs):
-        if self._state.adding:
+        if self._state.adding and self.input_mode != 'practice':
             from .word_audio import policy
             chosen = policy(self.dictionary)
             if chosen:

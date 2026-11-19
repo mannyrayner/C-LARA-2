@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{% static 'community_dictionary/app.css' %}?v=21">
 <script src="{% url 'community_dictionary:javascript-catalog' %}?language={{ community_ui_language }}" defer></script>
 {% if not public_browsing %}<script src="{% static 'community_dictionary/recorder.js' %}?v=3" defer></script>
-<script src="{% static 'community_dictionary/app.js' %}?v=13" defer></script>{% endif %}
+<script src="{% static 'community_dictionary/app.js' %}?v=14" defer></script>{% endif %}
 <script src="{% static 'community_dictionary/lexicon.js' %}?v=4" defer></script></head>
 <body data-user="{{ request.user.pk }}"><a class="skip" href="#main">{% translate "Skip to content" %}</a>
 <header class="site-header">

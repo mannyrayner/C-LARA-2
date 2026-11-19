@@ -7711,3 +7711,180 @@ msgid ""
 msgstr ""
 "Le texte final doit être identique à celui utilisé pour créer cette image. "
 "Créez un nouvel aperçu pour le modifier."
+
+msgid "Another picture"
+msgstr "Une autre image"
+
+msgid "Check what I said"
+msgstr "Vérifier ce que j’ai dit"
+
+msgid "Checking what you said…"
+msgstr "Transcription de vos paroles…"
+
+msgid "Clear this practice attempt"
+msgstr "Effacer cet essai"
+
+msgid ""
+"Correct the transcript if needed, or try recording again. Feedback will use "
+"the words you confirm."
+msgstr ""
+"Corrigez la transcription si nécessaire, ou enregistrez un nouvel essai. Les"
+" commentaires porteront sur les mots que vous confirmez."
+
+msgid "Get feedback"
+msgstr "Obtenir des commentaires"
+
+msgid ""
+"I agree to send this picture and my text or recording to OpenAI and pay the "
+"estimated cost."
+msgstr ""
+"J’accepte d’envoyer cette image et mon texte ou enregistrement à OpenAI et "
+"de payer le coût estimé."
+
+msgid "Is this what you said?"
+msgstr "Est-ce bien ce que vous avez dit ?"
+
+msgid "Listen to this version"
+msgstr "Écouter cette version"
+
+msgid "My recent practice"
+msgstr "Mes essais récents"
+
+msgid ""
+"No accepted pictures are available. Add a picture or choose another "
+"category."
+msgstr ""
+"Aucune image acceptée n’est disponible. Ajoutez une image ou choisissez une "
+"autre catégorie."
+
+msgid "No example is available for this picture."
+msgstr "Aucun exemple n’est disponible pour cette image."
+
+msgid "No practice attempts yet."
+msgstr "Aucun essai pour le moment."
+
+msgid "Preparing your feedback…"
+msgstr "Préparation des commentaires…"
+
+msgid ""
+"Say or write a few words. You can describe what you see, imagine a story, or"
+" invent some dialogue."
+msgstr ""
+"Dites ou écrivez quelques mots. Vous pouvez décrire ce que vous voyez, "
+"imaginer une histoire ou inventer un dialogue."
+
+msgid "Show an example"
+msgstr "Voir un exemple"
+
+msgid "Use these words and get feedback"
+msgstr "Confirmer ces mots et obtenir des commentaires"
+
+msgid "What I understood"
+msgstr "Ce que j’ai compris"
+
+msgid "Audio could not finish. It will not be retried automatically."
+msgstr ""
+"La création audio n’a pas abouti. Elle ne sera pas relancée automatiquement."
+
+msgid ""
+"This attempt could not finish. Your saved words and recording stay private. "
+"No failed AI request is repeated automatically."
+msgstr ""
+"Cet essai n’a pas abouti. Vos mots et votre enregistrement restent privés. "
+"Aucune requête d’IA ayant échoué n’est relancée automatiquement."
+
+msgid ""
+"Private practice — nothing is added to the dictionary. AI feedback may be "
+"mistaken. Speech feedback concerns your confirmed words, not pronunciation."
+msgstr ""
+"Exercice privé : rien n’est ajouté au dictionnaire. Les commentaires de l’IA"
+" peuvent être erronés. Ils portent sur vos mots confirmés, pas sur la "
+"prononciation."
+
+msgid ""
+"Attempts stay private for 30 days unless you clear them. Nothing is added to"
+" the dictionary. AI feedback may be mistaken; speech feedback concerns your "
+"confirmed words, not pronunciation."
+msgstr ""
+"Les essais restent privés pendant 30 jours, sauf si vous les effacez avant. "
+"Rien n’est ajouté au dictionnaire. Les commentaires de l’IA peuvent être "
+"erronés ; ils portent sur vos mots confirmés, pas sur la prononciation."
+
+msgid ""
+"Speak or type a few words about a picture, then get private AI feedback."
+msgstr ""
+"Dites ou écrivez quelques mots sur une image, puis recevez des commentaires "
+"privés de l’IA."
+
+msgid ""
+"AI charges are shown before you start. Nothing is added to the dictionary."
+msgstr ""
+"Le coût de l’IA est indiqué avant de commencer. Rien n’est ajouté au "
+"dictionnaire."
+
+msgid "Use %(language)s. A few words are enough."
+msgstr "Utilisez le %(language)s. Quelques mots suffisent."
+
+msgid ""
+"Optional audio estimate: US$%(amount)s. Actual usage varies. Replaying saved"
+" audio is free."
+msgstr ""
+"Estimation audio facultative : %(amount)s $US. Le coût réel varie. Réécouter"
+" un enregistrement est gratuit."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Listening is "
+"optional and charged separately."
+msgstr ""
+"Coût estimé des commentaires : %(amount)s $US. La parole ajoute un petit "
+"coût de transcription (environ 0,005 $US pour 90 secondes). Le coût réel "
+"varie. L’écoute est facultative et facturée séparément."
+
+msgid "Choose an available picture."
+msgstr "Choisissez une image disponible."
+
+msgid "Practice settings changed. Reload this page."
+msgstr "Les réglages de l’exercice ont changé. Rechargez cette page."
+
+msgid "Read the feedback first."
+msgstr "Lisez d’abord les commentaires."
+
+msgid "Reload this page to confirm the current estimate."
+msgstr "Rechargez cette page pour confirmer l’estimation actuelle."
+
+msgid "This transcript has already been submitted."
+msgstr "Cette transcription a déjà été envoyée."
+
+msgid ""
+"The owner needs to enable Picture descriptions for a supported language."
+msgstr ""
+"Le propriétaire doit activer les descriptions d’images pour une langue prise"
+" en charge."
+
+msgid "Private practice — nothing is added to the dictionary."
+msgstr "Exercice privé : rien n’est ajouté au dictionnaire."
+
+msgid "Saving your private practice… waiting for confirmation."
+msgstr "Enregistrement de votre exercice privé… en attente de confirmation."
+
+msgid "Practice saved privately."
+msgstr "Exercice enregistré en privé."
+
+msgid "Preparing a private recovery draft…"
+msgstr "Préparation d’une copie privée de récupération…"
+
+msgid "Your practice draft is stored on this device. Submit when ready."
+msgstr ""
+"Votre brouillon est conservé sur cet appareil. Envoyez-le lorsque vous êtes "
+"prêt."
+
+msgid ""
+"Practice draft restored. Confirm the current estimate before submitting."
+msgstr ""
+"Brouillon restauré. Confirmez l’estimation actuelle avant de l’envoyer."
+
+msgid "Your practice has not been submitted. Leaving can discard your draft."
+msgstr ""
+"Votre exercice n’a pas été envoyé. Quitter la page peut entraîner la perte "
+"du brouillon."

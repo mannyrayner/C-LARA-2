@@ -36,21 +36,22 @@ and leave text equal to the original. Otherwise outcome=ready and question="".
 Do not translate, extract vocabulary, grade the learner, or claim expert verification.'''
 
 
-def review(photo, *, text, language, feedback_language, model, api_key):
+def review(photo, *, text, language, feedback_language, model, api_key,
+           instructions=INSTRUCTIONS, schema=SCHEMA):
     with Image.open(io.BytesIO(photo)) as image:
         image = image.convert('RGB')
         image.thumbnail((1024, 1024))
         output = io.BytesIO()
         image.save(output, 'JPEG', quality=85)
     with _openai_client(api_key=api_key, timeout=45, max_retries=0) as client:
-        return client.responses.create(model=model, instructions=INSTRUCTIONS,
+        return client.responses.create(model=model, instructions=instructions,
             input=[{'role': 'user', 'content': [
                 {'type': 'input_text', 'text': json.dumps({'text': text,
                     'target_language': language, 'feedback_language': feedback_language}, ensure_ascii=False)},
                 {'type': 'input_image', 'detail': 'auto', 'image_url':
                     'data:image/jpeg;base64,' + base64.b64encode(output.getvalue()).decode('ascii')}]}],
             text={'format': {'type': 'json_schema', 'name': 'writing_feedback',
-                             'strict': True, 'schema': SCHEMA}},
+                             'strict': True, 'schema': schema}},
             reasoning={'effort': 'low'}, max_output_tokens=2600, store=False)
 
 
