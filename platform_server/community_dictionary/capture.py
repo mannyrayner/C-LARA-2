@@ -38,6 +38,9 @@ def available_images(user, dictionary):
 
 
 def allowed(study, *, payment=False):
+    if study.input_mode == 'practice':
+        from .picture_practice import permitted
+        return permitted(study, payment=payment)
     dictionary=get_dictionary(study.user,study.dictionary_id)
     revision=Participation.objects.filter(user=study.user,dictionary=dictionary).values_list('revision',flat=True).first() or 0
     if (not dictionary.sentence_capture_enabled or not dictionary.tts_enabled or
@@ -115,7 +118,7 @@ def account(study_id, stage, response, *, transcription=False):
 def prepare(study_id):
     with transaction.atomic():
         locks(); study=fetch(study_id,True)
-        if study.input_mode in {'refresh', 'improve'}:
+        if study.input_mode in {'refresh', 'improve', 'practice'}:
             return  # Fixed sentences use the vocabulary-only processor.
         if study.status != ('approved' if study.input_mode in {'writing', 'guided'} else 'waiting'):
             return
@@ -194,7 +197,7 @@ def publish(study_id, user, *, vocabulary=None):
     try:
         with transaction.atomic():
             locks(); study=fetch(study_id,True)
-            if study.input_mode in {'refresh', 'improve'}:
+            if study.input_mode in {'refresh', 'improve', 'practice'}:
                 raise Conflict('Use the sentence update workflow for this attempt.')
             if study.user_id!=user.pk: raise Http404
             allowed(study)
@@ -272,6 +275,12 @@ def publish(study_id, user, *, vocabulary=None):
 
 def speech_allowed(clip, *, payment=False):
     key=allowed(clip.capture,payment=payment)
+    if clip.capture.input_mode == 'practice':
+        if not clip.capture.dictionary.tts_enabled or not tts.language_code(clip.language):
+            raise Conflict('Saved audio is unavailable for this language.')
+        if (clip.kind != 'feedback' or clip.entry_id or clip.capture.status != 'feedback' or
+                clip.text != clip.capture.result.get('practice', {}).get('feedback', {}).get('text')):
+            raise Conflict('Open the current practice feedback before listening.')
     if clip.kind == 'form':
         from .sentence_forms import current
         part = Contribution.objects.filter(pk=clip.text_id, entry_id=clip.entry_id, kind='form').select_related('entry__dictionary').first()

@@ -41,6 +41,8 @@ def start(request,pk,image_id=None):
     previous=None
     if request.GET.get('revise'):
         previous=own(request,pk,request.GET['revise'])
+        if previous.input_mode == 'practice':
+            return redirect('community_dictionary:picture-practice-detail', pk=pk, study_id=previous.pk)
         if previous.input_mode in {'writing', 'guided'}:
             return redirect(f'community_dictionary:{previous.input_mode}-detail', pk=pk, study_id=previous.pk)
         capture.allowed(previous)
@@ -131,6 +133,8 @@ def start(request,pk,image_id=None):
 @login_required
 def detail(request,pk,study_id,vocabulary=None):
     study=own(request,pk,study_id)
+    if study.input_mode == 'practice':
+        return redirect('community_dictionary:picture-practice-detail', pk=pk, study_id=study.pk)
     if study.input_mode in {'writing', 'guided'}:
         return redirect(f'community_dictionary:{study.input_mode}-detail', pk=pk, study_id=study.pk)
     try: capture.allowed(study)
@@ -171,6 +175,8 @@ def detail(request,pk,study_id,vocabulary=None):
 @require_POST
 def action(request,pk,study_id):
     study=own(request,pk,study_id)
+    if study.input_mode == 'practice':
+        return fail(request, gettext('Open the private practice page.'), 409)
     if study.input_mode in {'writing', 'guided'}:
         return fail(request, gettext('Open this draft in its personal contribution page.'), 409)
     try:
@@ -212,7 +218,7 @@ def media(request,pk,study_id,kind):
     try: capture.allowed(study)
     except Conflict: raise Http404
     if kind=='picture': relative,mime=study.file_path,'image/jpeg'
-    elif kind=='recording' and study.input_mode == 'guided' and study.result.get('guided', {}).get('words'):
+    elif kind=='recording' and (study.input_mode == 'practice' or (study.input_mode == 'guided' and study.result.get('guided', {}).get('words'))):
         import mimetypes
         relative = study.recording_path
         mime = mimetypes.guess_type(relative)[0] or 'application/octet-stream'

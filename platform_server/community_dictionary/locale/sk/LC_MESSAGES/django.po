@@ -7601,3 +7601,173 @@ msgid ""
 msgstr ""
 "Konečný text sa musí zhodovať s textom použitým na vytvorenie obrázka. Ak ho"
 " chcete zmeniť, vytvorte nový náhľad."
+
+msgid "Another picture"
+msgstr "Ďalší obrázok"
+
+msgid "Check what I said"
+msgstr "Skontrolovať, čo som povedal(a)"
+
+msgid "Checking what you said…"
+msgstr "Rozpoznávanie vašich slov…"
+
+msgid "Clear this practice attempt"
+msgstr "Vymazať tento pokus"
+
+msgid ""
+"Correct the transcript if needed, or try recording again. Feedback will use "
+"the words you confirm."
+msgstr ""
+"V prípade potreby opravte prepis alebo sa nahrajte znova. Spätná väzba bude "
+"vychádzať zo slov, ktoré potvrdíte."
+
+msgid "Get feedback"
+msgstr "Získať spätnú väzbu"
+
+msgid ""
+"I agree to send this picture and my text or recording to OpenAI and pay the "
+"estimated cost."
+msgstr ""
+"Súhlasím s odoslaním tohto obrázka a môjho textu alebo nahrávky spoločnosti "
+"OpenAI a s úhradou odhadovaných nákladov."
+
+msgid "Is this what you said?"
+msgstr "Je toto to, čo ste povedali?"
+
+msgid "Listen to this version"
+msgstr "Vypočuť si túto verziu"
+
+msgid "My recent practice"
+msgstr "Moje nedávne precvičovanie"
+
+msgid ""
+"No accepted pictures are available. Add a picture or choose another "
+"category."
+msgstr ""
+"Nie sú k dispozícii žiadne schválené obrázky. Pridajte obrázok alebo vyberte"
+" inú kategóriu."
+
+msgid "No example is available for this picture."
+msgstr "Pre tento obrázok nie je k dispozícii príklad."
+
+msgid "No practice attempts yet."
+msgstr "Zatiaľ nemáte žiadne pokusy."
+
+msgid "Preparing your feedback…"
+msgstr "Príprava spätnej väzby…"
+
+msgid ""
+"Say or write a few words. You can describe what you see, imagine a story, or"
+" invent some dialogue."
+msgstr ""
+"Povedzte alebo napíšte pár slov. Môžete opísať, čo vidíte, vymyslieť príbeh "
+"alebo dialóg."
+
+msgid "Show an example"
+msgstr "Zobraziť príklad"
+
+msgid "Use these words and get feedback"
+msgstr "Potvrdiť tieto slová a získať spätnú väzbu"
+
+msgid "What I understood"
+msgstr "Čo som pochopil"
+
+msgid "Audio could not finish. It will not be retried automatically."
+msgstr "Zvuk sa nepodarilo dokončiť. Pokus sa nebude automaticky opakovať."
+
+msgid ""
+"This attempt could not finish. Your saved words and recording stay private. "
+"No failed AI request is repeated automatically."
+msgstr ""
+"Tento pokus sa nepodarilo dokončiť. Uložené slová a nahrávka zostávajú "
+"súkromné. Neúspešná požiadavka AI sa automaticky neopakuje."
+
+msgid ""
+"Private practice — nothing is added to the dictionary. AI feedback may be "
+"mistaken. Speech feedback concerns your confirmed words, not pronunciation."
+msgstr ""
+"Súkromné precvičovanie — do slovníka sa nič nepridáva. Spätná väzba AI môže "
+"byť chybná. Týka sa potvrdených slov, nie výslovnosti."
+
+msgid ""
+"Attempts stay private for 30 days unless you clear them. Nothing is added to"
+" the dictionary. AI feedback may be mistaken; speech feedback concerns your "
+"confirmed words, not pronunciation."
+msgstr ""
+"Pokusy zostávajú súkromné 30 dní, pokiaľ ich nevymažete skôr. Do slovníka sa"
+" nič nepridáva. Spätná väzba AI môže byť chybná; týka sa potvrdených slov, "
+"nie výslovnosti."
+
+msgid ""
+"Speak or type a few words about a picture, then get private AI feedback."
+msgstr ""
+"Povedzte alebo napíšte pár slov o obrázku a získajte súkromnú spätnú väzbu "
+"AI."
+
+msgid ""
+"AI charges are shown before you start. Nothing is added to the dictionary."
+msgstr ""
+"Náklady na AI sa zobrazia pred začiatkom. Do slovníka sa nič nepridáva."
+
+msgid "Use %(language)s. A few words are enough."
+msgstr "Použite jazyk %(language)s. Stačí pár slov."
+
+msgid ""
+"Optional audio estimate: US$%(amount)s. Actual usage varies. Replaying saved"
+" audio is free."
+msgstr ""
+"Odhad ceny voliteľného zvuku: %(amount)s USD. Skutočná spotreba sa môže "
+"líšiť. Opakované počúvanie uloženého zvuku je bezplatné."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Listening is "
+"optional and charged separately."
+msgstr ""
+"Približný odhad ceny spätnej väzby: %(amount)s USD. Reč pridáva malý "
+"poplatok za prepis (približne 0,005 USD za 90 sekúnd). Skutočná spotreba sa "
+"môže líšiť. Počúvanie je voliteľné a účtuje sa osobitne."
+
+msgid "Choose an available picture."
+msgstr "Vyberte dostupný obrázok."
+
+msgid "Practice settings changed. Reload this page."
+msgstr "Nastavenia precvičovania sa zmenili. Obnovte túto stránku."
+
+msgid "Read the feedback first."
+msgstr "Najprv si prečítajte spätnú väzbu."
+
+msgid "Reload this page to confirm the current estimate."
+msgstr "Obnovte túto stránku a potvrďte aktuálny odhad."
+
+msgid "This transcript has already been submitted."
+msgstr "Tento prepis už bol odoslaný."
+
+msgid ""
+"The owner needs to enable Picture descriptions for a supported language."
+msgstr "Vlastník musí povoliť opisy obrázkov pre podporovaný jazyk."
+
+msgid "Private practice — nothing is added to the dictionary."
+msgstr "Súkromné precvičovanie — do slovníka sa nič nepridáva."
+
+msgid "Saving your private practice… waiting for confirmation."
+msgstr "Ukladanie vášho súkromného precvičovania… čaká sa na potvrdenie."
+
+msgid "Practice saved privately."
+msgstr "Precvičovanie bolo súkromne uložené."
+
+msgid "Preparing a private recovery draft…"
+msgstr "Príprava súkromného konceptu na obnovenie…"
+
+msgid "Your practice draft is stored on this device. Submit when ready."
+msgstr ""
+"Koncept precvičovania je uložený v tomto zariadení. Odošlite ho, keď budete "
+"pripravení."
+
+msgid ""
+"Practice draft restored. Confirm the current estimate before submitting."
+msgstr "Koncept bol obnovený. Pred odoslaním potvrďte aktuálny odhad."
+
+msgid "Your practice has not been submitted. Leaving can discard your draft."
+msgstr ""
+"Vaše precvičovanie nebolo odoslané. Pri odchode môžete stratiť koncept."
