@@ -82,14 +82,14 @@
       writes = write.catch(() => {});
       try {
         await write;
-        if (!sending && !leaving && version === revision) status(gettext(privatePractice ? 'Your practice draft is stored on this device. Submit when ready.' : 'Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.'));
+        if (!sending && !leaving && version === revision) status((privatePractice ? gettext('Your practice draft is stored on this device. Submit when ready.') : gettext('Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.')));
       } catch (_) {
         if (!sending && !leaving) status(gettext('Not saved. Draft recovery is unavailable on this device. Keep this page open and choose Save.'));
       }
     }
     function changed() {
       dirty = true; revision += 1;
-      if (!sending) status(gettext(privatePractice ? 'Preparing a private recovery draft…' : 'Not saved to the dictionary. Preparing a recovery draft…'));
+      if (!sending) status((privatePractice ? gettext('Preparing a private recovery draft…') : gettext('Not saved to the dictionary. Preparing a recovery draft…')));
       clearTimeout(timer);
       timer = setTimeout(persist, 250);
     }
@@ -174,7 +174,7 @@
         Object.assign(files, existing.files);
         preview('photo'); preview('audio');
         dirty = true;
-        status(gettext(privatePractice ? 'Practice draft restored. Confirm the current estimate before submitting.' : 'Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.'));
+        status((privatePractice ? gettext('Practice draft restored. Confirm the current estimate before submitting.') : gettext('Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.')));
       }
     } catch (_) { status(gettext('Draft recovery is unavailable on this device. Keep this page open until you save.')); }
     ready = true;
@@ -216,7 +216,7 @@
       const controls = Array.from(form.elements).map(el => [el, el.disabled]);
       controls.forEach(([el]) => { el.disabled = true; });
       sending = true; dirty = true; clearTimeout(timer);
-      status(gettext(privatePractice ? 'Saving your private practice… waiting for confirmation.' : 'Saving to the dictionary… waiting for confirmation.'));
+      status((privatePractice ? gettext('Saving your private practice… waiting for confirmation.') : gettext('Saving to the dictionary… waiting for confirmation.')));
       const controller = new AbortController();
       let timeout;
       try {
@@ -246,7 +246,7 @@
         if (!response.ok || !result.saved) throw new Error(result.error || gettext('The server could not save this yet.'));
         try { await draftOperation(key, 'delete'); } catch (_) { /* Replaying the retained token is safe. */ }
         dirty = false; sending = false; confirmed = true; leaving = true;
-        status(gettext(privatePractice ? 'Practice saved privately.' : 'Saved to the dictionary.'));
+        status((privatePractice ? gettext('Practice saved privately.') : gettext('Saved to the dictionary.')));
         if (afterSave) afterSave();
         else location.assign(result.url);
       } catch (exc) {
@@ -267,7 +267,7 @@
       if (recorder?.busy) { tellError(gettext('Finish recording or stop the microphone check before leaving.')); return; }
       if (dialog.open) return;
       const save = form.querySelector('[data-save-submit]') || form.querySelector('button:not([type]), button[type=submit]');
-      dialog.querySelector('#leave-description').textContent = gettext(privatePractice ? 'Your practice has not been submitted. Leaving can discard your draft.' : 'Your changes have not been saved to the dictionary.');
+      dialog.querySelector('#leave-description').textContent = (privatePractice ? gettext('Your practice has not been submitted. Leaving can discard your draft.') : gettext('Your changes have not been saved to the dictionary.'));
       dialog.querySelector('[data-leave-permission]').hidden = save?.name !== 'consent';
       dialog.querySelector('[data-leave-stay]').onclick = () => dialog.close();
       dialog.querySelector('[data-leave-save]').onclick = () => {

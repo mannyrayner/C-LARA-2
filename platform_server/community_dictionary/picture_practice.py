@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 VERSION = 'picture-practice-1'
 SCHEMA = {**writing_ai.SCHEMA, 'properties': {**writing_ai.SCHEMA['properties'],
     'understood': writing_ai.string(600)}, 'required': [*writing_ai.SCHEMA['required'], 'understood']}
-INSTRUCTIONS = writing_ai.INSTRUCTIONS + '''
+INSTRUCTIONS = writing_ai.INSTRUCTIONS.replace('The learner writes', 'The learner practises').replace(
+    'to try writing in target_language', 'to try again in target_language') + '''
 This is speaking or writing practice, not a caption-matching test. A few words, an
 interpretation, an imagined situation or dialogue are all valid. Never require the
 stored dictionary description (which you have not been given), or invent a visual
