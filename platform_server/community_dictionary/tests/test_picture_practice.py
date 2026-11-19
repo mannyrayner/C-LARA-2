@@ -21,8 +21,8 @@ ORIGINAL = 'Il gatto sono felice.'
 CORRECTED = 'Il gatto è felice.'
 FEEDBACK = {'outcome': 'ready', 'text': CORRECTED, 'question': '',
     'understood': 'You are saying the cat is happy.',
-    'corrections': [{'before': 'sono', 'after': 'è', 'reason': 'Use the singular verb with il gatto.'}],
-    'suggestions': []}
+    'corrections': [{'before': 'sono', 'after': 'è', 'reason': 'Use the singular verb with il gatto.', 'kind': 'grammar'}],
+    'suggestions': [], 'heard': ORIGINAL, 'recognition_question': '', 'suspect_words': []}
 
 
 @override_settings(OPENAI_API_KEY='test-only', CREDITS_ENABLED=False,
@@ -89,29 +89,32 @@ class PicturePracticeTests(TestCase):
         self.assertEqual(capture_limits.usage(self.d)['used'], 1)
         self.assertEqual(self.review.call_args.kwargs['text'], ORIGINAL)
         self.assertEqual(self.review.call_args.kwargs['schema'], practice.SCHEMA)
-        self.assertIn('imagining', self.review.call_args.kwargs['instructions'])
+        self.assertIn('imagined', self.review.call_args.kwargs['instructions'])
         page = self.client.get(self.url('picture-practice-detail', study.pk))
         self.assertContains(page, FEEDBACK['understood'])
         self.assertContains(page, 'Try again')
-        self.assertContains(page, 'Listen to this version')
+        self.assertContains(page, 'Listen')
         self.assertContains(page, 'not pronunciation')
         for _ in range(2): practice.run(study.pk)
         self.assertEqual(self.review.call_count, 1)
 
     def test_speech_pauses_at_confirmable_transcript_and_allows_editing(self):
         study = self.attempt('voice')
+        self.review.return_value = fixtures.response({**FEEDBACK, 'text': ORIGINAL, 'outcome': 'clarify',
+            'question': 'Did I hear gatto?', 'recognition_question': 'Did I hear gatto?',
+            'suspect_words': ['gatto'], 'corrections': []})
         practice.run(study.pk); practice.run(study.pk)
         study.refresh_from_db()
         self.assertEqual(study.status, 'transcript')
-        self.review.assert_not_called()
+        self.assertEqual(self.review.call_count, 1)
         self.assertEqual(self.asr.call_count, 1)
         page = self.client.get(self.url('picture-practice-detail', study.pk))
-        self.assertContains(page, 'Is this what you said?')
+        self.assertContains(page, 'Let me check what I heard')
         self.assertEqual(self.client.get(self.url('capture-media', study.pk, 'recording')).status_code, 200)
         data = dict(mode='text', description='Il gatto è felice.', feedback_language='Italian', voice='marin',
             permission='on', quote=signing.dumps(practice.quote(self.user, self.d), salt=SALT), submission_id=str(uuid.uuid4()))
         for _ in range(2): self.assertEqual(self.act(study, 'check', **data).status_code, 302)
-        self.review.return_value = fixtures.response({**FEEDBACK, 'text': data['description'], 'corrections': []})
+        self.review.return_value = fixtures.response({**FEEDBACK, 'text': data['description'], 'heard': data['description'], 'corrections': []})
         practice.run(study.pk)
         study.refresh_from_db()
         self.assertEqual(study.status, 'feedback')
@@ -224,7 +227,7 @@ class PicturePracticeTests(TestCase):
     def test_text_feedback_does_not_require_audio_configuration(self):
         self.d.tts_enabled = False; self.d.save()
         study = self.feedback()
-        self.assertNotContains(self.client.get(self.url('picture-practice-detail', study.pk)), 'Listen to this version')
+        self.assertNotContains(self.client.get(self.url('picture-practice-detail', study.pk)), 'value="listen"')
         self.assertEqual(self.act(study, 'listen', permission='yes').status_code, 409)
 
     def test_picture_selection_excludes_pending_style_archived_and_uses_category(self):
@@ -241,7 +244,11 @@ class PicturePracticeTests(TestCase):
             self.skipTest('Optional jsdom is unavailable')
         page = self.client.get(self.url('picture-practice')+f'?image={self.photo.pk}')
         root = Path(__file__).resolve().parent.parent
-        payload = {'html': page.content.decode(), 'app': (root/'static/community_dictionary/app.js').read_text(),
+        self.attempt()
+        consented = self.client.get(self.url('picture-practice')+f'?image={self.photo.pk}')
+        payload = {'html': page.content.decode(), 'consented': consented.content.decode(),
+            'app': (root/'static/community_dictionary/app.js').read_text(),
+            'recorder': (root/'static/community_dictionary/recorder.js').read_text(),
             'controller': (root/'static/community_dictionary/picture_practice.js').read_text()}
         result = subprocess.run([node, str(Path(__file__).with_name('picture_practice_browser.cjs'))],
             input=json.dumps(payload), text=True, capture_output=True, timeout=20)
@@ -250,7 +257,7 @@ class PicturePracticeTests(TestCase):
 
 class PracticeFeedbackValidationTests(TestCase):
     def test_schema_requires_understanding_and_explained_changes(self):
-        self.assertEqual(practice.parse(fixtures.response(FEEDBACK), ORIGINAL), FEEDBACK)
+        self.assertEqual(practice.parse(fixtures.response(FEEDBACK), ORIGINAL)['feedback']['text'], CORRECTED)
         for bad in [{**FEEDBACK, 'understood': ''}, {**FEEDBACK, 'corrections': []},
                     {**FEEDBACK, 'extra': 'x'}, {**FEEDBACK, 'text': 'a'*256}]:
             with self.subTest(bad=bad), self.assertRaises(ValueError):

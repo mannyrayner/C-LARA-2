@@ -2,8 +2,8 @@
 const assert = require('node:assert/strict');
 const {JSDOM} = require('jsdom');
 const payload = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
-async function check(restored, mode) {
-  const dom = new JSDOM(payload.html, {url: 'https://example.test/practise/describe/?image=1', runScripts: 'outside-only'});
+async function check(restored, mode, consented=false) {
+  const dom = new JSDOM(consented ? payload.consented : payload.html, {url: 'https://example.test/practise/describe/?image=1', runScripts: 'outside-only'});
   const w = dom.window, d = w.document, posts = [];
   w.URL.createObjectURL = () => 'blob:test';
   w.URL.revokeObjectURL = () => {};
@@ -31,9 +31,9 @@ async function check(restored, mode) {
     const form = d.querySelector('[data-picture-practice]');
     const quote = form.elements.quote.value, image = form.elements.image.value;
     const ready = new Promise(resolve => form.addEventListener('community-draft-ready', resolve, {once:true}));
-    w.eval(payload.app); w.eval(payload.controller); await ready;
+    w.eval(payload.recorder); w.eval(payload.app); w.eval(payload.controller); await ready;
     if (restored) {
-      assert.equal(form.elements.permission.checked, false);
+      if (!consented) assert.equal(form.elements.permission.checked, false);
       assert.equal(form.elements.quote.value, quote);
       assert.equal(form.elements.image.value, image);
       assert.equal(form.elements.mode.value, mode);
@@ -43,7 +43,10 @@ async function check(restored, mode) {
     form.dispatchEvent(new w.Event('change', {bubbles:true}));
     assert.equal(form.querySelector('[data-practice-type]').disabled, mode === 'voice');
     assert.equal(form.querySelector('[data-practice-speak]').disabled, mode === 'text');
-    form.elements.permission.checked = true;
+    if (!consented) form.elements.permission.checked = true;
+    else assert.equal(form.elements.permission, undefined);
+    assert.equal(form.querySelector('input[name=audio]').closest('details').open, false);
+    assert.equal(form.querySelector('[name=level]').closest('details').open, false);
     assert.equal(form.checkValidity(), true);
     form.querySelector('[data-save-submit]').click();
     for (let i=0; i<100 && !posts.length; i++) await new Promise(resolve => setTimeout(resolve, 5));
@@ -59,5 +62,7 @@ async function check(restored, mode) {
   await check(false, 'text');
   await check(true, 'text');
   await check(true, 'voice');
+  await check(true, 'voice', true);
+  await check(true, 'text', true);
   console.log('Picture practice real-button submit passed: typed, recovered typed and recovered audio.');
 })().catch(error => {console.error(error); process.exitCode=1;});

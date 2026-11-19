@@ -7888,3 +7888,123 @@ msgid "Your practice has not been submitted. Leaving can discard your draft."
 msgstr ""
 "Votre exercice n’a pas été envoyé. Quitter la page peut entraîner la perte "
 "du brouillon."
+
+msgid "Audio options"
+msgstr "Options audio"
+
+msgid "Checking what was heard and preparing feedback…"
+msgstr "Vérification des paroles et préparation des commentaires…"
+
+msgid "Choose the kind of feedback."
+msgstr "Choisissez le type de retour."
+
+msgid "Confirm permission for this practice session."
+msgstr "Confirmez votre accord pour cette séance de pratique."
+
+msgid "Correct the transcript or edit my words"
+msgstr "Corriger la transcription ou modifier mes mots"
+
+msgid ""
+"Diagnostic logs stay private for 30 days unless you share or clear them."
+msgstr ""
+"Les journaux de diagnostic restent privés pendant 30 jours, sauf si vous les"
+" partagez ou les effacez."
+
+msgid ""
+"Did I hear this correctly? Please check the words before I give feedback."
+msgstr ""
+"Ai-je bien compris ? Vérifiez les mots avant que je vous donne des "
+"commentaires."
+
+msgid "Download my practice log"
+msgstr "Télécharger mon journal de pratique"
+
+msgid "End practice session"
+msgstr "Terminer la séance"
+
+msgid "Feedback mistake"
+msgstr "Erreur dans les commentaires"
+
+msgid "Feedback on this attempt"
+msgstr "Votre avis sur cet essai"
+
+msgid "Helpful feedback"
+msgstr "Commentaires utiles"
+
+msgid ""
+"I agree to this session’s AI practice requests and estimated charges. My "
+"attempts and diagnostic logs stay private unless I share them."
+msgstr ""
+"J’accepte les requêtes d’IA de cette séance et les coûts estimés. Mes essais"
+" et journaux de diagnostic restent privés, sauf si je les partage."
+
+msgid "Keep the report short."
+msgstr "Gardez le signalement court."
+
+msgid "Let me check what I heard"
+msgstr "Vérifions ce que j’ai entendu"
+
+msgid "More feedback"
+msgstr "Plus de commentaires"
+
+msgid "My proficiency"
+msgstr "Mon niveau"
+
+msgid "Not specified"
+msgstr "Non précisé"
+
+msgid "Note (optional)"
+msgstr "Remarque (facultative)"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Practice history and logs"
+msgstr "Historique et journaux de pratique"
+
+msgid "Preparing audio…"
+msgstr "Préparation audio…"
+
+msgid "Recognising your words…"
+msgstr "Reconnaissance de vos paroles…"
+
+msgid "Recognition mistake"
+msgstr "Erreur de reconnaissance"
+
+msgid "Save report and sharing choice"
+msgstr "Enregistrer l’avis et le choix de partage"
+
+msgid ""
+"Share this attempt’s diagnostic log with dictionary owners for improving "
+"feedback."
+msgstr ""
+"Partager le journal de diagnostic de cet essai avec les propriétaires du "
+"dictionnaire pour améliorer les commentaires."
+
+msgid "Share this diagnostic log with dictionary owners"
+msgstr ""
+"Partager ce journal de diagnostic avec les propriétaires du dictionnaire"
+
+msgid "Sharing choice only"
+msgstr "Choix de partage uniquement"
+
+msgid "Saved audio is unavailable for this language."
+msgstr "L’audio enregistré n’est pas disponible pour cette langue."
+
+msgid "The AI settings changed. Reload this page."
+msgstr "Les réglages de l’IA ont changé. Rechargez cette page."
+
+msgid "Uses your personal OpenAI key."
+msgstr "Utilise votre clé OpenAI personnelle."
+
+msgid "View shared practice logs"
+msgstr "Voir les journaux de pratique partagés"
+
+msgid "Wait for the current attempt to finish."
+msgstr "Attendez la fin de l’essai en cours."
+
+msgid "What I actually said (optional)"
+msgstr "Ce que j’ai réellement dit (facultatif)"
+
+msgid "Words and practice log"
+msgstr "Mots et journal de pratique"

@@ -6,14 +6,14 @@
   const gettext = window.gettext || (s => s);
   function update() {
     const voice = form.elements.mode.value === 'voice';
-    ['type', 'speak'].forEach(kind => {
+    ['type', 'speak', 'audio-options'].forEach(kind => {
       const panel = form.querySelector(`[data-practice-${kind}]`);
-      const show = kind === 'speak' ? voice : !voice;
+      const show = kind !== 'type' ? voice : !voice;
       panel.hidden = !show;
       panel.disabled = !show;
     });
     const button = form.querySelector('[data-save-submit]');
-    button.textContent = voice ? gettext('Check what I said') : gettext('Get feedback');
+    button.textContent = gettext('Get feedback');
   }
   form.addEventListener('change', update);
   form.addEventListener('community-draft-ready', update);

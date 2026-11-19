@@ -1,0 +1,8 @@
+{% load i18n %}
+<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}" class="stack" data-writing-draft>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="mode" value="text">
+{{ form.non_field_errors }}{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}
+{% include 'community_dictionary/practice_permission.html' %}
+<button name="action" value="{% if study.status == 'transcript' %}check{% else %}revise{% endif %}" {% if setup_error %}disabled{% endif %}>{% translate "Use these words and get feedback" %}</button>
+<details><summary>{% translate "More options" %}</summary>{% include 'community_dictionary/practice_options.html' %}</details>
+</form>

@@ -7771,3 +7771,120 @@ msgstr "Koncept bol obnovený. Pred odoslaním potvrďte aktuálny odhad."
 msgid "Your practice has not been submitted. Leaving can discard your draft."
 msgstr ""
 "Vaše precvičovanie nebolo odoslané. Pri odchode môžete stratiť koncept."
+
+msgid "Audio options"
+msgstr "Možnosti zvuku"
+
+msgid "Checking what was heard and preparing feedback…"
+msgstr "Kontrola rozpoznaných slov a príprava spätnej väzby…"
+
+msgid "Choose the kind of feedback."
+msgstr "Vyberte druh spätnej väzby."
+
+msgid "Confirm permission for this practice session."
+msgstr "Potvrďte súhlas s touto reláciou precvičovania."
+
+msgid "Correct the transcript or edit my words"
+msgstr "Opraviť prepis alebo upraviť moje slová"
+
+msgid ""
+"Diagnostic logs stay private for 30 days unless you share or clear them."
+msgstr ""
+"Diagnostické záznamy zostávajú súkromné 30 dní, pokiaľ ich nezdieľate alebo "
+"nevymažete."
+
+msgid ""
+"Did I hear this correctly? Please check the words before I give feedback."
+msgstr "Rozpoznal som to správne? Pred spätnou väzbou skontrolujte slová."
+
+msgid "Download my practice log"
+msgstr "Stiahnuť môj záznam precvičovania"
+
+msgid "End practice session"
+msgstr "Ukončiť reláciu precvičovania"
+
+msgid "Feedback mistake"
+msgstr "Chyba v spätnej väzbe"
+
+msgid "Feedback on this attempt"
+msgstr "Spätná väzba k tomuto pokusu"
+
+msgid "Helpful feedback"
+msgstr "Užitočná spätná väzba"
+
+msgid ""
+"I agree to this session’s AI practice requests and estimated charges. My "
+"attempts and diagnostic logs stay private unless I share them."
+msgstr ""
+"Súhlasím s požiadavkami AI a odhadovanými nákladmi počas tejto relácie. Moje"
+" pokusy a diagnostické záznamy zostávajú súkromné, pokiaľ ich nezdieľam."
+
+msgid "Keep the report short."
+msgstr "Správa má byť krátka."
+
+msgid "Let me check what I heard"
+msgstr "Overme si, čo som počul"
+
+msgid "More feedback"
+msgstr "Viac spätnej väzby"
+
+msgid "My proficiency"
+msgstr "Moja jazyková úroveň"
+
+msgid "Not specified"
+msgstr "Neuvedené"
+
+msgid "Note (optional)"
+msgstr "Poznámka (voliteľná)"
+
+msgid "Other"
+msgstr "Iné"
+
+msgid "Practice history and logs"
+msgstr "História a záznamy precvičovania"
+
+msgid "Preparing audio…"
+msgstr "Príprava zvuku…"
+
+msgid "Recognising your words…"
+msgstr "Rozpoznávanie vašich slov…"
+
+msgid "Recognition mistake"
+msgstr "Chyba rozpoznávania"
+
+msgid "Save report and sharing choice"
+msgstr "Uložiť správu a voľbu zdieľania"
+
+msgid ""
+"Share this attempt’s diagnostic log with dictionary owners for improving "
+"feedback."
+msgstr ""
+"Zdieľať diagnostický záznam tohto pokusu s vlastníkmi slovníka na zlepšenie "
+"spätnej väzby."
+
+msgid "Share this diagnostic log with dictionary owners"
+msgstr "Zdieľať tento diagnostický záznam s vlastníkmi slovníka"
+
+msgid "Sharing choice only"
+msgstr "Iba voľba zdieľania"
+
+msgid "Saved audio is unavailable for this language."
+msgstr "Uložený zvuk nie je pre tento jazyk dostupný."
+
+msgid "The AI settings changed. Reload this page."
+msgstr "Nastavenia AI sa zmenili. Obnovte túto stránku."
+
+msgid "Uses your personal OpenAI key."
+msgstr "Používa váš osobný kľúč OpenAI."
+
+msgid "View shared practice logs"
+msgstr "Zobraziť zdieľané záznamy precvičovania"
+
+msgid "Wait for the current attempt to finish."
+msgstr "Počkajte na dokončenie aktuálneho pokusu."
+
+msgid "What I actually said (optional)"
+msgstr "Čo som skutočne povedal(a) (voliteľné)"
+
+msgid "Words and practice log"
+msgstr "Slová a záznam precvičovania"

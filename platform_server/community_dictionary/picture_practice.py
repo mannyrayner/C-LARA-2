@@ -13,20 +13,11 @@ from .services import Conflict
 from .storage import path_for
 
 log = logging.getLogger(__name__)
-VERSION = 'picture-practice-1'
-SCHEMA = {**writing_ai.SCHEMA, 'properties': {**writing_ai.SCHEMA['properties'],
-    'understood': writing_ai.string(600)}, 'required': [*writing_ai.SCHEMA['required'], 'understood']}
-INSTRUCTIONS = writing_ai.INSTRUCTIONS.replace('The learner writes', 'The learner practises').replace(
-    'to try writing in target_language', 'to try again in target_language') + '''
-This is speaking or writing practice, not a caption-matching test. A few words, an
-interpretation, an imagined situation or dialogue are all valid. Never require the
-stored dictionary description (which you have not been given), or invent a visual
-contradiction when the speaker may simply be imagining something. In understood,
-briefly say what you understood, using feedback_language. Focus explanations on
-one or two useful learning points; explain all edits, grouping related changes.
-Keep feedback brief. Usually no optional suggestions, at most one.
-For speech you see only a learner-confirmed transcript, NOT the recording: never
-claim to assess pronunciation, accent, fluency, confidence or speaking ability.'''
+VERSION = 'picture-practice-2'
+from . import practice_review
+SCHEMA = practice_review.SCHEMA
+INSTRUCTIONS = practice_review.INSTRUCTIONS
+LEVELS = ['unspecified', 'beginner', 'low_intermediate', 'high_intermediate', 'advanced']
 
 
 def images(dictionary, category=''):
@@ -104,51 +95,82 @@ def queue(pk):
         log.warning('Could not enqueue picture practice %s; explicit continuation is available', pk)
 
 
-def parse(response, original):
-    import json
-    from types import SimpleNamespace
-    data = json.loads(response.output_text)
-    if not isinstance(data, dict) or set(data) != set(SCHEMA['properties']):
-        raise ValueError('practice_fields')
-    understood = data.pop('understood')
-    if not isinstance(understood, str) or not understood.strip() or len(understood) > 600:
-        raise ValueError('understood')
-    parsed = writing_ai.parse(SimpleNamespace(status=getattr(response, 'status', None),
-        output_text=json.dumps(data)), original)
-    return {**parsed, 'understood': understood}
+def diagnostic(study, stage, state, *, elapsed_ms=None, **details):
+    info = study.result['practice']
+    diag = info.setdefault('diagnostics', {'schema': 1, 'prompt_version': practice_review.VERSION})
+    events = diag.setdefault('events', [])
+    events.append({'at': timezone.now().isoformat(), 'stage': stage, 'state': state,
+                   **({'elapsed_ms': elapsed_ms} if elapsed_ms is not None else {}), **details})
+    diag['events'] = events[-40:]
+    # Content stays in the private attempt. Server logs contain no learner words.
+    log.info('Picture practice %s stage=%s state=%s', study.pk, stage, state)
+
+
+def parse(response, original, *, mode='text', confirmed=False):
+    return practice_review.parse(response, original, mode=mode, confirmed=confirmed)
 
 
 def run(pk):
-    """Commit a stage claim before network I/O; redelivery never repeats it."""
+    """ASR proceeds directly to review. Each stage is claimed before I/O.
+
+    Two workers may race between stages; only one can claim the waiting row.
+    No provider call is repeated on redelivery, including uncertain failures.
+    """
+    import time
     close_old_connections()
     try:
-        with transaction.atomic():
-            capture.locks()
-            study = capture.fetch(pk, True)
-            if study.input_mode != 'practice':
-                return
-            if study.status != 'waiting':
-                stage = None
-            else:
+        for _ in range(2):
+            with transaction.atomic():
+                capture.locks()
+                study = capture.fetch(pk, True)
+                if study.input_mode != 'practice':
+                    return
+                if study.status != 'waiting':
+                    break
                 key = permitted(study, payment=True)
-                stage = study.result['practice']['stage']
+                info = study.result['practice']
+                stage = info['stage']
+                diagnostic(study, stage, 'started')
                 study.status = 'processing'
-                study.save(update_fields=['status'])
-        if stage:
+                study.save(update_fields=['status', 'result'])
+            began = time.monotonic()
             if stage == 'transcribe':
                 response = capture_ai.transcribe(path_for(study.recording_path), tts.language_code(study.language), key)
                 capture.account(pk, 'practice_transcription', response, transcription=True)
                 text = getattr(response, 'text', '').strip()
                 if not text or len(text) > 255:
                     raise ValueError('transcript_length')
-                update, status = {'transcript': text, 'original_text': text}, 'transcript'
+                update, status = {'transcript': text, 'original_text': text, 'stage': 'review'}, 'waiting'
             elif stage == 'review':
-                info = study.result['practice']
-                response = writing_ai.review(path_for(study.file_path).read_bytes(), text=info['original_text'],
+                response = practice_review.review(path_for(study.file_path).read_bytes(), text=info['original_text'],
                     language=study.language, feedback_language=info['feedback_language'], model=study.model,
-                    api_key=key, instructions=INSTRUCTIONS, schema=SCHEMA)
-                capture.account(pk, 'practice_feedback', response)
-                update, status = {'feedback': parse(response, info['original_text'])}, 'feedback'
+                    api_key=key, mode=info['mode'], level=info.get('level', 'unspecified'), confirmed=info.get('confirmed', False))
+                charge_stage = 'practice_feedback_confirmed' if info.get('confirmed') else 'practice_feedback'
+                capture.account(pk, charge_stage, response)
+                # Retain bounded provider output privately even if validation fails.
+                with transaction.atomic():
+                    current = capture.fetch(pk, True)
+                    permitted(current)
+                    if current.status != 'processing':
+                        return
+                    current.result['practice'].setdefault('review_log', []).append({
+                        'round': int(bool(info.get('confirmed'))), 'prompt_version': practice_review.VERSION,
+                        'output': str(getattr(response, 'output_text', ''))[:16000]})
+                    current.save(update_fields=['result'])
+                parsed = parse(response, info['original_text'], mode=info['mode'], confirmed=info.get('confirmed', False))
+                update = {'heard': parsed['heard'], 'review_decision': parsed['diagnostics']}
+                if parsed['outcome'] == 'recognition':
+                    update.update(original_text=parsed['heard'], recognition_question=parsed['question'])
+                    status = 'transcript'
+                    if info.get('confirmed'):
+                        # At most one confirmation review per attempt. A further
+                        # uncertainty is a request to revise, never an auto-loop.
+                        status = 'feedback'
+                        update['feedback'] = {'outcome': 'clarify', 'text': parsed['heard'],
+                            'question': parsed['question'], 'understood': '', 'corrections': [], 'suggestions': []}
+                else:
+                    update.update(feedback=parsed['feedback'], recognition_question='')
+                    status = 'feedback'
             else:
                 raise ValueError('stage')
             with transaction.atomic():
@@ -157,14 +179,24 @@ def run(pk):
                 permitted(current)
                 if current.status != 'processing':
                     return
-                current.result = {'practice': {**current.result['practice'], **update}}
+                current.result['practice'].update(update)
+                diagnostic(current, stage, 'finished', elapsed_ms=round((time.monotonic()-began)*1000),
+                    decision=status)
                 current.status = status
                 current.save(update_fields=['result', 'status'])
+            if status != 'waiting':
+                break
         for clip_id in study.speech.filter(kind='feedback', status='waiting').values_list('pk', flat=True):
-            capture.speak(clip_id)  # Only explicitly requested private clips exist.
+            capture.speak(clip_id)
     except Exception as exc:
         log.warning('Picture practice %s stopped (%s)', pk, type(exc).__name__)
-        PictureCapture.objects.filter(pk=pk, input_mode='practice', status__in=['waiting', 'processing']).update(status='failed')
+        with transaction.atomic():
+            current = PictureCapture.objects.select_for_update().filter(pk=pk, input_mode='practice',
+                status__in=['waiting', 'processing']).first()
+            if current:
+                diagnostic(current, current.result['practice'].get('stage', ''), 'failed', error_type=type(exc).__name__)
+                current.status = 'failed'
+                current.save(update_fields=['result', 'status'])
         from .models import CaptureSpeech
         CaptureSpeech.objects.filter(capture_id=pk, status='waiting').update(status='failed')
     finally:

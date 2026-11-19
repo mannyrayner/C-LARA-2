@@ -2,6 +2,7 @@
 from datetime import timedelta
 from urllib.parse import urlencode
 from django import forms
+from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core import signing
@@ -19,8 +20,25 @@ from .services import Conflict, submit_once
 from .storage import path_for, prepare_upload, write_upload
 from .views import context, fail, saved
 from .voices import VOICE_CHOICES
+from .learning import LEVELS
 
-SALT = 'picture-practice-1'
+SALT = 'picture-practice-2'
+SESSION_SECONDS = 7200
+
+
+def consent_key(dictionary):
+    return f'picture-practice-consent-{dictionary.pk}'
+
+
+def session_permission(request, dictionary, values):
+    stored = request.session.get(consent_key(dictionary), {})
+    return bool(values and stored.get('quote') == values and stored.get('user') == request.user.pk and
+                stored.get('expires', 0) > timezone.now().timestamp())
+
+
+def remember_permission(request, dictionary, values):
+    request.session[consent_key(dictionary)] = {'user': request.user.pk, 'quote': values,
+        'expires': timezone.now().timestamp() + SESSION_SECONDS}
 
 
 class PracticeForm(forms.Form):
@@ -34,10 +52,15 @@ class PracticeForm(forms.Form):
     permission = forms.BooleanField(label=L_(
         'I agree to send this picture and my text or recording to OpenAI and pay the estimated cost.'))
     quote = forms.CharField(widget=forms.HiddenInput)
+    level = forms.ChoiceField(required=False, label=L_('My proficiency'), choices=[
+        ('unspecified', L_('Not specified')), *LEVELS])
+    share_log = forms.BooleanField(required=False, label=L_(
+        'Share this attempt’s diagnostic log with dictionary owners for improving feedback.'))
 
-    def __init__(self, *args, dictionary, transcript=False, **kwargs):
+    def __init__(self, *args, dictionary, transcript=False, needs_permission=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.transcript = transcript
+        self.fields['permission'].required = needs_permission
         self.fields['feedback_language'].choices = [(x, x) for x in dict.fromkeys([
             dictionary.explanation_language or 'English', dictionary.language])]
         self.fields['description'].widget.attrs['lang'] = tts.language_code(dictionary.language)
@@ -69,9 +92,9 @@ def setup(user, dictionary):
     try:
         values = practice.quote(user, dictionary)
         return dict(estimate=practice.estimate(values), personal=values['personal'],
-            quote=signing.dumps(values, salt=SALT), setup_error='')
+            quote=signing.dumps(values, salt=SALT), consent_values=values, setup_error='')
     except Conflict as exc:
-        return dict(estimate=None, personal=False, quote='', setup_error=str(exc))
+        return dict(estimate=None, personal=False, quote='', consent_values=None, setup_error=str(exc))
 
 
 def approved(form, user, dictionary):
@@ -105,8 +128,9 @@ def start(request, pk):
         return redirect(reverse('community_dictionary:picture-practice', args=[pk]) + '?' +
             urlencode({'image': image.pk, 'category': category}))
     config = setup(request.user, dictionary)
+    needs_permission = not session_permission(request, dictionary, config['consent_values'])
     initial = {'mode': 'voice', 'feedback_language': dictionary.explanation_language or 'English',
-        'voice': tts.VOICE, **practice.choices(request.user, dictionary), 'quote': config['quote']}
+        'voice': tts.VOICE, 'level': 'unspecified', **practice.choices(request.user, dictionary), 'quote': config['quote']}
     if request.GET.get('from'):
         try:
             previous = practice.own(request.user, dictionary, request.GET['from'])
@@ -114,7 +138,8 @@ def start(request, pk):
                 initial['description'] = previous.result['practice'].get('original_text', '')
         except (Conflict, forms.ValidationError, ValueError):
             pass
-    form = PracticeForm(request.POST or None, request.FILES or None, dictionary=dictionary, initial=initial)
+    form = PracticeForm(request.POST or None, request.FILES or None, dictionary=dictionary,
+        initial=initial, needs_permission=needs_permission)
     if request.method == 'POST' and image and form.is_valid():
         try:
             def create(paths):
@@ -124,6 +149,8 @@ def start(request, pk):
                 if not practice.available(current):
                     raise Conflict(_('Practice settings changed. Reload this page.'))
                 values = approved(form, request.user, current)
+                if not form.cleaned_data['permission'] and not session_permission(request, current, values):
+                    raise Conflict(_('Confirm permission for this practice session.'))
                 source = get_object_or_404(practice.images(current, category), pk=image.pk)
                 capture_limits.enforce(current, request.user)
                 photo = write_upload((path_for(source.file_path).read_bytes(), 'image/jpeg', '.jpg'), pk, paths)
@@ -138,13 +165,18 @@ def start(request, pk):
                     usage={'practice_request': {'cost_usd': '0', 'tokens': {}}},
                     result={'practice': {'quote': values, 'mode': form.cleaned_data['mode'], 'category': category,
                         'stage': 'transcribe' if audio else 'review', 'original_text': form.cleaned_data.get('description', ''),
+                        'level': form.cleaned_data.get('level') or 'unspecified',
+                        'share_log': form.cleaned_data['share_log'], 'confirmed': False,
+                        'diagnostics': {'schema': 1, 'prompt_version': practice.practice_review.VERSION, 'events': []},
                         'feedback_language': form.cleaned_data['feedback_language']}})
                 study.sources.add(source)
                 practice.permitted(study, payment=True)
-                practice.save_choices(request.user, current, {key: form.cleaned_data[key] for key in ['mode', 'feedback_language', 'voice']})
+                practice.save_choices(request.user, current, {key: form.cleaned_data.get(key) for key in
+                    ['mode', 'feedback_language', 'voice', 'level', 'share_log']})
+                remember_permission(request, current, values)
                 transaction.on_commit(lambda: practice.queue(str(study.pk)))
                 return url(study)
-            return saved(request, submit_once(request, dictionary, 'picture-practice', create, ignore_fields=('quote',)))
+            return saved(request, submit_once(request, dictionary, 'picture-practice', create, ignore_fields=('quote', 'permission')))
         except (Conflict, forms.ValidationError, OSError) as exc:
             form.add_error(None, _('The picture file is unavailable.') if isinstance(exc, OSError) else str(exc))
     if request.method == 'POST' and 'application/json' in request.headers.get('Accept', ''):
@@ -152,7 +184,7 @@ def start(request, pk):
     recent = PictureCapture.objects.filter(dictionary=dictionary, user=request.user, input_mode='practice',
         expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:8]
     return no_store(render(request, 'community_dictionary/picture_practice_start.html', context(request, dictionary,
-        form=form, image=image, recent=recent, category=category, **config,
+        form=form, image=image, recent=recent, category=category, needs_permission=needs_permission, **config,
         submission_id=request.POST.get('submission_id') or context(request)['submission_id'])))
 
 
@@ -160,15 +192,18 @@ def page(request, dictionary, study, form=None):
     info = study.result['practice']
     feedback = info.get('feedback', {})
     config = setup(request.user, dictionary)
+    needs_permission = not session_permission(request, dictionary, config['consent_values'])
     if form is None:
-        form = PracticeForm(dictionary=dictionary, transcript=True, initial={
+        form = PracticeForm(dictionary=dictionary, transcript=True, needs_permission=needs_permission, initial={
             'mode': 'text', 'description': info.get('original_text', ''), 'feedback_language': info['feedback_language'],
-            'voice': study.voice, 'quote': config['quote']})
+            'voice': study.voice, 'level': info.get('level', 'unspecified'), 'share_log': info.get('share_log', False),
+            'quote': config['quote']})
     clips = study.speech.filter(kind='feedback').order_by('-pk')
     clip = clips.first()
     polling = study.status in {'waiting', 'processing'} or bool(clip and clip.status in {'waiting', 'running'})
     return no_store(render(request, 'community_dictionary/picture_practice_detail.html', context(request, dictionary,
         study=study, info=info, feedback=feedback, form=form, polling=polling, clip=clip,
+        needs_permission=needs_permission,
         highlighted=writing.changes(info.get('original_text', ''), feedback.get('text', '')),
         audio_estimate=tts.estimate_cost(feedback.get('text', ''), 30),
         can_listen=dictionary.tts_enabled and tts.language_code(dictionary.language) in tts.LANGUAGES.values(), **config,
@@ -192,25 +227,68 @@ def action(request, pk, study_id):
     try:
         study = practice.own(request.user, dictionary, study_id)
         choice = request.POST.get('action')
-        if choice == 'check':
-            form = PracticeForm(request.POST, dictionary=dictionary, transcript=True)
+        if choice in {'check', 'revise'}:
+            config = setup(request.user, dictionary)
+            form = PracticeForm(request.POST, dictionary=dictionary, transcript=True,
+                needs_permission=not session_permission(request, dictionary, config['consent_values']))
             if not form.is_valid():
                 return page(request, dictionary, study, form)
+            if choice == 'revise':
+                def revise(paths):
+                    capture.locks()
+                    get_user_model().objects.select_for_update().get(pk=request.user.pk)
+                    old = practice.own(request.user, dictionary, study.pk)
+                    if old.status not in {'feedback', 'failed'}:
+                        raise Conflict(_('Wait for the current attempt to finish.'))
+                    values = approved(form, request.user, dictionary)
+                    if not form.cleaned_data['permission'] and not session_permission(request, dictionary, values):
+                        raise Conflict(_('Confirm permission for this practice session.'))
+                    capture_limits.enforce(dictionary, request.user)
+                    photo = write_upload((path_for(old.file_path).read_bytes(), 'image/jpeg', '.jpg'), pk, paths)
+                    old_info = old.result['practice']
+                    new = PictureCapture.objects.create(dictionary=dictionary, user=request.user,
+                        source_image=old.source_image, input_mode='practice', status='waiting',
+                        expires_at=timezone.now()+timedelta(days=30), language=dictionary.language,
+                        input_language=dictionary.language, explanation_language=dictionary.explanation_language or 'English',
+                        file_path=photo['file_path'], model=values['model'], personal_key=values['personal'],
+                        voice=form.cleaned_data['voice'], revision=dictionary.capture_revision,
+                        membership_revision=dictionary.membership_revision, participation_revision=old.participation_revision,
+                        usage={'practice_request': {'cost_usd': '0', 'tokens': {}}}, result={'practice': {
+                            'quote': values, 'mode': old_info['mode'], 'stage': 'review', 'confirmed': True,
+                            'original_text': form.cleaned_data['description'], 'transcript': old_info.get('transcript', ''),
+                            'parent_attempt': str(old.pk), 'category': old_info.get('category', ''),
+                            'level': form.cleaned_data.get('level') or 'unspecified', 'share_log': form.cleaned_data['share_log'],
+                            'feedback_language': form.cleaned_data['feedback_language'],
+                            'diagnostics': {'schema': 1, 'prompt_version': practice.practice_review.VERSION, 'events': []}}})
+                    new.sources.add(old.source_image)
+                    practice.permitted(new, payment=True)
+                    practice.diagnostic(new, 'learner_revision', 'submitted', parent=str(old.pk))
+                    new.save(update_fields=['result'])
+                    remember_permission(request, dictionary, values)
+                    transaction.on_commit(lambda: practice.queue(str(new.pk)))
+                    return url(new)
+                return saved(request, submit_once(request, dictionary, f'practice-revise:{study.pk}', revise,
+                    ignore_fields=('quote', 'permission')))
             def confirm(paths):
                 capture.locks()
                 current = capture.fetch(study.pk, True)
                 practice.permitted(current, payment=True)
-                approved(form, request.user, dictionary)
+                values = approved(form, request.user, dictionary)
+                if not form.cleaned_data['permission'] and not session_permission(request, dictionary, values):
+                    raise Conflict(_('Confirm permission for this practice session.'))
                 if current.status != 'transcript':
                     raise Conflict(_('This transcript has already been submitted.'))
                 current.result['practice'].update(stage='review', original_text=form.cleaned_data['description'],
-                    feedback_language=form.cleaned_data['feedback_language'])
+                    feedback_language=form.cleaned_data['feedback_language'], confirmed=True)
+                practice.diagnostic(current, 'recognition_confirmation', 'confirmed',
+                    text_changed=form.cleaned_data['description'] != study.result['practice'].get('original_text'))
+                remember_permission(request, dictionary, values)
                 current.voice = form.cleaned_data['voice']
                 current.status = 'waiting'
                 current.save(update_fields=['result', 'status', 'voice'])
                 transaction.on_commit(lambda: practice.queue(str(study.pk)))
                 return url(current)
-            return saved(request, submit_once(request, dictionary, f'practice-confirm:{study.pk}', confirm, ignore_fields=('quote',)))
+            return saved(request, submit_once(request, dictionary, f'practice-confirm:{study.pk}', confirm, ignore_fields=('quote', 'permission')))
         if choice == 'listen':
             if request.POST.get('permission') != 'yes':
                 raise Conflict(_('Confirm the new audio request.'))
@@ -239,6 +317,93 @@ def action(request, pk, study_id):
             return redirect('community_dictionary:picture-practice', pk=pk)
         else:
             raise Conflict(_('Choose an action shown on this page.'))
+        return saved(request, url(study))
+    except Conflict as exc:
+        return fail(request, exc, 409)
+
+
+@login_required
+@require_POST
+def end_session(request, pk):
+    dictionary = get_dictionary(request.user, pk)
+    request.session.pop(consent_key(dictionary), None)
+    return redirect('community_dictionary:practice', pk=pk)
+
+
+@login_required
+@require_GET
+def diagnostic_log(request, pk):
+    """Private JSON export; owners see only individually opted-in attempts."""
+    from django.http import JsonResponse
+    from .permissions import require_owner
+    dictionary = get_dictionary(request.user, pk)
+    shared = request.GET.get('shared') == '1'
+    try:
+        limit = min(200, max(1, int(request.GET.get('limit', 200))))
+    except ValueError:
+        limit = 200
+    qs = PictureCapture.objects.filter(dictionary=dictionary, input_mode='practice',
+        expires_at__gt=timezone.now()).exclude(status='discarded')
+    if shared:
+        require_owner(request.user, dictionary)
+        qs = qs.filter(result__practice__share_log=True)
+    else:
+        qs = qs.filter(user=request.user)
+    rows = []
+    for study in qs.select_related('user', 'dictionary').order_by('-created_at')[:limit]:
+        try:
+            practice.permitted(study)
+        except (Conflict, Http404):
+            continue
+        info = study.result.get('practice', {})
+        rows.append({'attempt_id': str(study.pk), 'created_at': study.created_at.isoformat(),
+            'learner_id': study.user_id, 'source_image_id': study.source_image_id,
+            'language': study.language, 'feedback_language': info.get('feedback_language'),
+            'input_mode': info.get('mode'), 'proficiency': info.get('level', 'unspecified'),
+            'status': study.status, 'model': study.model, 'app_recipe': info.get('quote', {}).get('version'),
+            'raw_transcript': info.get('transcript', ''), 'submitted_text': info.get('original_text', ''),
+            'normalised_text': info.get('heard', ''), 'confirmed_by_learner': info.get('confirmed', False),
+            'recognition_question': info.get('recognition_question', ''), 'feedback': info.get('feedback', {}),
+            'review_decision': info.get('review_decision', {}), 'reviews': info.get('review_log', []),
+            'diagnostics': info.get('diagnostics', {}), 'user_report': info.get('user_report', {}),
+            'user_reports': info.get('user_reports', []), 'parent_attempt': info.get('parent_attempt'),
+            'usage': study.usage, 'shared_with_owners': bool(info.get('share_log'))})
+    response = JsonResponse({'schema': 'picture-practice-log-1', 'dictionary_id': dictionary.pk,
+        'scope': 'shared_with_owners' if shared else 'my_attempts', 'limit': limit, 'attempts': rows},
+        json_dumps_params={'ensure_ascii': False, 'indent': 2})
+    if request.GET.get('view') != '1':
+        response['Content-Disposition'] = f'attachment; filename="practice-{dictionary.pk}.json"'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return no_store(response)
+
+
+@login_required
+@require_POST
+def report(request, pk, study_id):
+    """Learner labels provide tuning evidence; no paid request or text rewriting."""
+    dictionary = get_dictionary(request.user, pk)
+    try:
+        practice.own(request.user, dictionary, study_id)
+        label = request.POST.get('problem', '')
+        if label not in {'', 'recognition', 'feedback', 'helpful', 'other'}:
+            raise Conflict(_('Choose the kind of feedback.'))
+        note = request.POST.get('note', '').strip()
+        intended = request.POST.get('intended', '').strip()
+        if len(note) > 600 or len(intended) > 255:
+            raise Conflict(_('Keep the report short.'))
+        with transaction.atomic():
+            capture.locks()
+            study = practice.own(request.user, dictionary, study_id)
+            # Lock the attempt and revalidate before editing private diagnostics.
+            study = capture.fetch(study.pk, True)
+            practice.permitted(study)
+            info = study.result['practice']
+            if label or note or intended:
+                info['user_report'] = {'label': label or 'other', 'note': note,
+                    'intended_text': intended, 'at': timezone.now().isoformat()}
+                info['user_reports'] = [*info.get('user_reports', []), info['user_report']][-10:]
+            info['share_log'] = request.POST.get('share_log') == 'on'
+            study.save(update_fields=['result'])
         return saved(request, url(study))
     except Conflict as exc:
         return fail(request, exc, 409)

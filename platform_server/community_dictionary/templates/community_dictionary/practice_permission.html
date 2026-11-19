@@ -1,0 +1,6 @@
+{% load i18n %}
+{{ form.quote }}{{ form.quote.errors }}
+{% if needs_permission %}
+{% include 'community_dictionary/picture_practice_cost.html' %}
+<label class="check">{{ form.permission }} <span>{% translate "I agree to this session’s AI practice requests and estimated charges. My attempts and diagnostic logs stay private unless I share them." %}</span></label>{{ form.permission.errors }}
+{% endif %}
