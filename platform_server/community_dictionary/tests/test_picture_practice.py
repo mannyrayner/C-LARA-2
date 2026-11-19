@@ -127,11 +127,13 @@ class PicturePracticeTests(TestCase):
         self.assertEqual(self.asr.call_count, 1)
         self.assertEqual(self.review.call_count, 2)
 
-    def test_entry_point_pins_picture_without_rows_or_calls_and_hides_example(self):
+    def test_entry_point_pins_picture_without_rows_or_calls_and_offers_collapsed_hints(self):
         page = self.client.get(self.url('practice'))
         self.assertContains(page, 'Describe a picture')
         page = self.client.get(self.url('picture-practice'), follow=True)
-        self.assertContains(page, 'Show an example')
+        self.assertContains(page, '<summary>Hints</summary>')
+        self.assertNotContains(page, 'Show an example')
+        self.assertLess(page.content.index(b'<summary>Hints</summary>'), page.content.index(b'<summary>More options</summary>'))
         self.assertContains(page, 'data-practice-type disabled hidden')
         self.assertEqual(PictureCapture.objects.count(), 0)
         self.review.assert_not_called()

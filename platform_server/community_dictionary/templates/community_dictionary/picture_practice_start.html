@@ -6,6 +6,7 @@
 <section class="panel">
 <form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-picture-practice>
 {% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="image" value="{{ image.pk }}">{{ form.non_field_errors }}
+{{ form.hints_used }}{{ form.hints_used.errors }}
 <div data-recorder>
 <fieldset class="capture-modes guided-choices"><legend>{{ form.mode.label }}</legend>{{ form.mode }}{{ form.mode.errors }}</fieldset>
 <p>{% blocktranslate with language=dictionary.language %}Use {{ language }}. A few words are enough.{% endblocktranslate %}</p>
@@ -19,6 +20,7 @@
 {% include 'community_dictionary/practice_permission.html' %}
 {% if setup_error and not needs_permission %}<p class="notice">{{ setup_error }}</p>{% endif %}
 <button type="submit" data-save-submit {% if setup_error %}disabled{% endif %}>{% translate "Get feedback" %}</button>
+{% include 'community_dictionary/practice_hints.html' %}
 <details class="entry-help"><summary>{% translate "More options" %}</summary>
 <fieldset class="guided-fields" data-practice-audio-options {% if form.mode.value != 'voice' %}disabled hidden{% endif %}>
 <legend class="sr-only">{% translate "Audio options" %}</legend>
@@ -28,13 +30,12 @@
 </fieldset>
 {% include 'community_dictionary/practice_options.html' %}
 {% if not needs_permission %}{% include 'community_dictionary/picture_practice_cost.html' %}{% endif %}
-<details><summary>{% translate "Show an example" %}</summary>{% if image.entry.current_text.status == 'accepted' %}<p dir="auto">{{ image.entry.word }}</p>{% else %}<p>{% translate "No example is available for this picture." %}</p>{% endif %}</details>
 <div class="draft-box"><p data-draft-status role="status">{% translate "Private practice — nothing is added to the dictionary." %}</p><button type="button" class="quiet" data-discard>{% translate "Discard local draft" %}</button></div>
 </details>
 </div><p data-submit-error class="error" role="alert" tabindex="-1" hidden></p>
 </form>
 <p><a class="button secondary" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?skip={{ image.pk }}&amp;category={{ category|urlencode }}">{% translate "Another picture" %}</a></p>
-</section></div><script src="{% static 'community_dictionary/picture_practice.js' %}?v=2" defer></script>
+</section></div><script src="{% static 'community_dictionary/picture_practice.js' %}?v=3" defer></script>
 {% else %}<p>{% translate "No accepted pictures are available. Add a picture or choose another category." %}</p>{% endif %}
 <details class="panel entry-help"><summary>{% translate "Practice history and logs" %}</summary>
 <p><a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}">{% translate "Download my practice log" %}</a>{% if owner %} · <a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}?shared=1&amp;view=1&amp;limit=20">{% translate "View shared practice logs" %}</a>{% endif %}</p>

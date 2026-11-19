@@ -1,0 +1,30 @@
+{% load i18n %}
+<details class="entry-help" data-practice-hints>
+<summary>{% translate "Hints" %}</summary>
+<p><strong>{% translate "Vocabulary" %}</strong></p>
+{% if hints.words %}
+<div class="actions">
+<button type="button" class="secondary" data-hint-reveal="words" aria-controls="hint-words" aria-expanded="false" hidden>{% translate "Show words" %}</button>
+{% if hints.word_audio_count %}<button type="button" class="secondary" data-hint-listen="words" hidden>{% translate "Listen to words" %}</button>{% endif %}
+</div>
+<ul id="hint-words" data-hint-text="words" lang="{{ hint_language }}" dir="{{ dictionary.text_direction }}">
+{% for row in hints.words %}<li><span>{{ row.entry.word }}</span>{% if row.meaning %}<details class="word-translation"><summary>{% translate "Meaning" %}</summary><span dir="auto">{{ row.meaning }}</span></details>{% endif %}</li>{% endfor %}
+</ul>
+<div data-hint-fallback>
+{% for row in hints.words %}{% if row.audio %}<audio controls preload="none" data-hint-source="words" aria-label="{% blocktranslate with word=row.entry.word %}Listen to {{ word }}{% endblocktranslate %}" src="{% url 'community_dictionary:media' dictionary.pk row.audio.pk %}"></audio>{% endif %}{% endfor %}
+</div>
+{% if hints.word_audio_count < hints.words|length %}<p class="help">{% translate "Some words have no recording yet." %}</p>{% endif %}
+{% else %}<p class="help">{% translate "No saved vocabulary is available for this picture." %}</p>{% endif %}
+<p><strong>{% translate "One possible description" %}</strong></p>
+{% if hints.sentence %}
+<div class="actions">
+<button type="button" class="secondary" data-hint-reveal="sentence" aria-controls="hint-sentence" aria-expanded="false" hidden>{% translate "Show sentence" %}</button>
+{% if hints.sentence.audio %}<button type="button" class="secondary" data-hint-listen="sentence" hidden>{% translate "Listen to sentence" %}</button>{% endif %}
+</div>
+<p id="hint-sentence" data-hint-text="sentence" lang="{{ hint_language }}" dir="{{ dictionary.text_direction }}">{{ hints.sentence.entry.word }}</p>
+{% if hints.sentence.audio %}<div data-hint-fallback><audio controls preload="none" data-hint-source="sentence" aria-label="{% translate 'Listen to sentence' %}" src="{% url 'community_dictionary:media' dictionary.pk hints.sentence.audio.pk %}"></audio></div>{% else %}<p class="help">{% translate "No recording yet" %}</p>{% endif %}
+{% else %}<p class="help">{% translate "No saved sentence is available for this picture." %}</p>{% endif %}
+<audio controls preload="none" data-hint-player aria-label="{% translate 'Hint audio' %}" hidden></audio>
+<button type="button" class="quiet" data-hint-stop hidden>{% translate "Stop" %}</button>
+<p class="help" data-hint-status role="status" hidden></p>
+</details>

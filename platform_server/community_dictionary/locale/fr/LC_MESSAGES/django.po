@@ -8071,3 +8071,42 @@ msgstr ""
 "coût de transcription (environ 0,005 $US pour 90 secondes). Le coût réel "
 "varie. Créer une version parlée est facultatif et facturé séparément. La "
 "réécoute est gratuite."
+
+msgid "Hints"
+msgstr "Indices"
+
+msgid "Vocabulary"
+msgstr "Vocabulaire"
+
+msgid "Show words"
+msgstr "Afficher les mots"
+
+msgid "Listen to words"
+msgstr "Écouter les mots"
+
+msgid "Some words have no recording yet."
+msgstr "Certains mots n’ont pas encore d’enregistrement."
+
+msgid "No saved vocabulary is available for this picture."
+msgstr "Aucun vocabulaire enregistré n’est disponible pour cette image."
+
+msgid "One possible description"
+msgstr "Une description possible"
+
+msgid "Show sentence"
+msgstr "Afficher la phrase"
+
+msgid "Listen to sentence"
+msgstr "Écouter la phrase"
+
+msgid "No saved sentence is available for this picture."
+msgstr "Aucune phrase enregistrée n’est disponible pour cette image."
+
+msgid "Hint audio"
+msgstr "Enregistrement de l’indice"
+
+msgid "Stop"
+msgstr "Arrêter"
+
+msgid "Reload this page to start a new practice attempt."
+msgstr "Rechargez cette page pour commencer un nouvel essai."
