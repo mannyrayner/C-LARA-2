@@ -35,7 +35,7 @@
 <details class="entry-help"><summary>{% translate "Words and practice log" %}</summary>
 <details><summary>{% translate "Cost details" %}</summary>
 <ul>{% for row in cost_summary.items %}<li>{{ row.label }}: {% if row.cost != None %}~US${{ row.cost|floatformat:6 }}{% else %}{% translate "Unavailable or pending" %}{% endif %}</li>{% endfor %}</ul>
-<p class="help">{% translate "Includes recorded recognition, AI review and any generated speech for this attempt. Optional speech generation is extra until requested; replaying saved audio makes no AI call. Costs use returned usage and configured prices; speech generation uses a duration estimate. Unknown usage is not counted as zero." %}</p>
+<p class="help">{% translate "Includes recorded recognition, AI review and any generated speech for this attempt, including automatically prepared help pronunciations. Final feedback speech is extra until requested; replaying saved audio makes no AI call. Costs use returned usage and configured prices; speech generation uses a duration estimate. Unknown usage is not counted as zero." %}</p>
 </details><p dir="auto">{{ info.heard|default:info.original_text }}</p>
 {% if study.status == 'feedback' or study.status == 'failed' %}<details><summary>{% translate "Correct the transcript or edit my words" %}</summary>{% include 'community_dictionary/practice_edit.html' %}</details>{% endif %}
 <form method="post" action="{% url 'community_dictionary:picture-practice-report' dictionary.pk study.pk %}" class="stack">{% csrf_token %}
