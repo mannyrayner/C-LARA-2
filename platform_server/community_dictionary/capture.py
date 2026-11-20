@@ -287,10 +287,19 @@ def publish(study_id, user, *, vocabulary=None):
 def speech_allowed(clip, *, payment=False):
     key=allowed(clip.capture,payment=payment)
     if clip.capture.input_mode == 'practice':
+        from .practice_recognition import KINDS, clip_spec
         if not clip.capture.dictionary.tts_enabled or not tts.language_code(clip.language):
             raise Conflict('Saved audio is unavailable for this language.')
-        if (clip.kind != 'feedback' or clip.entry_id or clip.capture.status != 'feedback' or
-                clip.text != clip.capture.result.get('practice', {}).get('feedback', {}).get('text')):
+        info = clip.capture.result.get('practice', {})
+        if clip.kind in KINDS.values():
+            spec = clip_spec(info, clip.kind, clip.text_id)
+            if (not spec or clip.entry_id or clip.meaning_id or clip.contribution_id or
+                    clip.capture.status not in {'transcript', 'waiting', 'processing', 'feedback'} or
+                    info.get('mode') != 'voice' or clip.language != clip.capture.language or
+                    clip.text != spec['text'] or clip.meaning != spec['meaning']):
+                raise Conflict('Open the current recognition suggestion before listening.')
+        elif (clip.kind != 'feedback' or clip.entry_id or clip.capture.status != 'feedback' or
+                clip.text != info.get('feedback', {}).get('text')):
             raise Conflict('Open the current practice feedback before listening.')
     if clip.kind == 'form':
         from .sentence_forms import current
@@ -373,9 +382,10 @@ def speak(clip_id):
     try:
         prepared,_=word_audio.synthesize(clip.text, dictionary=clip.capture.dictionary,
             expected=clip.capture.usage.get('word_audio_policy', {}),language=tts.language_code(clip.language),model=tts.MODEL,
-            voice=clip.capture.voice,api_key=key,meaning=clip.meaning,meaning_language=clip.capture.explanation_language,
+            voice=clip.capture.voice,api_key=key,meaning=clip.meaning,
+            meaning_language=clip.capture.result.get('practice', {}).get('feedback_language', clip.capture.explanation_language),
             report=report,before_request=check,
-            speech_kind='sentence' if clip.kind=='feedback' or (clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
+            speech_kind='sentence' if clip.kind in {'feedback', 'help_phrase'} or (clip.entry_id and clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
     except Exception as exc:
         code=tts.record_failure(report,exc)
         log.warning('Capture speech %s failed (%s; stage=%s; reason=%s)',

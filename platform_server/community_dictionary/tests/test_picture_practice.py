@@ -23,7 +23,7 @@ CORRECTED = 'Il gatto è felice.'
 FEEDBACK = {'outcome': 'ready', 'text': CORRECTED, 'question': '',
     'understood': 'You are saying the cat is happy.',
     'corrections': [{'before': 'sono', 'after': 'è', 'reason': 'Use the singular verb with il gatto.', 'kind': 'grammar'}],
-    'suggestions': [], 'heard': ORIGINAL, 'recognition_question': '', 'suspect_words': []}
+    'suggestions': [], 'heard': ORIGINAL, 'recognition_question': '', 'suspect_words': [], 'recognition_candidates': []}
 
 
 @override_settings(OPENAI_API_KEY='test-only', CREDITS_ENABLED=False,

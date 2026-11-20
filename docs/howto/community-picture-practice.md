@@ -121,6 +121,43 @@ a partial sum is never labelled a complete total. Edited attempts do not count
 recognition or reviews already incurred in the earlier attempt a second time.
 These estimates describe AI usage, not hosting or final provider invoices.
 
+## Help with uncertain recognition
+
+New spoken attempts can show a **Did you mean…?** panel when the image-aware
+review finds a plausible alternative to the recogniser's words. It shows a
+possible interpretation and up to three local word/phrase replacements, with
+short meanings in the chosen explanation language. These are hypotheses about
+intention, not diagnoses of pronunciation. The image is context; it is never an
+answer key. Genuine grammar outside those replacements is preserved for feedback.
+
+**Listen to the word** and **Listen in a phrase** optionally generate private model
+pronunciations. Each priced button authorises one audio attempt for that displayed
+word or phrase; replaying saved audio is free. Failed or uncertain audio requests
+are not repeated automatically. Word/phrase audio costs are included in cost
+details and the private export. These clips do not add dictionary content.
+
+**Yes, use these words** confirms the displayed interpretation and starts the
+existing additional review, without repeating speech recognition. **Use different
+words** opens the editable original transcript; the learner can keep or change
+it. **Try again** offers a new recording for the same image. No recognition panel
+is added to ordinary clear attempts or typed input. If no useful hypothesis is
+available, the existing clarification/edit flow remains available.
+
+The reviewer must treat Italian `tabolo` → `tavolo` and `Ce` → `C'è` as contextual
+possibilities, never fixed substitutions. Written accents/apostrophes must not
+be criticised as spoken errors. The reviewer still sees no waveform and makes
+no pronunciation, accent or fluency assessment. Model suggestions can be wrong.
+
+The log distinguishes the raw transcript, proposed wording, learner-confirmed
+wording, confirmation method (suggestion, edited or unchanged), requested audio
+and its status. Existing report labels and intended-wording notes remain
+available. Owners/co-owners see only attempts explicitly shared with them; sharing
+a diagnostic log does not grant access to private recordings or these audio clips.
+
+Start a new attempt after installing this recipe. The changed recipe requires
+fresh practice-session permission; existing failed attempts do not restart.
+No schema, dependency, tariff or deployment-permission change is needed.
+
 ## AWS speech accounting repair — 19 November 2026
 
 Speech could finish its provider request but fail when storing the charge:
