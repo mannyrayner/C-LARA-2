@@ -136,6 +136,13 @@ class GuidedTests(TestCase):
         self.assertEqual(Entry.objects.count(), 0)
         self.assertEqual(study.result['guided']['approved_description'], DESCRIPTION)
 
+    def test_admitted_attempt_finishes_without_an_allowance_prompt(self):
+        study = self.start()
+        self.d.capture_daily_limit = 1
+        self.d.save(update_fields=['capture_daily_limit'])
+        self.assertEqual(capture_limits.usage(self.d)['remaining'], 0)
+        self.assertNotContains(self.client.get(self.url('guided-detail', study.pk)), 'Daily allowance used up')
+
     def test_quota_and_insufficient_credit_keep_saved_picture_without_api_request(self):
         for blocker in [override_settings(COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT=0),
                         patch('community_dictionary.capture.has_minimum_balance_for_compile', return_value=False)]:

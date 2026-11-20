@@ -29,8 +29,9 @@ def context(request, dictionary=None, **extra):
     from .learning import mode
     personal_mode = mode(request, dictionary)
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
-    if dictionary and page in {'capture-start', 'capture-image', 'picture-practice',
-            'guided-start', 'guided-image', 'guided-detail', 'writing-detail'}:
+    allowance_page = page in {'capture-start', 'capture-image', 'picture-practice', 'guided-start', 'guided-image'}
+    allowance_draft = page in {'guided-detail', 'writing-detail'} and getattr(extra.get('study'), 'status', None) == 'draft'
+    if dictionary and (allowance_page or allowance_draft):
         from .capture_limits import offer
         if not getattr(request, 'capture_allowance_offer', None):
             offer(request, dictionary)

@@ -73,7 +73,7 @@
 {% endif %}
 <form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}">{% csrf_token %}{% include 'community_dictionary/guided_cost.html' %}<button name="action" value="continue">{% translate "Try the description now" %}</button></form>
 {% else %}
-<p role="status">{% if info.approved_description %}{% translate "Creating your sentence, words and audio…" %}{% elif words_info.stage == 'transcribe' %}{% translate "Transcribing your words…" %}{% elif words_info %}{% translate "Generating your picture…" %}{% else %}{% translate "Preparing a description in your explanation language…" %}{% endif %}</p><p dir="auto">{{ info.approved_description|default:words_info.text }}</p>
+<p role="status">{% if info.approved_description %}{% translate "Creating your sentence, words and audio…" %}{% elif words_info.stage == 'transcribe' %}{% translate "Transcribing your words…" %}{% elif words_info %}{% translate "Generating your picture…" %}{% else %}{% translate "Preparing a description in your explanation language…" %}{% endif %}</p><p dir="auto">{% firstof info.approved_description words_info.text %}</p>
 {% endif %}
 {% if polling %}<p class="help">{% translate "You can leave and return through My pictures. Processing continues in the background. Completion is shown here; no email is sent." %}</p>
 <p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p>
