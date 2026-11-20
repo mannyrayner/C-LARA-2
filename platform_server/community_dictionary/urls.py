@@ -116,6 +116,7 @@ urlpatterns = [
     path('<int:pk>/practise/describe/<uuid:study_id>/', picture_practice_views.detail, name='picture-practice-detail'),
     path('<int:pk>/practise/describe/<uuid:study_id>/action/', picture_practice_views.action, name='picture-practice-action'),
     path('<int:pk>/practise/describe/<uuid:study_id>/report/', picture_practice_views.report, name='picture-practice-report'),
+    path('<int:pk>/practise/describe/<uuid:study_id>/pronunciation/<int:clip_id>/', picture_practice_views.help_audio, name='picture-practice-help-audio'),
     path('<int:pk>/practise/data/', practice_views.data, name='practice-data'),
     path('<int:pk>/practise/media/<int:contribution_id>/', practice_views.media, name='practice-media'),
     path('<int:pk>/settings/copy-images/', image_copy.copy_view, name='image-only-copy'),
