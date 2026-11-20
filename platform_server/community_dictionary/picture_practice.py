@@ -13,7 +13,7 @@ from .services import Conflict
 from .storage import path_for
 
 log = logging.getLogger(__name__)
-VERSION = 'picture-practice-3'
+VERSION = 'picture-practice-4'
 from . import practice_review
 SCHEMA = practice_review.SCHEMA
 INSTRUCTIONS = practice_review.INSTRUCTIONS
@@ -49,14 +49,18 @@ def save_choices(user, dictionary, values):
 def quote(user, dictionary):
     model, _key, personal, prices = photo_ai.configuration(user)
     return {'version': VERSION, 'model': model, 'personal': personal,
+        'help_audio': dictionary.tts_enabled and tts.language_code(dictionary.language) in tts.LANGUAGES.values(),
         'input': str(prices['input']), 'output': str(prices['output']),
         'language': dictionary.language, 'explanation': dictionary.explanation_language or 'English',
         'revision': dictionary.capture_revision, 'membership': dictionary.membership_revision}
 
 
 def estimate(values):
-    # Image + short text + bounded output. Preview only; actual usage is charged.
-    return (Decimal(3000)*Decimal(values['input']) + Decimal(2600)*Decimal(values['output'])) / 1000000
+    # Include an allowance for all three possible words and example phrases.
+    # This is an estimate, not a reservation or a fixed charge.
+    audio = (3 * (tts.estimate_cost('x'*100, 5) + tts.estimate_cost('x'*160, 10))
+        if values.get('help_audio') else Decimal('0'))
+    return (Decimal(3000)*Decimal(values['input']) + Decimal(2600)*Decimal(values['output'])) / 1000000 + audio
 
 
 def own(user, dictionary, pk):
@@ -185,10 +189,25 @@ def run(pk):
                 diagnostic(current, stage, 'finished', elapsed_ms=round((time.monotonic()-began)*1000),
                     decision=status)
                 current.status = status
+                if (status == 'transcript' and info['mode'] == 'voice' and not info.get('confirmed')
+                        and info['quote'].get('help_audio')):
+                    from .practice_recognition import KINDS, clip_spec
+                    from .models import CaptureSpeech
+                    # Create all bounded clips in the same claimed transaction
+                    # as the review result. Words are prepared before phrases.
+                    for part, kind in KINDS.items():
+                        for target in update.get('recognition_help', {}).get('targets', []):
+                            _clip, created = CaptureSpeech.objects.get_or_create(capture=current,
+                                kind=kind, text_id=target['id'], defaults={
+                                    'language': current.language,
+                                    **clip_spec(current.result['practice'], kind, target['id'])})
+                            if created:
+                                diagnostic(current, 'recognition_playback', 'requested',
+                                    target=target['id'], part=part, automatic=True)
                 current.save(update_fields=['result', 'status'])
             if status != 'waiting':
                 break
-        for clip_id in study.speech.filter(kind__in=['feedback', 'help_word', 'help_phrase'], status='waiting').values_list('pk', flat=True):
+        for clip_id in study.speech.filter(kind__in=['feedback', 'help_word', 'help_phrase'], status='waiting').order_by('pk').values_list('pk', flat=True):
             capture.speak(clip_id)
     except Exception as exc:
         log.warning('Picture practice %s stopped (%s)', pk, type(exc).__name__)

@@ -92,17 +92,20 @@ class RecognitionHelpWorkflowTests(TestCase):
         return {'mode': 'text', 'description': RAW, 'feedback_language': 'English', 'voice': 'marin',
             'quote': signing.dumps(practice.quote(self.user, self.d), salt=SALT), **extra}
 
-    def test_panel_is_compact_and_read_only_visits_do_not_buy_audio(self):
+    def test_all_help_audio_is_prepared_and_visiting_the_panel_does_not_buy_more(self):
         study = self.unclear()
+        self.assertEqual(CaptureSpeech.objects.filter(status='ready').count(), 4)
+        self.assertEqual(self.tts.call_count, 4)
+        self.tts.reset_mock()
         page = self.client.get(self.url('picture-practice-detail', study.pk))
         self.assertContains(page, 'Did you mean…?')
-        self.assertContains(page, 'Listen to the word', count=2)
-        self.assertContains(page, 'Listen in a phrase', count=2)
+        self.assertContains(page, 'Word pronunciation', count=2)
+        self.assertNotContains(page, 'value="listen_help"')
         self.assertContains(page, 'Yes, use these words')
         self.assertContains(page, 'Use different words')
         self.assertContains(page, 'Example phrase:')
         self.assertNotContains(page, 'A correction explanation.')
-        self.assertEqual(CaptureSpeech.objects.count(), 0)
+        self.assertEqual(CaptureSpeech.objects.count(), 4)
         self.tts.assert_not_called()
         self.assertEqual((Entry.objects.count(), Contribution.objects.count()), self.before)
 
@@ -140,13 +143,13 @@ class RecognitionHelpWorkflowTests(TestCase):
                 self.assertEqual(self.act(study, 'listen_help', target=2, part=part, permission='yes',
                     text='Client-supplied text is ignored.').status_code, 302)
             practice.run(study.pk); practice.run(study.pk)
-        self.assertEqual(CaptureSpeech.objects.count(), 2)
-        self.assertEqual(self.tts.call_count, 2)
+        self.assertEqual(CaptureSpeech.objects.count(), 4)
+        self.assertEqual(self.tts.call_count, 4)
         self.assertEqual(self.tts.call_args.kwargs['speech_kind'], 'sentence')
         self.assertEqual(self.review.call_count, 1)
         self.assertEqual(self.asr.call_count, 1)
         clips = list(CaptureSpeech.objects.order_by('pk'))
-        self.assertEqual([clip.text for clip in clips], ['tavolo', 'Un tavolo per due.'])
+        self.assertEqual([clip.text for clip in clips], ["C'è", 'tavolo', "C'è un tavolo.", 'Un tavolo per due.'])
         self.assertTrue(all(clip.status == 'ready' and not clip.entry_id for clip in clips))
         self.assertEqual(self.tts.call_args_list[0].kwargs['speech_kind'], 'entry')
         page = self.client.get(self.url('picture-practice-detail', study.pk))
@@ -165,17 +168,17 @@ class RecognitionHelpWorkflowTests(TestCase):
             for part in ['word', 'phrase']:
                 self.assertEqual(self.act(study, 'listen_help', target=2, part=part, permission='yes').status_code, 302)
                 practice.run(study.pk)
-        self.assertEqual(CaptureSpeech.objects.filter(status='ready').count(), 2)
+        self.assertEqual(CaptureSpeech.objects.filter(status='ready').count(), 4)
 
     def test_playback_failure_is_not_automatically_retried(self):
-        study = self.unclear()
         self.tts.side_effect = TimeoutError()
+        study = self.unclear()
         self.act(study, 'listen_help', target=2, part='word', permission='yes')
         practice.run(study.pk)
-        self.assertEqual(CaptureSpeech.objects.get().status, 'failed')
+        self.assertEqual(CaptureSpeech.objects.filter(status='failed').count(), 4)
         self.act(study, 'listen_help', target=2, part='word', permission='yes')
         practice.run(study.pk)
-        self.assertEqual(self.tts.call_count, 1)
+        self.assertEqual(self.tts.call_count, 4)
         self.assertContains(self.client.get(self.url('picture-practice-detail', study.pk)), 'will not be retried automatically')
 
     def test_generated_word_clips_do_not_prevent_final_sentence_audio(self):
@@ -188,7 +191,7 @@ class RecognitionHelpWorkflowTests(TestCase):
         self.assertEqual(self.act(study, 'listen', permission='yes').status_code, 302)
         practice.run(study.pk)
         self.assertEqual(CaptureSpeech.objects.filter(kind='feedback', status='ready').count(), 1)
-        self.assertEqual(self.tts.call_count, 2)
+        self.assertEqual(self.tts.call_count, 5)
 
     def test_invalid_or_unapproved_playback_requests_do_not_create_clips(self):
         study = self.unclear()
@@ -196,13 +199,13 @@ class RecognitionHelpWorkflowTests(TestCase):
                      {'target': 2, 'part': 'other', 'permission': 'yes'},
                      {'target': 2, 'part': 'word'}, {'target': 'bad', 'part': 'word', 'permission': 'yes'}]:
             self.assertEqual(self.act(study, 'listen_help', **data).status_code, 409)
-        self.assertEqual(CaptureSpeech.objects.count(), 0)
-        self.tts.assert_not_called()
+        self.assertEqual(CaptureSpeech.objects.count(), 4)
+        self.assertEqual(self.tts.call_count, 4)
 
     def test_shared_diagnostics_include_hypotheses_and_choice_but_not_audio_access(self):
         study = self.unclear()
         self.act(study, 'listen_help', target=2, part='word', permission='yes'); practice.run(study.pk)
-        clip = CaptureSpeech.objects.get()
+        clip = CaptureSpeech.objects.get(kind='help_word', text_id=2)
         self.act(study, 'use_suggestion', **self.confirmation())
         other = Client(); other.force_login(self.owner)
         self.assertEqual(other.get(self.url('picture-practice-log')+'?shared=1').json()['attempts'], [])
@@ -213,17 +216,86 @@ class RecognitionHelpWorkflowTests(TestCase):
         self.assertEqual(row['confirmed_text'], PROPOSED)
         self.assertEqual(row['recognition_confirmation']['method'], 'suggestion')
         self.assertEqual(row['recognition_help']['proposed_text'], PROPOSED)
-        self.assertEqual(row['recognition_audio'], [{'target': 2, 'part': 'word', 'status': 'ready'}])
+        self.assertEqual(len(row['recognition_audio']), 4)
+        self.assertTrue(all(row['status'] == 'ready' for row in row['recognition_audio']))
         self.assertEqual(other.get(self.url('picture-practice-help-audio', study.pk, clip.pk)).status_code, 404)
         self.assertNotIn('file_path', json.dumps(row))
 
     def test_changed_suggestion_or_withdrawn_source_blocks_private_audio(self):
         study = self.unclear()
         self.act(study, 'listen_help', target=2, part='word', permission='yes'); practice.run(study.pk)
-        clip = CaptureSpeech.objects.get()
+        clip = CaptureSpeech.objects.get(kind='help_word', text_id=2)
         study.refresh_from_db()
         study.result['practice']['recognition_help']['targets'][1]['word'] = 'gatto'
         study.save(update_fields=['result'])
         self.assertEqual(self.client.get(self.url('picture-practice-help-audio', study.pk, clip.pk)).status_code, 404)
+        study.result['practice']['recognition_help']['targets'][1]['word'] = 'tavolo'
+        study.save(update_fields=['result'])
         self.photo.status = 'withdrawn'; self.photo.save()
         self.assertEqual(self.client.get(self.url('picture-practice-help-audio', study.pk, clip.pk)).status_code, 404)
+
+    def test_only_uncertain_speech_generates_help_audio(self):
+        from .test_picture_practice import FEEDBACK
+        self.review.return_value = response(FEEDBACK)
+        study = self.attempt('voice')
+        practice.run(study.pk)
+        self.assertFalse(CaptureSpeech.objects.exists())
+        self.tts.assert_not_called()
+        self.d.tts_enabled = False; self.d.save()
+        self.unclear()
+        self.assertFalse(CaptureSpeech.objects.exists())
+        self.tts.assert_not_called()
+
+    def test_all_clips_are_queued_atomically_and_background_resume_does_not_repeat_review(self):
+        from unittest.mock import patch
+        with patch('community_dictionary.capture.speak'):
+            study = self.unclear()
+        self.assertEqual(CaptureSpeech.objects.filter(status='waiting').count(), 4)
+        page = self.client.get(self.url('picture-practice-detail', study.pk))
+        self.assertContains(page, 'Generating pronunciation…', count=4)
+        self.assertContains(page, 'data-poll="yes"')
+        self.assertNotContains(page, 'value="listen_help"')
+        practice.run(study.pk); practice.run(study.pk)
+        self.assertEqual(self.review.call_count, 1)
+        self.assertEqual(self.tts.call_count, 4)
+        self.assertEqual(CaptureSpeech.objects.filter(status='ready').count(), 4)
+
+    def test_maximum_help_prepares_six_clips_once(self):
+        text = RAW + ' Il gato.'
+        self.asr.return_value.text = text
+        self.review.return_value = uncertain(text, [*TARGETS,
+            {'before': 'gato', 'word': 'gatto', 'meaning': 'cat', 'phrase': 'Il gatto.'}])
+        study = self.attempt('voice')
+        practice.run(study.pk); practice.run(study.pk)
+        self.assertEqual(CaptureSpeech.objects.filter(status='ready').count(), 6)
+        self.assertEqual(self.tts.call_count, 6)
+        self.assertEqual(self.review.call_count, 1)
+
+    def test_visiting_or_continuing_an_older_attempt_does_not_backfill_audio(self):
+        study = self.unclear()
+        study.speech.all().delete()
+        study.result['practice']['quote']['version'] = 'picture-practice-3'
+        study.result['practice']['quote'].pop('help_audio')
+        study.save(update_fields=['result'])
+        self.tts.reset_mock()
+        self.client.get(self.url('picture-practice-detail', study.pk))
+        practice.run(study.pk)
+        self.assertFalse(CaptureSpeech.objects.exists())
+        self.tts.assert_not_called()
+
+    def test_estimate_and_session_permission_include_the_new_automatic_audio(self):
+        from community_dictionary.picture_practice_views import consent_key
+        values = practice.quote(self.user, self.d)
+        self.assertTrue(values['help_audio'])
+        self.assertGreater(practice.estimate(values), practice.estimate({**values, 'help_audio': False}))
+        session = self.client.session
+        session[consent_key(self.d)] = {'user': self.user.pk, 'quote': {**values, 'version': 'picture-practice-3'},
+            'expires': 9999999999}
+        session.save()
+        page = self.client.get(self.url('picture-practice')+f'?image={self.photo.pk}')
+        self.assertContains(page, 'automatically prepared help pronunciations')
+        self.assertContains(page, 'name="permission"')
+        self.assertEqual(self.start('voice', permission='').status_code, 200)
+        self.assertFalse(CaptureSpeech.objects.exists())
+        self.review.assert_not_called()
+        self.tts.assert_not_called()
