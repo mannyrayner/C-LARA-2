@@ -13,7 +13,7 @@ from .services import Conflict
 from .storage import path_for
 
 log = logging.getLogger(__name__)
-VERSION = 'picture-practice-2'
+VERSION = 'picture-practice-3'
 from . import practice_review
 SCHEMA = practice_review.SCHEMA
 INSTRUCTIONS = practice_review.INSTRUCTIONS
@@ -161,6 +161,8 @@ def run(pk):
                 update = {'heard': parsed['heard'], 'review_decision': parsed['diagnostics']}
                 if parsed['outcome'] == 'recognition':
                     update.update(original_text=parsed['heard'], recognition_question=parsed['question'])
+                    if not info.get('confirmed'):
+                        update['recognition_help'] = parsed['recognition_help']
                     status = 'transcript'
                     if info.get('confirmed'):
                         # At most one confirmation review per attempt. A further
@@ -186,7 +188,7 @@ def run(pk):
                 current.save(update_fields=['result', 'status'])
             if status != 'waiting':
                 break
-        for clip_id in study.speech.filter(kind='feedback', status='waiting').values_list('pk', flat=True):
+        for clip_id in study.speech.filter(kind__in=['feedback', 'help_word', 'help_phrase'], status='waiting').values_list('pk', flat=True):
             capture.speak(clip_id)
     except Exception as exc:
         log.warning('Picture practice %s stopped (%s)', pk, type(exc).__name__)

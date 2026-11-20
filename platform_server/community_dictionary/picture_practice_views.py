@@ -12,13 +12,13 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy as L_
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from . import capture, capture_limits, picture_practice as practice, practice_hints, tts, writing
+from . import capture, capture_limits, picture_practice as practice, practice_hints, practice_recognition, tts, writing
 from .models import PictureCapture, CaptureSpeech, Participation
 from .permissions import get_dictionary
 from .port_views import no_store
 from .services import Conflict, submit_once
 from .storage import path_for, prepare_upload, write_upload
-from .views import context, fail, saved
+from .views import context, fail, saved, private_media_response
 from .voices import VOICE_CHOICES
 from .practice_costs import summary as cost_summary
 from .learning import LEVELS
@@ -212,9 +212,18 @@ def page(request, dictionary, study, form=None):
             'quote': config['quote']})
     clips = study.speech.filter(kind='feedback').order_by('-pk')
     clip = clips.first()
-    polling = study.status in {'waiting', 'processing'} or bool(clip and clip.status in {'waiting', 'running'})
+    help_targets = []
+    for target in info.get('recognition_help', {}).get('targets', []):
+        parts = []
+        for part, kind in practice_recognition.KINDS.items():
+            parts.append({'part': part, 'text': target[part],
+                'clip': study.speech.filter(kind=kind, text_id=target['id']).first(),
+                'estimate': tts.estimate_cost(target[part], 5 if part == 'word' else 10)})
+        help_targets.append({**target, 'parts': parts})
+    polling = study.status in {'waiting', 'processing'} or study.speech.filter(status__in=['waiting', 'running']).exists()
     return no_store(render(request, 'community_dictionary/picture_practice_detail.html', context(request, dictionary,
         study=study, info=info, feedback=feedback, form=form, polling=polling, clip=clip,
+        help_targets=help_targets,
         needs_permission=needs_permission, cost_summary=cost_summary(study),
         highlighted=writing.changes(info.get('original_text', ''), feedback.get('text', '')),
         audio_estimate=tts.estimate_cost(feedback.get('text', ''), 30),
@@ -239,9 +248,16 @@ def action(request, pk, study_id):
     try:
         study = practice.own(request.user, dictionary, study_id)
         choice = request.POST.get('action')
-        if choice in {'check', 'revise'}:
+        if choice in {'check', 'revise', 'use_suggestion'}:
             config = setup(request.user, dictionary)
-            form = PracticeForm(request.POST, dictionary=dictionary, transcript=True,
+            posted = request.POST.copy()
+            if choice == 'use_suggestion':
+                proposed = study.result['practice'].get('recognition_help', {}).get('proposed_text')
+                if not proposed:
+                    raise Conflict(_('This suggestion is no longer available.'))
+                # Never accept a replacement sentence supplied by the browser.
+                posted['description'] = proposed
+            form = PracticeForm(posted, dictionary=dictionary, transcript=True,
                 needs_permission=not session_permission(request, dictionary, config['consent_values']))
             if not form.is_valid():
                 return page(request, dictionary, study, form)
@@ -292,9 +308,16 @@ def action(request, pk, study_id):
                     raise Conflict(_('Confirm permission for this practice session.'))
                 if current.status != 'transcript':
                     raise Conflict(_('This transcript has already been submitted.'))
+                if choice == 'use_suggestion' and form.cleaned_data['description'] != current.result['practice'].get('recognition_help', {}).get('proposed_text'):
+                    raise Conflict(_('This suggestion changed. Reload the page.'))
+                method = 'suggestion' if choice == 'use_suggestion' else (
+                    'edited' if form.cleaned_data['description'] != current.result['practice'].get('original_text') else 'unchanged')
                 current.result['practice'].update(stage='review', original_text=form.cleaned_data['description'],
-                    feedback_language=form.cleaned_data['feedback_language'], confirmed=True)
+                    feedback_language=form.cleaned_data['feedback_language'], confirmed=True,
+                    confirmed_text=form.cleaned_data['description'], recognition_confirmation={
+                        'method': method, 'text': form.cleaned_data['description'], 'at': timezone.now().isoformat()})
                 practice.diagnostic(current, 'recognition_confirmation', 'confirmed',
+                    method=method,
                     text_changed=form.cleaned_data['description'] != study.result['practice'].get('original_text'))
                 remember_permission(request, dictionary, values)
                 current.voice = form.cleaned_data['voice']
@@ -303,6 +326,36 @@ def action(request, pk, study_id):
                 transaction.on_commit(lambda: practice.queue(str(study.pk)))
                 return url(current)
             return saved(request, submit_once(request, dictionary, f'practice-confirm:{study.pk}', confirm, ignore_fields=('quote', 'permission')))
+        if choice == 'listen_help':
+            if request.POST.get('permission') != 'yes':
+                raise Conflict(_('Confirm the new audio request.'))
+            part = request.POST.get('part')
+            kind = practice_recognition.KINDS.get(part)
+            try:
+                target = int(request.POST.get('target', ''))
+            except (ValueError, TypeError):
+                raise Conflict(_('Choose a suggestion shown on this page.'))
+            if not kind or target not in range(1, 4):
+                raise Conflict(_('Choose a suggestion shown on this page.'))
+            def listen_help(paths):
+                capture.locks()
+                current = capture.fetch(study.pk, True)
+                practice.permitted(current, payment=True)
+                spec = practice_recognition.clip_spec(current.result['practice'], kind, target)
+                if current.status != 'transcript' or not spec or current.result['practice'].get('mode') != 'voice':
+                    raise Conflict(_('Choose a suggestion shown on this page.'))
+                if not current.dictionary.tts_enabled or tts.language_code(current.language) not in tts.LANGUAGES.values():
+                    raise Conflict(_('Saved audio is unavailable for this language.'))
+                # One paid attempt for each displayed word/phrase, including
+                # uncertain failures. Duplicate taps can only reuse that attempt.
+                if not current.speech.filter(kind=kind, text_id=target).exists():
+                    CaptureSpeech.objects.create(capture=current, kind=kind, text_id=target,
+                        language=current.language, **spec)
+                    practice.diagnostic(current, 'recognition_playback', 'requested', target=target, part=part)
+                    current.save(update_fields=['result'])
+                    transaction.on_commit(lambda: practice.queue(str(current.pk)))
+                return url(current)
+            return saved(request, submit_once(request, dictionary, f'practice-help:{study.pk}:{target}:{part}', listen_help))
         if choice == 'listen':
             if request.POST.get('permission') != 'yes':
                 raise Conflict(_('Confirm the new audio request.'))
@@ -317,7 +370,7 @@ def action(request, pk, study_id):
                     raise Conflict(_('Saved audio is unavailable for this language.'))
                 # One clip per attempt, including uncertain failures. Replaying
                 # the player is free; a new practice attempt can request a new clip.
-                if not current.speech.exists():
+                if not current.speech.filter(kind='feedback').exists():
                     CaptureSpeech.objects.create(capture=current, kind='feedback', text=feedback['text'], language=current.language)
                     transaction.on_commit(lambda: practice.queue(str(current.pk)))
                 return url(current)
@@ -334,6 +387,20 @@ def action(request, pk, study_id):
         return saved(request, url(study))
     except Conflict as exc:
         return fail(request, exc, 409)
+
+
+@login_required
+@require_GET
+def help_audio(request, pk, study_id, clip_id):
+    dictionary = get_dictionary(request.user, pk)
+    try:
+        study = practice.own(request.user, dictionary, study_id)
+        clip = get_object_or_404(study.speech, pk=clip_id,
+            kind__in=practice_recognition.KINDS.values(), status='ready')
+        capture.speech_allowed(clip)
+        return private_media_response(request, clip.file_path, 'audio/wav', 'practice-pronunciation')
+    except Conflict:
+        raise Http404
 
 
 @login_required
@@ -379,6 +446,12 @@ def diagnostic_log(request, pk):
             'status': study.status, 'model': study.model, 'app_recipe': info.get('quote', {}).get('version'),
             'raw_transcript': info.get('transcript', ''), 'submitted_text': info.get('original_text', ''),
             'normalised_text': info.get('heard', ''), 'confirmed_by_learner': info.get('confirmed', False),
+            'confirmed_text': info.get('confirmed_text', ''),
+            'recognition_help': info.get('recognition_help', {}),
+            'recognition_confirmation': info.get('recognition_confirmation', {}),
+            'recognition_audio': [{'target': clip.text_id,
+                'part': 'word' if clip.kind == 'help_word' else 'phrase', 'status': clip.status}
+                for clip in study.speech.filter(kind__in=practice_recognition.KINDS.values()).order_by('pk')],
             'recognition_question': info.get('recognition_question', ''), 'feedback': info.get('feedback', {}),
             'review_decision': info.get('review_decision', {}), 'reviews': info.get('review_log', []),
             'diagnostics': info.get('diagnostics', {}), 'user_report': info.get('user_report', {}),

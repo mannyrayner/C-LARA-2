@@ -20,7 +20,7 @@ class PracticeCostTests(SimpleTestCase):
     def test_all_components_include_confirmation_and_optional_speech(self):
         study=attempt(confirmed=True,usage={'practice_transcription':{'cost_usd':'.0005'},
             'practice_feedback':{'cost_usd':'.011'}, 'practice_feedback_confirmed':{'cost_usd':'.005'}},
-            clips=[SimpleNamespace(status='ready',report={'speech_cost_usd':'.002','guidance_cost_usd':'0'})])
+            clips=[SimpleNamespace(kind='feedback',status='ready',report={'speech_cost_usd':'.002','guidance_cost_usd':'0'})])
         data=summary(study)
         self.assertEqual(data['known_total'],Decimal('.0185'))
         self.assertTrue(data['complete'])
@@ -28,7 +28,7 @@ class PracticeCostTests(SimpleTestCase):
 
     def test_unknown_usage_and_uncertain_audio_are_not_reported_as_a_complete_zero(self):
         data=summary(attempt(usage={'practice_feedback':{'cost_usd':'.011'}},
-            clips=[SimpleNamespace(status='failed',report={'speech_cost_usd':'0','uncertain_cost':True})]))
+            clips=[SimpleNamespace(kind='feedback',status='failed',report={'speech_cost_usd':'0','uncertain_cost':True})]))
         self.assertFalse(data['complete'])
         self.assertEqual(data['known_total'],Decimal('.011'))
         self.assertIsNone(data['items'][0]['cost'])

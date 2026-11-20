@@ -30,11 +30,12 @@ def summary(study):
     # cost is not charged or counted again in this attempt.
     if info.get('parent_attempt') and info.get('mode') == 'voice':
         rows = [r for r in rows if r['stage'] != 'recognition']
-    for clip in study.speech.filter(kind='feedback').order_by('pk'):
+    for clip in study.speech.filter(kind__in=['feedback', 'help_word', 'help_phrase']).order_by('pk'):
         report = clip.report or {}
         amounts = [number(report.get(k)) for k in ['guidance_cost_usd', 'speech_cost_usd'] if k in report]
         known = sum((x for x in amounts if x is not None), Decimal('0')) if amounts else None
-        rows.append({'stage': 'speech', 'label': _('Spoken version generation'), 'cost': known,
+        rows.append({'stage': 'speech', 'label': (_('Suggested word pronunciation') if clip.kind == 'help_word' else
+            _('Example phrase pronunciation') if clip.kind == 'help_phrase' else _('Spoken version generation')), 'cost': known,
             'incomplete': bool(report.get('uncertain_cost')) or clip.status in {'waiting', 'running'} or
                 any(x is None for x in amounts)})
     total = sum((r['cost'] for r in rows if r['cost'] is not None), Decimal('0'))
