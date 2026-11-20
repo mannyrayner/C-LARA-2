@@ -8113,3 +8113,11 @@ msgstr "Rechargez cette page pour commencer un nouvel essai."
 
 msgid "Dictionary forms"
 msgstr "Formes du dictionnaire"
+
+msgid ""
+"When accepted, this recording replaces earlier AI-generated versions for "
+"this entry. Human recordings are kept."
+msgstr ""
+"Une fois accepté, cet enregistrement remplace les anciennes versions "
+"générées par l’IA pour cette entrée. Les enregistrements humains sont "
+"conservés."

@@ -70,6 +70,30 @@ def submit_once(request, dictionary, scope, callback, *, ignore_fields=()):
         raise
 
 
+def _replace_entry_tts(contribution, user):
+    """Accept holds dictionary/entry locks. Supersession preserves old files.
+
+    The marker names this exact contribution so copied provenance cannot turn
+    an ordinary imported or alternative recording into a replacement command.
+    """
+    if (contribution.kind != 'audio' or contribution.status != 'accepted' or not contribution.file_path or
+            contribution.provenance.get('origin') != 'synthetic' or
+            'sentence_form' in contribution.provenance or
+            contribution.provenance.get('replace_entry_tts') != contribution.pk):
+        return
+    previous = Contribution.objects.select_for_update(of=('self',)).filter(entry_id=contribution.entry_id,
+        kind='audio', status='accepted', provenance__origin='synthetic').exclude(pk=contribution.pk).exclude(
+        provenance__has_key='sentence_form').exclude(shared_from__kind='form')
+    ids = list(previous.order_by('pk').values_list('pk', flat=True))
+    if not ids:
+        return
+    Contribution.objects.filter(pk__in=ids, status='accepted').update(status='superseded')
+    contribution.provenance = {**contribution.provenance, 'replaces_audio_ids': ids}
+    contribution.save(update_fields=['provenance'])
+    event(contribution.entry.dictionary, user, 'audio_replacement', contribution.entry,
+        f'Contribution {contribution.pk} replaces synthetic recordings {ids}')
+
+
 @transaction.atomic
 def accept(contribution, user):
     Dictionary.objects.select_for_update().get(pk=contribution.entry.dictionary_id)
@@ -102,6 +126,7 @@ def accept(contribution, user):
     entry.save()
     contribution.status = 'accepted'
     contribution.save(update_fields=['status'])
+    _replace_entry_tts(contribution, user)
     if contribution.request_id:
         req = contribution.request
         if not req.withdrawn and not req.completed_with_id:
