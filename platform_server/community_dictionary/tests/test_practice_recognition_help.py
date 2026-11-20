@@ -98,7 +98,7 @@ class RecognitionHelpWorkflowTests(TestCase):
         self.assertEqual(self.tts.call_count, 4)
         self.tts.reset_mock()
         page = self.client.get(self.url('picture-practice-detail', study.pk))
-        self.assertContains(page, 'Did you mean…?')
+        self.assertContains(page, 'I understood…')
         self.assertContains(page, 'Word pronunciation', count=2)
         self.assertNotContains(page, 'value="listen_help"')
         self.assertContains(page, 'Yes, use these words')

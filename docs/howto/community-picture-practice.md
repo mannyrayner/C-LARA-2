@@ -123,12 +123,22 @@ These estimates describe AI usage, not hosting or final provider invoices.
 
 ## Help with uncertain recognition
 
-New spoken attempts can show a **Did you mean…?** panel when the image-aware
+New spoken attempts can show an **I understood…** panel when the image-aware
 review finds a plausible alternative to the recogniser's words. It shows a
-possible interpretation and up to three local word/phrase replacements, with
-short meanings in the chosen explanation language. These are hypotheses about
+possible interpretation and up to three suggested words/phrases, with short
+meanings in the chosen explanation language. These are hypotheses about
 intention, not diagnoses of pronunciation. The image is context; it is never an
 answer key. Genuine grammar outside those replacements is preserved for feedback.
+
+An uncertain recogniser spelling with a reasonably clear interpretation is shown
+as an interpretation to check, without a spelling-comparison arrow or a claim
+that the learner used a foreign word. The raw transcript, proposed replacements
+and original model question remain in private diagnostics. The reviewer explicitly
+distinguishes uncertainty about intended meaning; when that is unresolved, the
+page still asks a prominent meaning question. Proposed lexical changes still need
+learner confirmation before language feedback; they are never applied silently.
+Italian `Carotte e lattuga.` is a regression example of this presentation policy,
+not a pronunciation diagnosis or a fixed substitution rule.
 
 When uncertain speech produces useful suggestions, the background worker now
 automatically prepares private model pronunciations of every suggested word and
@@ -140,6 +150,12 @@ none of these help clips. Failed or uncertain audio requests are not repeated
 automatically. Word/phrase audio costs are included in cost details and the private
 export; the diagnostic request event marks them as automatic. These clips do not
 add dictionary content.
+
+All private practice pronunciations (words, phrases and final feedback) use the
+OpenAI practice voice covered by the practice estimate and consent. The
+dictionary's Google word-provider setting continues to apply to published
+vocabulary, not these private clips. This avoids a provider-policy mismatch that
+could stop the word clip while leaving its example phrase usable.
 
 The initial practice estimate includes an allowance for those six possible help
 clips, based on five seconds per word and ten seconds per phrase plus their text.
@@ -161,8 +177,10 @@ be criticised as spoken errors. The reviewer still sees no waveform and makes
 no pronunciation, accent or fluency assessment. Model suggestions can be wrong.
 
 The log distinguishes the raw transcript, proposed wording, learner-confirmed
-wording, confirmation method (suggestion, edited or unchanged), requested audio
-and its status. Existing report labels and intended-wording notes remain
+wording, confirmation method (suggestion, edited or unchanged), requested audio,
+its status, and bounded audio `stage`/`failure_code` values when available. Unknown
+codes are omitted as null; raw provider error messages, keys and paths are never
+exported. Existing report labels and intended-wording notes remain
 available. Owners/co-owners see only attempts explicitly shared with them; sharing
 a diagnostic log does not grant access to private recordings or these audio clips.
 

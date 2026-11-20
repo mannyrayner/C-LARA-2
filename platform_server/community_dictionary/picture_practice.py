@@ -13,7 +13,7 @@ from .services import Conflict
 from .storage import path_for
 
 log = logging.getLogger(__name__)
-VERSION = 'picture-practice-4'
+VERSION = 'picture-practice-5'
 from . import practice_review
 SCHEMA = practice_review.SCHEMA
 INSTRUCTIONS = practice_review.INSTRUCTIONS

@@ -2,10 +2,10 @@
 {% if help_targets %}
 <div class="recognition-help">
 <p class="meaning" dir="auto">{{ info.recognition_help.proposed_text }}</p>
-<p class="help">{% translate "A possible interpretation of your words. Listen, then confirm or try again." %}</p>
+<p class="help">{% translate "Check this interpretation, or listen to a model pronunciation." %}</p>
 {% for target in help_targets %}
 <section aria-label="{{ target.word }}">
-<p dir="auto"><span>{{ target.before }}</span> → <strong>{{ target.word }}</strong>{% if target.meaning %} · {{ target.meaning }}{% endif %}</p>
+<p dir="auto"><strong>{{ target.word }}</strong>{% if target.meaning %} · {{ target.meaning }}{% endif %}</p>
 {% for part in target.parts %}
 {% if part.part == 'word' %}<p class="help">{% translate "Word pronunciation" %}</p>{% endif %}
 {% if part.part == 'phrase' %}<p class="help" dir="auto">{% translate "Example phrase:" %} {{ part.text }}</p>{% endif %}

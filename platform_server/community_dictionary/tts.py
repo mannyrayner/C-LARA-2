@@ -211,6 +211,17 @@ def record_failure(report, exc):
     return code
 
 
+def public_diagnostic(report):
+    """Share bounded stage/reason codes, never provider errors or private data."""
+    return {
+        'stage': report.get('stage') if report.get('stage') in {
+            'setup', 'guidance', 'speech', 'audio_check', 'complete'} else None,
+        'failure_code': report.get('failure_code') if report.get('failure_code') in {
+            'google_access', 'near_silent', 'timeout', 'changed', 'guidance',
+            'invalid_audio', 'provider'} else None,
+    }
+
+
 def failure_message(report):
     if report.get('provider') == 'google' and report.get('failure_code') == 'near_silent':
         return 'The audio response was silent or too quiet. No automatic retry was sent.'

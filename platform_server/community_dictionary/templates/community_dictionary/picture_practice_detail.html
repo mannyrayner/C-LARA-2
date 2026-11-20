@@ -5,8 +5,8 @@
 <div class="capture-layout"><img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="{% translate "Picture to describe" %}">
 <section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
 {% if study.status == 'transcript' %}
-<h2>{% if help_targets %}{% translate "Did you mean…?" %}{% else %}{% translate "Let me check what I heard" %}{% endif %}</h2>
-<p class="notice" dir="auto">{% firstof info.recognition_question feedback.question %}</p>
+<h2>{% if help_targets and not info.recognition_help.meaning_unclear %}{% translate "I understood…" %}{% elif info.recognition_help.meaning_unclear %}{% translate "Let me check the meaning" %}{% else %}{% translate "Let me check what I heard" %}{% endif %}</h2>
+{% if info.recognition_question %}<p class="notice" dir="auto">{{ info.recognition_question }}</p>{% endif %}
 {% include 'community_dictionary/practice_recognition_help.html' %}
 {% if study.recording_path %}<details><summary>{% translate "My recording" %}</summary><audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'recording' %}"></audio></details>{% endif %}
 {% include 'community_dictionary/practice_edit.html' %}
