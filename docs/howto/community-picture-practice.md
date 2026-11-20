@@ -130,11 +130,23 @@ short meanings in the chosen explanation language. These are hypotheses about
 intention, not diagnoses of pronunciation. The image is context; it is never an
 answer key. Genuine grammar outside those replacements is preserved for feedback.
 
-**Listen to the word** and **Listen in a phrase** optionally generate private model
-pronunciations. Each priced button authorises one audio attempt for that displayed
-word or phrase; replaying saved audio is free. Failed or uncertain audio requests
-are not repeated automatically. Word/phrase audio costs are included in cost
-details and the private export. These clips do not add dictionary content.
+When uncertain speech produces useful suggestions, the background worker now
+automatically prepares private model pronunciations of every suggested word and
+example phrase. Words are prepared first, then phrases; each player becomes
+available as its clip finishes. The page shows progress and refreshes itself.
+Nothing autoplays, and replaying saved audio is free. There are at most three word
+clips and three phrase clips per attempt. Clear attempts and typed input generate
+none of these help clips. Failed or uncertain audio requests are not repeated
+automatically. Word/phrase audio costs are included in cost details and the private
+export; the diagnostic request event marks them as automatic. These clips do not
+add dictionary content.
+
+The initial practice estimate includes an allowance for those six possible help
+clips, based on five seconds per word and ten seconds per phrase plus their text.
+This is a rough allowance, not a fixed charge or a guaranteed ceiling; actual
+usage varies. The new recipe requires fresh session permission before these
+automatic requests. Old attempts are not silently backfilled. The optional spoken
+version of final feedback still requires its separate priced button.
 
 **Yes, use these words** confirms the displayed interpretation and starts the
 existing additional review, without repeating speech recognition. **Use different

@@ -7,6 +7,7 @@
 <section aria-label="{{ target.word }}">
 <p dir="auto"><span>{{ target.before }}</span> → <strong>{{ target.word }}</strong>{% if target.meaning %} · {{ target.meaning }}{% endif %}</p>
 {% for part in target.parts %}
+{% if part.part == 'word' %}<p class="help">{% translate "Word pronunciation" %}</p>{% endif %}
 {% if part.part == 'phrase' %}<p class="help" dir="auto">{% translate "Example phrase:" %} {{ part.text }}</p>{% endif %}
 {% if part.clip.status == 'ready' %}
 <audio controls preload="none" aria-label="{{ part.text }}" src="{% url 'community_dictionary:picture-practice-help-audio' dictionary.pk study.pk part.clip.pk %}"></audio>
@@ -14,11 +15,7 @@
 <p role="status">{% translate "Generating pronunciation…" %}</p>
 {% elif part.clip %}<p class="notice">{% translate "Audio could not finish. It will not be retried automatically." %}</p>
 {% elif can_listen %}
-<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">
-{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
-<input type="hidden" name="target" value="{{ target.id }}"><input type="hidden" name="part" value="{{ part.part }}">
-<button class="secondary" name="action" value="listen_help">{% if part.part == 'word' %}{% translate "Listen to the word" %}{% else %}{% translate "Listen in a phrase" %}{% endif %} · +~US${{ part.estimate|floatformat:4 }}</button>
-</form>
+<p class="help">{% translate "Start a new attempt to prepare pronunciations automatically." %}</p>
 {% endif %}
 {% endfor %}
 </section>
