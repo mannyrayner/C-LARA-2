@@ -53,12 +53,12 @@
 {% if dictionary.hidden %}<button name="visibility" value="visible">{% translate "Make dictionary visible" %}</button>
 {% else %}<button class="secondary" name="visibility" value="hidden">{% translate "Hide dictionary" %}</button>{% endif %}
 </form></section>
-<section class="panel" id="picture-description-allowance"><h2>{% translate "Picture-description allowance" %}</h2>
-<p>{% blocktranslate with used=capture_usage.used limit=capture_usage.limit remaining=capture_usage.remaining %}{{ used }} of {{ limit }} descriptions used in the last 24 hours · {{ remaining }} remaining.{% endblocktranslate %}</p>
+<section class="panel" id="picture-description-allowance"><h2>{% translate "Picture creation and practice allowance" %}</h2>
+<p>{% blocktranslate with used=capture_usage.used limit=capture_usage.limit remaining=capture_usage.remaining %}{{ used }} of {{ limit }} requests used in the last 24 hours · {{ remaining }} remaining.{% endblocktranslate %}</p>
 {% if capture_usage.ceiling %}
 <form method="post" action="{% url 'community_dictionary:capture-limit' dictionary.pk %}" class="stack">
 {% csrf_token %}{{ capture_allowance_form.as_p }}<button name="action" value="preview">{% translate "Preview daily cost" %}</button></form>
-<p class="help">{% translate "Review the estimate, then confirm. The new allowance applies to Picture descriptions; other AI tools have their own limits." %}</p>
+<p class="help">{% translate "Review the estimate, then confirm. The allowance covers picture creation and language practice. Other AI tools have their own limits." %}</p>
 {% else %}<p>{% translate "The server administrator has paused new picture-description requests." %}</p>{% endif %}
 </section>
 <section class="panel"><h2>{% translate "Word audio" %}</h2><p>{% translate "Choose OpenAI or a Google voice for future words and sentence forms. Sentence audio keeps its current provider." %}</p><a class="button secondary" href="{% url 'community_dictionary:word-audio-settings' dictionary.pk %}">{% translate "Word audio settings" %}</a></section>

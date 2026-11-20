@@ -10,6 +10,7 @@ from .permissions import get_dictionary, require_owner
 from .services import Conflict, event, submit_once
 from .storage import path_for
 from .views import context
+from .capture_limits import NEW_DICTIONARY_LIMIT
 
 
 def images(dictionary, selection='both'):
@@ -39,7 +40,7 @@ def create(source, user, name, selection='both'):
         explanation_language=source.explanation_language, text_direction=source.text_direction,
         photo_ai_enabled=source.photo_ai_enabled, tts_enabled=source.tts_enabled,
         sentence_capture_enabled=source.sentence_capture_enabled,
-        image_generation_enabled=False)
+        image_generation_enabled=False, capture_daily_limit=NEW_DICTIONARY_LIMIT)
     from .learning import copy_level
     copy_level(source, target)
     for original in originals:

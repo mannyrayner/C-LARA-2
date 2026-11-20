@@ -1,35 +1,65 @@
-# Picture-description allowance and estimated daily cost
+# Picture creation and practice allowance
 
-8 October 2026. Follow-up to the image + spoken/typed description workflow.
-Manny confirms the preceding audio-recovery fix works. This allowance change has
-automated and simulated-browser evidence; human laptop/AWS acceptance is pending.
+Updated 21 November 2026 (Adelaide): allowance recovery and owner notifications.
+Human acceptance of this follow-up remains pending.
 
 ## For dictionary owners
 
-Open **Settings → Picture-description allowance**. Enter the number of descriptions
+Open **Settings → Picture creation and practice allowance**. Enter the number of requests
 allowed in 24 hours, choose **Preview daily cost**, then approve the estimate and
-choose **Confirm**. Going back without confirming changes nothing. Only the owner
+choose **Confirm**. Going back without confirming changes nothing. Owners and co-owners
 can change this shared setting; members can see usage when starting a description.
 
-- Existing and new dictionaries start at **10**. The allowance is shared by all
+- Newly created, image-only copied and language-ported dictionaries start at **50**.
+  Existing dictionaries keep their stored limits, including the old default of 10. The allowance is shared by all
   members of that dictionary. For example, raising it to 50 when 10 attempts have
   been made leaves 40 attempts available.
 - The window is the preceding 24 hours, not a midnight reset. Failed and discarded
   attempts count. Retrying the same receipt does not create a second attempt.
-- Lowering the allowance below current usage blocks new descriptions until enough
+- Lowering the allowance below current usage blocks new requests until enough
   attempts age out. Existing work and requests already running remain available.
-- This setting applies to **Picture descriptions**, not the older **Learn from a
-  photo**, manual audio generation or image-generation tools. Those retain their
-  independent limits.
+- The shared allowance covers guided picture creation (including starting with words),
+  picture descriptions, writing checks and **Describe a picture** practice. The older
+  **Learn from a photo**, manual audio generation and standalone image-generation
+  tools retain their independent limits.
 - Changing this setting starts no generation, reserves no credit and does not
   invalidate saved previews or change dictionary feature/privacy policy.
+
+## When the allowance is exhausted
+
+The activity shows **Daily allowance used up**, with a short explanation. Owners
+and co-owners get **Add N more**, leading directly to the existing signed cost
+preview and confirmation. The proposal is at least 50, or 25 beyond the current
+limit/usage, bounded by the server ceiling. It never automatically raises a limit,
+resets usage, starts an AI call, or retries a blocked submission. Members are told
+to ask an owner or try again later. Server/account ceilings are explained separately;
+a dictionary increase is not offered when it cannot help. JSON errors include a
+stable `allowance_exhausted` code and recovery details.
+
+An actual blocked request from a member who cannot manage the allowance queues
+one notification to the primary owner's registered email address, at most once
+per dictionary per rolling 24 hours. Merely viewing an exhausted allowance sends
+nothing. The message names the dictionary and links to its allowance page; it
+contains no learner text, image, recording or identity. Owner/co-owner requests
+and server/account-limit blocks do not send notices. Increasing the allowance
+before queued delivery suppresses a stale notice.
+
+Mail uses the site's configured Django email backend, sender and fixed
+`PUBLIC_BASE_URL`, plus its existing Django-Q task queue. No assistant mailbox or
+request Host header supplies the link. An existing dictionary event reserves the
+notification under the dictionary lock; the worker claims it once before sending.
+Failures record a bounded status without addresses or credentials and do not
+retry automatically. There is no new schema or email configuration setting.
 
 ## What the estimate means
 
 The preview multiplies the proposed allowance by the existing short-description
-planning estimate: 12,000 input tokens and 2,600 output tokens at the configured
-photo-model rates, plus US$0.08 for associated audio, pronunciation guidance and
-spoken input. This plans for a short sentence and up to six new words with audio.
+planning estimate: 16,000 input tokens and 4,096 output tokens at the configured
+photo-model rates, plus US$0.30 for associated audio, pronunciation guidance and
+spoken input. This plans for a short sentence and up to twelve vocabulary items
+with lemma/form audio. Practice normally needs less processing; each activity
+provides its own estimate. The daily preview is labelled as the cost if every
+request creates a new entry.
 The UI exposes these assumptions; no API call is needed to calculate the preview.
 
 This is **not a hard spending cap or provider quotation**. Actual input size,
@@ -54,7 +84,9 @@ this update does not require a fresh bulk media archive.
 `COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT`), default **1000**. It limits each
 dictionary's effective allowance and each account's total across dictionaries in
 24 hours. Zero pauses new attempts. A stored allowance above a subsequently lowered
-ceiling is clamped. The normal dictionary default remains ten. Check an existing
+ceiling is clamped. The application creation policy now supplies 50 explicitly. The historical model
+and migration fallback stays 10 for legacy/deserialised data; no schema migration
+or bulk alteration of existing allowances is required. Check an existing
 operator override if the Settings form offers a smaller maximum than expected.
 
 The cost approval is signed, expires after ten minutes, and is bound to the owner,

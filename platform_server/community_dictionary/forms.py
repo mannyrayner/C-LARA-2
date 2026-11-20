@@ -31,6 +31,10 @@ class DictionaryForm(forms.ModelForm):
         if self.instance.pk:
             self.initial['generation_level'] = learning.level(self.instance)
         elif self.creation_defaults:
+            from .capture_limits import NEW_DICTIONARY_LIMIT
+            # Creation policy, like the AI feature defaults below. Existing and
+            # restored dictionaries retain their stored, owner-approved limits.
+            self.instance.capture_daily_limit = NEW_DICTIONARY_LIMIT
             from .tts import LANGUAGES, language_code
             from .google_fallback import LANGUAGES as extra_languages
             self.ai_languages = sorted(set(LANGUAGES) | set(LANGUAGES.values()) |

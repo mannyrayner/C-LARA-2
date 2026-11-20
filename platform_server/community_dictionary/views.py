@@ -29,6 +29,11 @@ def context(request, dictionary=None, **extra):
     from .learning import mode
     personal_mode = mode(request, dictionary)
     page = getattr(getattr(request, 'resolver_match', None), 'url_name', None)
+    if dictionary and page in {'capture-start', 'capture-image', 'picture-practice',
+            'guided-start', 'guided-image', 'guided-detail', 'writing-detail'}:
+        from .capture_limits import offer
+        if not getattr(request, 'capture_allowance_offer', None):
+            offer(request, dictionary)
     from .google_fallback import language_code as fallback_code
     run = extra.get('run')
     google_fallback_audio = bool(dictionary and dictionary.tts_enabled and fallback_code(dictionary.language)) or bool(
@@ -54,8 +59,17 @@ def context(request, dictionary=None, **extra):
 
 
 def fail(request, message, status=400):
+    from .capture_limits import show_exhausted
+    handled = show_exhausted(request, message)
+    offer = getattr(request, 'capture_allowance_offer', None)
     if 'application/json' in request.headers.get('Accept', ''):
+        if offer:
+            return JsonResponse({'error': offer['message'],
+                'code': 'allowance_exhausted', 'allowance': offer}, status=status)
         return JsonResponse({'error': str(message)}, status=status)
+    if handled:
+        return render(request, 'community_dictionary/allowance_error.html',
+            context(request, message.dictionary), status=status)
     return render(request, 'community_dictionary/error.html', {'message': message}, status=status)
 
 
