@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy
 from django.views.decorators.http import require_http_methods, require_POST
-from . import capture, guided, guided_words, learning, tts, writing
+from . import capture, capture_limits, guided, guided_words, learning, tts, writing
 from .guided_word_forms import WordStartForm
 from .models import Dictionary, PictureCapture, Participation, VoicePreference
 from .permissions import get_dictionary
@@ -119,11 +119,13 @@ def new_attempt(request, dictionary, paths, prepared, source=None, previous=None
     return study
 
 
-def begin_saved(study):
+def begin_saved(study, request=None):
     try: guided.begin(study.pk)
     except Conflict as exc:
         # The upload remains private and recoverable even if credit/quota/setup
         # prevents the AI call. Never delete the successfully saved photograph.
+        if request and capture_limits.show_exhausted(request, exc):
+            return ''
         return str(exc)
     return ''
 
@@ -166,11 +168,12 @@ def start(request, pk, image_id=None):
             # A refreshed signed estimate is not new content. Replay the same
             # saved words before admitting any new paid work.
             location = submit_once(request, dictionary, 'guided-words', create_words, ignore_fields=('words_quote',))
-            error = begin_saved(guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1]))
+            error = begin_saved(guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1]), request)
             if error: messages.warning(request, error)
             return saved(request, location)
         except (Conflict, forms.ValidationError, OSError) as exc:
-            words_form.add_error(None, str(exc))
+            if not capture_limits.show_exhausted(request, exc):
+                words_form.add_error(None, str(exc))
     if request.method == 'POST' and not words_route and words_form.is_valid() and form.is_valid():
         try:
             prepared = ((path_for(source.file_path).read_bytes(), 'image/jpeg', '.jpg') if source else
@@ -187,12 +190,13 @@ def start(request, pk, image_id=None):
                 return url(new_attempt(request, current, paths, prepared, source))
             location = submit_once(request, dictionary, f'guided-picture:{image_id}', create)
             study = guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1])
-            error = begin_saved(study)
+            error = begin_saved(study, request)
             if error: messages.warning(request, error)
             return saved(request, location)
         except (Conflict, forms.ValidationError, OSError) as exc:
-            form.add_error(None, str(exc) if not isinstance(exc, OSError) else _('The picture file is unavailable.'))
-    if request.method == 'POST' and (form.errors or words_form.errors) and 'application/json' in request.headers.get('Accept', ''):
+            if not capture_limits.show_exhausted(request, exc):
+                form.add_error(None, str(exc) if not isinstance(exc, OSError) else _('The picture file is unavailable.'))
+    if request.method == 'POST' and (form.errors or words_form.errors or getattr(request, 'capture_allowance_offer', None)) and 'application/json' in request.headers.get('Accept', ''):
         return fail(request, (words_form.errors if words_route else form.errors or words_form.errors).as_text())
     return no_store(render(request, 'community_dictionary/guided_start.html', context(request, dictionary,
         **setup, **words_setup, form=form, words_form=words_form, image=source, needs_guided_consent=needs_consent,

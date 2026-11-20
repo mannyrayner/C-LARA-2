@@ -25,6 +25,7 @@ from .permissions import require_owner, is_owner
 from .services import Conflict, accept, event
 from .storage import delete_file, path_for
 from .text import FIELDS
+from .capture_limits import NEW_DICTIONARY_LIMIT
 
 ZERO = Decimal('0')
 FOUR = Decimal('.0001')
@@ -376,7 +377,8 @@ def approve(user, run_id):
         port.destination = Dictionary.objects.create(name=port.name,language=port.language,
             explanation_language=port.explanation_language,owner=user,photo_ai_enabled=port.source.photo_ai_enabled,
             tts_enabled=bool(tts.language_code(port.language)), image_generation_enabled=False,
-            sentence_capture_enabled=port.source.sentence_capture_enabled)
+            sentence_capture_enabled=port.source.sentence_capture_enabled,
+            capture_daily_limit=NEW_DICTIONARY_LIMIT)
         from .learning import copy_level
         copy_level(port.source, port.destination)
         port.save(update_fields=['destination'])

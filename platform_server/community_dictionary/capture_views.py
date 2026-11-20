@@ -112,7 +112,8 @@ def start(request,pk,image_id=None):
         except (Conflict,OSError) as exc:
             if isinstance(exc,OSError): exc=Conflict('The picture file is unavailable. Choose a picture again.')
             if 'application/json' in request.headers.get('Accept',''): return fail(request,exc,409)
-            form.add_error(None,str(exc))
+            if not capture_limits.show_exhausted(request, exc):
+                form.add_error(None,str(exc))
         else:
             preferences={key:form.cleaned_data[key] for key in ['input_mode','input_language','voice']}
             if previous:

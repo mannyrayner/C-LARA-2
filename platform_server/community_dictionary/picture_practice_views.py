@@ -188,7 +188,8 @@ def start(request, pk):
                 return url(study)
             return saved(request, submit_once(request, dictionary, 'picture-practice', create, ignore_fields=('quote', 'permission')))
         except (Conflict, forms.ValidationError, OSError) as exc:
-            form.add_error(None, _('The picture file is unavailable.') if isinstance(exc, OSError) else str(exc))
+            if not capture_limits.show_exhausted(request, exc):
+                form.add_error(None, _('The picture file is unavailable.') if isinstance(exc, OSError) else str(exc))
     if request.method == 'POST' and 'application/json' in request.headers.get('Accept', ''):
         return fail(request, form.errors.as_text() or _('Choose an available picture.'), 409)
     recent = PictureCapture.objects.filter(dictionary=dictionary, user=request.user, input_mode='practice',

@@ -18,7 +18,7 @@ from .views import context, fail
 
 
 class AllowanceForm(forms.Form):
-    daily_limit = forms.IntegerField(min_value=1, label='Picture descriptions per 24 hours')
+    daily_limit = forms.IntegerField(min_value=1, label='Requests per 24 hours')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -63,7 +63,7 @@ def change(request, pk):
                 dictionary.save(update_fields=['capture_daily_limit'])
                 event(dictionary, request.user, 'capture_allowance_changed',
                       detail=f'Picture-description allowance {old} → {limit} per rolling 24h; estimate approved')
-            messages.success(request, f'Picture-description allowance saved: {limit} per 24 hours.')
+            messages.success(request, f'Picture creation and practice allowance saved: {limit} per 24 hours.')
             return redirect('community_dictionary:settings', pk=pk)
         if action != 'preview':
             return fail(request, 'Choose Preview cost before confirming an allowance.', 400)

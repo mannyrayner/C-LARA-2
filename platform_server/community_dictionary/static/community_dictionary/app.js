@@ -70,6 +70,35 @@
     form.addEventListener('submit', event => { if (!ready) event.preventDefault(); });
     const tellError = message => { error.textContent = message; error.hidden = false; error.focus(); };
     const clearError = () => { error.hidden = true; error.textContent = ''; };
+    const showAllowance = allowance => {
+      document.querySelectorAll('[data-allowance-offer]').forEach(el => el.remove());
+      const panel = document.createElement('section');
+      panel.className = 'panel'; panel.dataset.allowanceOffer = '';
+      panel.setAttribute('role', 'status'); panel.tabIndex = -1;
+      const text = (tag, value) => { const el = document.createElement(tag); el.textContent = value; panel.append(el); return el; };
+      text('h2', gettext('Daily allowance used up'));
+      text('p', allowance.message);
+      const preview = allowance.url && new URL(allowance.url, location.href);
+      if (allowance.proposed && preview && preview.origin === location.origin) {
+        text('p', gettext('Would you like to add more? Review the estimated cost before confirming.'));
+        const costForm = document.createElement('form');
+        costForm.method = 'post'; costForm.action = preview.href; costForm.className = 'stack';
+        costForm.target = '_blank'; costForm.rel = 'noopener';
+        for (const [name, value] of [['csrfmiddlewaretoken', form.elements.csrfmiddlewaretoken.value],
+            ['daily_limit', allowance.proposed], ['action', 'preview']]) {
+          const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; costForm.append(input);
+        }
+        const button = document.createElement('button'); button.type = 'submit';
+        button.textContent = gettext('Add %(count)s more').replace('%(count)s', String(allowance.extra));
+        costForm.append(button); panel.append(costForm);
+        text('p', gettext('The cost preview opens in a new tab. Return here after increasing the allowance, then try again.')).className = 'help';
+      } else {
+        text('p', allowance.server_limit
+          ? gettext('The server limit has been reached. Try again later, or contact the site administrator if you need a higher limit.')
+          : gettext('Ask a dictionary owner to increase the allowance, or try again later.'));
+      }
+      form.before(panel); panel.focus();
+    };
     const fields = () => Array.from(form.elements).filter(el => el.name && !['file', 'submit', 'button'].includes(el.type) && el.name !== 'csrfmiddlewaretoken' && (el.type !== 'radio' || el.checked));
     const snapshot = () => ({values: fields().map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]), files: {...files}, updated: Date.now()});
     async function persist(force = false) {
@@ -248,6 +277,13 @@
         const type = response.headers.get('Content-Type') || '';
         if (!type.includes('application/json')) throw new Error(response.status === 413 ? gettext('The upload is too large for this server. Try a smaller picture or recording.') : gettext('Your session may have expired, or the server could not respond. Your draft remains here. Reload or sign in, then retry.'));
         const result = await response.json();
+        if (result.code === 'allowance_exhausted' && result.allowance) {
+          showAllowance({...result.allowance, message:result.error});
+          sending = false; afterSave = null;
+          controls.forEach(([el, disabled]) => { el.disabled = disabled; });
+          status(gettext('Your words and recording stay here. Increase the allowance or try again later.'));
+          return;
+        }
         if (!response.ok || !result.saved) throw new Error(result.error || gettext('The server could not save this yet.'));
         try { await draftOperation(key, 'delete'); } catch (_) { /* Replaying the retained token is safe. */ }
         dirty = false; sending = false; confirmed = true; leaving = true;
