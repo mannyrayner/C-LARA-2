@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 from . import writing_ai, practice_recognition
 from .capture_ai import obj, string
 
-VERSION = 'practice-review-3'
+VERSION = 'practice-review-4'
 KINDS = ['grammar', 'word_choice', 'written_form', 'recognition']
 SCHEMA = obj({**writing_ai.SCHEMA['properties'],
     'corrections': {'type': 'array', 'maxItems': 8, 'items': obj({
@@ -18,6 +18,7 @@ SCHEMA = obj({**writing_ai.SCHEMA['properties'],
         'kind': {'type': 'string', 'enum': KINDS}})},
     'understood': string(600), 'heard': string(255),
     'recognition_question': string(600),
+    'meaning_unclear': {'type': 'boolean'},
     'suspect_words': {'type': 'array', 'maxItems': 6, 'items': string(100)},
     'recognition_candidates': {'type': 'array', 'maxItems': 3, 'items': obj({
         k: string(n) for k, n in practice_recognition.FIELDS.items()})},
@@ -77,6 +78,20 @@ Do not claim to have heard /b/ instead of /v/, diagnose a pronunciation fault,
 or suggest that the model pronunciation proves what the learner actually said.
 After speech_confirmed is true, recognition_candidates must be empty.
 
+Distinguish uncertain ASR SPELLING from unclear INTENDED MEANING. Set
+meaning_unclear=true only if the learner's intended meaning needs an answer.
+When context gives a reasonable interpretation, meaning_unclear=false and
+recognition_question="". Offer that interpretation and its model pronunciation
+without asking whether the learner said a French/Spanish word or spelling.
+E.g. Italian practice ASR Carotte e lattuga. can reasonably mean carote e lattuga.
+Offer carote as the recognition hypothesis; do NOT say the learner used French
+carotte, or mark it as a language or pronunciation mistake. This example is not
+an automatic substitution rule. Preserve raw heard and genuine grammar as above.
+If meaning_unclear=true, ask ONE brief question about the intended meaning in
+feedback_language, rather than contrasting transcribed spellings. For text or
+ordinary ready feedback set meaning_unclear=false, unless meaning itself needs
+clarification. Never use spelling alone to diagnose the speaker's ability.
+
 If recognition_question, suspect_words or recognition_candidates is nonempty: outcome=clarify, question
 asks about recognition, text=heard, corrections=[], suggestions=[]. Do not provide
 critical feedback until the recognition question is resolved.
@@ -124,6 +139,8 @@ def parse(response, original, *, mode, confirmed=False):
         data[key] = data[key].strip()
     if not data['heard'] or not data['understood']:
         raise ValueError('empty')
+    if not isinstance(data['meaning_unclear'], bool):
+        raise ValueError('meaning_unclear')
     suspects = data['suspect_words']
     if not isinstance(suspects, list) or len(suspects) > 6 or any(
             not isinstance(s, str) or not s.strip() or len(s) > 100 or s.casefold() not in original.casefold()
@@ -144,6 +161,7 @@ def parse(response, original, *, mode, confirmed=False):
         raise ValueError('typed_recognition_candidates')
     if confirmed:
         help_data = {'targets': [], 'proposed_text': '', 'rejected': help_data['rejected']}
+    help_data['meaning_unclear'] = data['meaning_unclear']
     reasons, suppressed = [], []
     if voice and spoken_key(data['heard']) != spoken_key(original):
         reasons.append('lexical_normalisation_blocked')
@@ -164,11 +182,17 @@ def parse(response, original, *, mode, confirmed=False):
         reasons.append('model_recognition_uncertainty')
     if voice and help_data['targets']:
         reasons.append('recognition_candidates_need_confirmation')
+    if voice and data['meaning_unclear']:
+        reasons.append('meaning_needs_clarification')
     diagnostics = {'normalised_text': data['heard'], 'suspect_words': suspects,
         'recognition_question': data['recognition_question'], 'gates': sorted(set(reasons)),
         'suppressed_written_form': suppressed, 'recognition_help': help_data}
     if reasons:
         question = data['recognition_question'] or _('Did I hear this correctly? Please check the words before I give feedback.')
+        if help_data['targets'] and not data['meaning_unclear']:
+            # The main panel offers a possible interpretation. Keep any model
+            # spelling question in diagnostics, without presenting it as blame.
+            question = ''
         return {'outcome': 'recognition', 'heard': data['heard'], 'question': question,
                 'recognition_help': help_data,
                 'diagnostics': {**diagnostics, 'decision': 'ask'}}
