@@ -380,12 +380,18 @@ def speak(clip_id):
         if fresh.status!='running': raise Conflict('This audio attempt was cancelled.')
         speech_allowed(fresh,payment=True)
     try:
-        prepared,_=word_audio.synthesize(clip.text, dictionary=clip.capture.dictionary,
-            expected=clip.capture.usage.get('word_audio_policy', {}),language=tts.language_code(clip.language),model=tts.MODEL,
+        options = dict(language=tts.language_code(clip.language),model=tts.MODEL,
             voice=clip.capture.voice,api_key=key,meaning=clip.meaning,
             meaning_language=clip.capture.result.get('practice', {}).get('feedback_language', clip.capture.explanation_language),
             report=report,before_request=check,
             speech_kind='sentence' if clip.kind in {'feedback', 'help_phrase'} or (clip.entry_id and clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
+        if clip.capture.input_mode == 'practice':
+            # Private practice consent and estimates cover OpenAI speech. The
+            # dictionary's Google word policy applies to published vocabulary.
+            prepared,_ = tts.synthesize(clip.text, **options)
+        else:
+            prepared,_ = word_audio.synthesize(clip.text, dictionary=clip.capture.dictionary,
+                expected=clip.capture.usage.get('word_audio_policy', {}), **options)
     except Exception as exc:
         code=tts.record_failure(report,exc)
         log.warning('Capture speech %s failed (%s; stage=%s; reason=%s)',

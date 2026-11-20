@@ -450,7 +450,8 @@ def diagnostic_log(request, pk):
             'recognition_help': info.get('recognition_help', {}),
             'recognition_confirmation': info.get('recognition_confirmation', {}),
             'recognition_audio': [{'target': clip.text_id,
-                'part': 'word' if clip.kind == 'help_word' else 'phrase', 'status': clip.status}
+                'part': 'word' if clip.kind == 'help_word' else 'phrase', 'status': clip.status,
+                **tts.public_diagnostic(clip.report or {})}
                 for clip in study.speech.filter(kind__in=practice_recognition.KINDS.values()).order_by('pk')],
             'recognition_question': info.get('recognition_question', ''), 'feedback': info.get('feedback', {}),
             'review_decision': info.get('review_decision', {}), 'reviews': info.get('review_log', []),

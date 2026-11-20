@@ -16,7 +16,7 @@ def result(text, *, heard=None, corrected=None, kind=None, question='', suspects
     data = {'outcome': 'clarify' if question else 'ready', 'text': corrected or heard or text,
         'heard': heard or text, 'understood': 'A short description.', 'question': question,
         'recognition_question': question, 'suspect_words': suspects or [], 'suggestions': [], 'corrections': [],
-        'recognition_candidates': []}
+        'recognition_candidates': [], 'meaning_unclear': False}
     if kind:
         data['corrections'] = [{'before': text, 'after': corrected or heard, 'kind': kind,
             'reason': 'A correction explanation.'}]
