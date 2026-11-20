@@ -7994,3 +7994,10 @@ msgstr "Obnovte túto stránku a začnite nový pokus."
 
 msgid "Dictionary forms"
 msgstr "Slovníkové tvary"
+
+msgid ""
+"When accepted, this recording replaces earlier AI-generated versions for "
+"this entry. Human recordings are kept."
+msgstr ""
+"Po prijatí táto nahrávka nahradí predchádzajúce verzie tejto položky "
+"vytvorené pomocou AI. Ľudské nahrávky zostanú zachované."
