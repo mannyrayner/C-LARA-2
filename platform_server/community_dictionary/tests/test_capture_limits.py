@@ -108,7 +108,7 @@ class CaptureLimitTests(TestCase):
 
     def test_raised_limit_admits_eleventh_request_and_replay_does_not_count_twice(self):
         for _ in range(10): self.attempt()
-        self.assertContains(self.submit(),'picture-description allowance')
+        self.assertContains(self.submit(),'Daily allowance used up')
         estimate,_=self.preview(20);self.confirm(estimate)
         self.client.force_login(self.user)
         token=uuid.uuid4()
@@ -129,7 +129,7 @@ class CaptureLimitTests(TestCase):
         self.confirm(estimate);self.d.refresh_from_db()
         self.assertEqual(capture_limits.usage(self.d)['remaining'],0)
         self.client.force_login(self.user)
-        self.assertContains(self.submit(),'picture-description allowance')
+        self.assertContains(self.submit(),'Daily allowance used up')
         PictureCapture.objects.update(created_at=timezone.now()-timedelta(hours=25))
         self.assertEqual(self.submit().status_code,302)
 
@@ -152,7 +152,7 @@ class CaptureLimitTests(TestCase):
         self.assertEqual(self.client.get(self.url('capture-detail',s.pk)).status_code,200)
         self.assertEqual(self.action(s,'confirm',permission='yes').status_code,302)
         self.assertEqual(PictureCapture.objects.count(),1)
-        self.assertContains(self.submit(),'picture-description allowance')
+        self.assertContains(self.submit(),'Daily allowance used up')
 
     def test_cost_formula_and_warning_use_local_rates_without_needing_owner_api_key(self):
         with patch('community_dictionary.photo_ai.pricing_configuration',return_value=('configured-model',{'input':'2','output':'10'})), override_settings(CREDITS_ENABLED=True,OPENAI_API_KEY=''):
@@ -165,11 +165,11 @@ class CaptureLimitTests(TestCase):
             self.assertFalse(AIUsageCharge.objects.exists())
         self.ai.assert_not_called();self.tts.assert_not_called()
 
-    def test_regular_settings_cannot_bypass_confirmation_and_new_copies_start_at_ten(self):
+    def test_regular_settings_cannot_bypass_confirmation_and_new_copies_start_at_fifty(self):
         self.client.force_login(self.owner)
         self.client.post(self.url('settings'),{'name':'Swedish','language':'Swedish','explanation_language':'English',
             'tts_enabled':'on','sentence_capture_enabled':'on','capture_daily_limit':500})
         self.d.refresh_from_db();self.assertEqual(self.d.capture_daily_limit,10)
         self.image();self.d.capture_daily_limit=50;self.d.save()
         copy=image_copy.create(self.d,self.owner,'New image-only copy')
-        self.assertEqual(copy.capture_daily_limit,10)
+        self.assertEqual(copy.capture_daily_limit,50)
