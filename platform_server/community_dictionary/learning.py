@@ -1,5 +1,6 @@
 """Durable personal workflows and bounded sentence-level generation guidance."""
 from django.utils import timezone
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from .models import ContributionPreference, DictionaryLearningSettings
 
@@ -40,6 +41,7 @@ def preference(request, dictionary):
         consent = dict(row.consent) if row else {}
         choices = consent.pop('_guided_choices', {})
         consent.pop('_picture_practice', None)  # UI preferences are never paid workflow consent.
+        consent.pop('_picture_history', None)
         cache[key] = {'mode': row.mode if row else 'writing' if old.get('enabled') else
                       'guided' if available(dictionary) else 'manual',
                       'consent': consent, 'choices': choices}
@@ -57,12 +59,15 @@ def mode(request, dictionary):
     return preference(request, dictionary)['mode'] if available(dictionary) else 'manual'
 
 
+@transaction.atomic
 def save_preference(request, dictionary, mode, consent=None):
     choices = preference(request, dictionary).get('choices', {})
     consent = dict(consent or {})
-    row = ContributionPreference.objects.filter(user=request.user, dictionary=dictionary).first()
-    if row and row.consent.get('_picture_practice'):
-        consent['_picture_practice'] = row.consent['_picture_practice']
+    row, _ = ContributionPreference.objects.select_for_update().get_or_create(
+        user=request.user, dictionary=dictionary, defaults={'mode':mode})
+    for key in ('_picture_practice', '_picture_history'):
+        if key in row.consent:
+            consent[key] = row.consent[key]
     if choices:
         consent['_guided_choices'] = choices
     ContributionPreference.objects.update_or_create(user=request.user, dictionary=dictionary,
@@ -71,9 +76,10 @@ def save_preference(request, dictionary, mode, consent=None):
     request._contribution_preferences = {}
 
 
+@transaction.atomic
 def save_guided_choices(request, dictionary, choices):
     """UI metadata is separate from paid consent, using the existing JSON store."""
-    row, _created = ContributionPreference.objects.get_or_create(user=request.user, dictionary=dictionary,
+    row, _created = ContributionPreference.objects.select_for_update().get_or_create(user=request.user, dictionary=dictionary,
         defaults={'mode': mode(request, dictionary)})
     consent = dict(row.consent)
     consent['_guided_choices'] = choices
