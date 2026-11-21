@@ -37,7 +37,15 @@
 <p><a class="button secondary" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?skip={{ image.pk }}&amp;category={{ category|urlencode }}">{% translate "Another picture" %}</a></p>
 </section></div><script src="{% static 'community_dictionary/picture_practice.js' %}?v=4" defer></script>
 {% else %}<p>{% translate "No accepted pictures are available. Add a picture or choose another category." %}</p>{% endif %}
-<details class="panel entry-help"><summary>{% translate "Practice history and logs" %}</summary>
+<details class="panel entry-help"><summary>{% translate "My practice" %}</summary>
+<p>{% blocktranslate with count=practice_overview.pictures %}Pictures explored: {{ count }}{% endblocktranslate %}</p>
+<h2>{% translate "In the last 30 days" %}</h2>
+<ul>
+<li>{% blocktranslate with count=practice_overview.completed %}Completed attempts: {{ count }}{% endblocktranslate %}</li>
+<li>{% blocktranslate with count=practice_overview.spoken %}Spoken attempts completed: {{ count }}{% endblocktranslate %}</li>
+<li>{% blocktranslate with count=practice_overview.active_days %}Days practised: {{ count }}{% endblocktranslate %}</li>
+</ul>
+<p class="help">{% translate "These describe your practice activity. They are not a language proficiency score. Cleared attempts are excluded from the 30-day totals." %}</p>
 <p><a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}">{% translate "Download my practice log" %}</a>{% if owner %} · <a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}?shared=1&amp;view=1&amp;limit=20">{% translate "View shared practice logs" %}</a>{% endif %}</p>
 <ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:picture-practice-detail' dictionary.pk item.pk %}">{{ item.result.practice.original_text|default:dictionary.language|truncatechars:65 }}</a></li>{% empty %}<li>{% translate "No practice attempts yet." %}</li>{% endfor %}</ul>
 <form method="post" action="{% url 'community_dictionary:picture-practice-end' dictionary.pk %}">{% csrf_token %}<button class="quiet">{% translate "End practice session" %}</button></form>
