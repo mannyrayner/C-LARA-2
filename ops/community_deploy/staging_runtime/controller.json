@@ -1,0 +1,15 @@
+{
+  "target": "staging",
+  "repo": "/srv/C-LARA-2-staging",
+  "state": "/var/lib/clara-staging-deploy",
+  "activity_dir": "/var/lib/clara-staging-activity",
+  "git": "/usr/bin/git",
+  "timeout_seconds": 120,
+  "health_url": "http://127.0.0.1:8081/community-dictionaries/deployment-health/",
+  "manage": ["sudo", "-n", "/opt/clara-staging-deploy/runtime/manage.sh"],
+  "static_manage": ["sudo", "-n", "/opt/clara-staging-deploy/runtime/manage.sh"],
+  "stop": ["sudo", "-n", "/opt/clara-staging-deploy/runtime/services.sh", "stop"],
+  "start": ["sudo", "-n", "/opt/clara-staging-deploy/runtime/services.sh", "start"],
+  "stopped": ["sudo", "-n", "/opt/clara-staging-deploy/runtime/services.sh", "stopped"],
+  "running": ["sudo", "-n", "/opt/clara-staging-deploy/runtime/services.sh", "running"]
+}

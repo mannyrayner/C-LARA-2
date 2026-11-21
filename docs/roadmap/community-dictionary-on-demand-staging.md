@@ -1,8 +1,11 @@
 # On-demand Community Dictionaries staging pilot
 
-**Updated:** 12 November 2026. **Owner:** Manny Rayner; implementation: Codex.
-**Status:** Detailed plan; offline request rehearsal implemented. No staging
-AWS resources, private control repository or live trigger have been created.
+**Updated:** 16 November 2026. **Owner:** Manny Rayner; implementation: Codex.
+**Status:** Fresh-session private GitHub no-AWS request/receipt rehearsal passed
+using the operator connection. Offline lifecycle/expiry components and staging
+controller support, trusted live bindings, fixture/browser tools and disabled
+provisioning templates are implemented for review. Requester isolation and
+protected-main enforcement remain open. No staging AWS resources have been created and the handler has not been activated.
 
 This extends the [staging roadmap](community-dictionary-aws-staging.md) and
 [bootstrap specification](community-dictionary-aws-staging-bootstrap.md).
@@ -55,8 +58,9 @@ during the pilot. CI and development happen while staging is off.
 | Compute at $0.0264/hour, 5–10 hours/week and 52/12 weeks/month | $0.57–1.14 |
 | 24 GiB retained disk, conservative allowance rather than an exact quote | $3.00 |
 | Retained public IPv4, 730 hours at $0.005/hour | $3.65 |
-| Coordination, bounded logs and small state/evidence storage allowance | $0.50–1.00 |
-| Expected total | about $8/month |
+| One staging-only secret | $0.40 |
+| Coordination, two alarms, bounded logs and small state/evidence storage allowance | $1.00 |
+| Expected total | about $8.60–9.20/month |
 | Proposed pilot infrastructure allowance | $10/month |
 
 References: [AWS Sydney Linux price feed](https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/Asia%20Pacific%20%28Sydney%29/Linux/index.json),
@@ -98,8 +102,9 @@ the connection's scope. Those are one-time operator steps. A broad operator
 connection proves event delivery only, not delegated isolation.
 
 For live operation, GitHub OIDC trust is bound to the staging repo/ref. Its
-role can invoke a fixed coordinator alias and the fixed, versioned staging
-SSM document, and read scoped results. **Only the coordinator's role** may
+role can invoke only the fixed live coordinator alias and read its own browser
+fixture metadata/secret. Only the coordinator can submit the fixed, versioned
+staging SSM document and read scoped command results. **Only the coordinator's role** may
 start/stop the configured instance and mutate its state prefix. No role in
 this path may create instances, change IAM/network policy or affect production.
 The host reads only its own boot lease and cannot grant or extend one.
@@ -178,8 +183,8 @@ host timer supplies the independent second enforcement path.
 | Slice | Deliverable and acceptance | Current state |
 | --- | --- | --- |
 | 1 · Offline requests | Validator, private-workflow template, bounded examples, portable tests, truthful no-AWS receipt | Implemented; no live round trip claimed |
-| 2 · GitHub rehearsal | Operator creates/connects private repo; Codex creates an issue from a fresh session and retrieves its new receipt; wrong identities/malformed requests fail | Needs one-time repository and restricted connection setup; no AWS resources |
-| 3 · Lifecycle code | Coordinator, durable leases/budgets, boot timer, IAM/infrastructure templates and fake-clock/AWS tests | Next code slice |
+| 2 · GitHub rehearsal | Operator creates/connects private repo; Codex creates an issue from a fresh session and retrieves its new receipt; wrong identities/malformed requests fail | Fresh-session round trip and malformed-request refusal passed; restricted identity/protected-main/independent wrong-sender live check pending |
+| 3 · Lifecycle code | Coordinator, durable leases/budgets, boot timer, IAM/infrastructure templates and fake-clock/AWS tests | Offline core/adapters/host guard/controller and permission examples implemented; trusted live handler, probes and exact infrastructure binding remain |
 | 4 · Infrastructure | Reviewed exact resources/permissions and quote; deploy coordinator/watchdog and stopped EC2; verify isolation and expiry | After slice 3 tests and operator resource review |
 | 5 · Baseline/recovery | Same-commit install/login, controlled failed candidate restores baseline, then identical candidate succeeds; expiry works with chat absent | Requires live infrastructure and staging controller/browser support |
 | 6 · Parallel pilot | Three consecutive eligible visible releases, independent sample checks by Manny, reliable shutdown and measured runtime/cost | Compare with laptop path before changing production policy |
@@ -189,6 +194,11 @@ Slice 1: [validator](../../ops/community_deploy/staging_request.py),
 [tests](../../ops/community_deploy/tests/test_staging_request.py).
 Its receipt explicitly disclaims AWS contact, deployment, source verification
 and runtime reservation. Validation success cannot authorize a later live job.
+
+The [lifecycle implementation and remaining integration checklist](../../ops/community_deploy/staging_runtime/README.md)
+describe the offline components. The fixed internal SSM command also carries a
+generated lease identifier, checked against the original active deadline before
+installation. Issue requests cannot select that identity, host, document or command.
 
 Slice 3 must prove: no start before durable admission; old stop cannot affect
 a newer lease; no double reservation for one issue; unavailable state/budget/
@@ -218,3 +228,10 @@ Removing the laptop gate, delegating production, enabling paid providers or
 raising recurring spending requires a separate concrete decision. Preparation,
 local tests and the no-AWS rehearsal can proceed under Manny's instruction to
 plan and begin implementation.
+
+## Integrated operator package
+
+The [operator runbook](../howto/community-staging-bootstrap.md) now covers the
+disabled-by-default provisioning bundle, source/guard/readiness bindings, private
+fixture and browser checks, cost checkpoint and manual bootstrap/recovery steps.
+No AWS resources or live workflow have been activated.

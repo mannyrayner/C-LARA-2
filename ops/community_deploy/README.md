@@ -29,3 +29,10 @@ pilot. `staging_request.py` validates issue requests locally and produces a
 truthfully labelled no-AWS receipt. Its workflow belongs only in a separate
 private staging control repository. No production workflow or installed
 controller is changed by that rehearsal.
+
+The [integrated staging components](staging_runtime/README.md) include durable
+session accounting, fixed-resource adapters, trusted source/guard/readiness
+verification, a root expiry guard, private fixture/browser checks and disabled
+CloudFormation templates. Follow the [operator bootstrap runbook](../../docs/howto/community-staging-bootstrap.md)
+for the cost checkpoint, account preflight and change-set review. No AWS resources
+or live private workflow have been activated.

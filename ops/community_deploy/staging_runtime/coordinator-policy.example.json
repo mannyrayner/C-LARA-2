@@ -1,0 +1,68 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FixedStagingLifecycle",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/STAGING_INSTANCE_ID"
+    },
+    {
+      "Sid": "ReadInstanceState",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceAttribute"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "FixedStagingCommand",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ssm:REGION:ACCOUNT_ID:document/CLARA-DeployStaging",
+        "arn:aws:ec2:REGION:ACCOUNT_ID:instance/STAGING_INSTANCE_ID"
+      ]
+    },
+    {
+      "Sid": "ReadCommandOutcome",
+      "Effect": "Allow",
+      "Action": "ssm:GetCommandInvocation",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SingleConditionalStateObject",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::STATE_BUCKET/staging/lifecycle.json"
+    },
+    {
+      "Sid": "CheckCoordinatorLimit",
+      "Effect": "Allow",
+      "Action": "lambda:GetFunctionConcurrency",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:COORDINATOR_NAME"
+    },
+    {
+      "Sid": "CheckIndependentWatchdog",
+      "Effect": "Allow",
+      "Action": "scheduler:GetSchedule",
+      "Resource": "arn:aws:scheduler:REGION:ACCOUNT_ID:schedule/STAGING_GROUP/STAGING_SCHEDULE"
+    },
+    {
+      "Sid": "BoundedCoordinatorLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/COORDINATOR_NAME:*"
+    }
+  ]
+}

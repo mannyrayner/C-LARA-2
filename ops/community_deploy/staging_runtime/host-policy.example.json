@@ -1,0 +1,37 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOwnLeaseOnly",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::STATE_BUCKET/staging/lifecycle.json"
+    },
+    {
+      "Sid": "RegisterStagingSSMAgent",
+      "Effect": "Allow",
+      "Action": "ssm:UpdateInstanceInformation",
+      "Resource": "*"
+    },
+    {
+      "Sid": "StagingSSMChannels",
+      "Effect": "Allow",
+      "Action": [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ReadFixedDeploymentDocument",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:DescribeDocument"
+      ],
+      "Resource": "arn:aws:ssm:REGION:ACCOUNT_ID:document/CLARA-DeployStaging"
+    }
+  ]
+}

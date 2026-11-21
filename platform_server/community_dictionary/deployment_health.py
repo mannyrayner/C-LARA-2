@@ -1,6 +1,12 @@
 """Content-free readiness and optional deployment admission control."""
 import re
 import subprocess
+import json
+import os
+from pathlib import Path
+import stat
+import time
+import uuid
 
 from django.conf import settings
 from django.db import connection
@@ -11,6 +17,32 @@ from core import deployment_activity
 
 HEALTH_PATH = '/community-dictionaries/deployment-health/'
 RELEASE = ''
+
+
+def staging_lease():
+    """Optional root-owned staging guard evidence; no production configuration default."""
+    name = os.environ.get('CLARA_STAGING_LEASE_FILE')
+    if not name:
+        return None
+    try:
+        path = Path(name)
+        info = path.lstat()
+        if (info.st_uid != 0 or not stat.S_ISREG(info.st_mode) or info.st_mode & 0o022 or
+                info.st_size > 4096):
+            return {}
+        value = json.loads(path.read_text(encoding='utf-8'))
+        if (type(value) is not dict or set(value) !=
+                {'lease_id', 'deadline', 'policy_revision', 'guard_revision', 'guard_sha256'} or
+                type(value['deadline']) is not int or
+                not time.time() < value['deadline'] <= time.time() + 7200 or
+                str(uuid.UUID(value['lease_id'])) != value['lease_id'] or
+                not re.fullmatch(r'[0-9a-f]{40}', value['policy_revision']) or
+                not re.fullmatch(r'[0-9a-f]{40}', value['guard_revision']) or
+                not re.fullmatch(r'[0-9a-f]{64}', value['guard_sha256'])):
+            return {}
+        return value
+    except Exception:
+        return {}
 
 
 def capture_release():
@@ -41,8 +73,12 @@ def health(request):
             healthy = cursor.fetchone()[0] == 1 and bool(RELEASE)
     except Exception:
         healthy = False
-    response = JsonResponse({'ready': healthy, 'release': RELEASE,
-                             'maintenance': deployment_activity.paused()}, status=200 if healthy else 503)
+    payload = {'ready': healthy, 'release': RELEASE, 'maintenance': deployment_activity.paused()}
+    lease = staging_lease()
+    if lease is not None:
+        healthy = healthy and bool(lease)
+        payload.update(ready=healthy, staging_lease=lease or None)
+    response = JsonResponse(payload, status=200 if healthy else 503)
     response['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
     return response
 

@@ -107,7 +107,7 @@ class Controller:
         self.config_path = Path(config_path).resolve()
         self.config = json.loads(self.config_path.read_text(encoding='utf-8'))
         self.target = self.config['target']
-        if self.target not in {'laptop', 'aws'}:
+        if self.target not in {'laptop', 'aws', 'staging'}:
             raise Stop('invalid_target')
         for key in ('repo', 'state', 'activity_dir'):
             if not Path(self.config[key]).is_absolute():
@@ -195,7 +195,7 @@ class Controller:
             return False
 
     def stop_server(self):
-        if self.target == 'aws':
+        if self.target in {'aws', 'staging'}:
             self.command('stop_services', self.config['stop'])
             self.command('verify_services_stopped', self.config['stopped'])
             return
@@ -234,7 +234,7 @@ class Controller:
             raise Stop('unmanaged_server_on_local_port')
 
     def start_server(self):
-        if self.target == 'aws':
+        if self.target in {'aws', 'staging'}:
             self.command('start_services', self.config['start'])
             self.command('verify_services_running', self.config['running'])
             return
@@ -300,7 +300,7 @@ class Controller:
                 if blocked_paths(paths):
                     raise Stop('schema_dependencies_or_controller_changed_manual_release_required')
                 self.preflight()
-                if self.target == 'aws' or self.port_open():
+                if self.target in {'aws', 'staging'} or self.port_open():
                     if self.target == 'laptop' and self.local_session() is None:
                         raise Stop('stop_existing_manual_server_once_before_bootstrap')
                     self.ready(expected)
@@ -398,6 +398,8 @@ def main():
             return 0
         controller = Controller(args.config)
         if args.request:
+            if controller.target == 'staging':
+                raise Stop('staging_requires_exact_commits_from_lease_wrapper')
             if args.commit or args.expected:
                 raise Stop('choose_request_or_exact_commits')
             request = read_request(args.request)

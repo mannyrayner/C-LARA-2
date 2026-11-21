@@ -100,6 +100,35 @@ class GitDeploymentTests(unittest.TestCase):
         self.assertFalse((self.activity / 'maintenance').exists())
         self.controller.ready(target)
 
+    def test_staging_uses_fixed_service_path_and_preserves_expected_sha_and_recovery(self):
+        config = json.loads(self.config.read_text())
+        config.update(target='staging', start=[sys.executable, '-c', 'pass'],
+                      stop=[sys.executable, '-c', 'pass'],
+                      running=[sys.executable, '-c', 'pass'],
+                      stopped=[sys.executable, '-c', 'pass'])
+        self.config.write_text(json.dumps(config))
+        controller = runner.Controller(self.config)
+        target = self.change()
+        def ready(commit):
+            self.assertEqual(controller.head(), commit)
+        with patch.object(controller, 'ready', side_effect=ready):
+            result = controller.install(target, self.base, self.receipt)
+        self.assertEqual(result['status'], 'installed')
+        self.assertEqual(result['target'], 'staging')
+        steps = [step['step'] for step in result['steps']]
+        self.assertIn('verify_services_stopped', steps)
+        self.assertIn('verify_services_running', steps)
+        self.assertEqual(controller.install(target, self.base, self.receipt)['status'], 'refused')
+        newer = self.change('another.txt')
+        def failed_candidate(commit):
+            self.assertEqual(controller.head(), commit)
+            if commit == newer:
+                raise runner.Stop('injected_candidate_failure')
+        with patch.object(controller, 'ready', side_effect=failed_candidate):
+            result = controller.install(newer, target, self.receipt)
+        self.assertEqual(result['status'], 'recovered_previous_release')
+        self.assertEqual(controller.head(), target)
+
     def test_existing_managed_server_is_restarted(self):
         self.assertEqual(self.install(self.base)['status'], 'installed')
         old = self.controller.local_session()

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Install an exact code-only candidate only within its original staging lease.",
+  "parameters": {
+    "Commit": {"type": "String", "allowedPattern": "^[0-9a-f]{40}$"},
+    "ExpectedCommit": {"type": "String", "allowedPattern": "^[0-9a-f]{40}$"},
+    "LeaseId": {"type": "String", "allowedPattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}
+  },
+  "mainSteps": [{
+    "action": "aws:runShellScript",
+    "name": "deployStagingWithinLease",
+    "inputs": {
+      "timeoutSeconds": "1200",
+      "runCommand": ["/opt/clara-staging-guard/bin/python /opt/clara-staging-deploy/staging_install.py --config /etc/clara-staging-lease.json --commit '{{ Commit }}' --expected '{{ ExpectedCommit }}' --lease '{{ LeaseId }}'"]
+    }
+  }]
+}

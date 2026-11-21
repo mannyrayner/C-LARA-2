@@ -1,0 +1,16 @@
+[Unit]
+Description=Private Community Dictionaries staging web process
+After=network.target postgresql.service
+[Service]
+User=clara-staging
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2-staging/platform_server
+EnvironmentFile=/etc/clara-staging.env
+RuntimeDirectory=gunicorn-clara-staging
+RuntimeDirectoryMode=0750
+UMask=0007
+ExecStart=/srv/C-LARA-2-staging/.venv/bin/gunicorn platform_server.wsgi:application --bind unix:/run/gunicorn-clara-staging/app.sock --workers 1 --threads 2 --timeout 600
+Restart=on-failure
+RestartSec=3
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,8 @@ import tempfile
 import threading
 import subprocess
 from unittest.mock import patch
+from types import SimpleNamespace
+import stat
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -84,6 +86,32 @@ class DeploymentTests(TestCase):
             response = deployment_health.health(RequestFactory().get(deployment_health.HEALTH_PATH))
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('private password', response.content.decode())
+
+    def test_staging_readiness_requires_the_configured_guard_marker(self):
+        marker = {'lease_id':'00000000-0000-0000-0000-000000000001', 'deadline':1100,
+                  'policy_revision':'a'*40, 'guard_revision':'b'*40, 'guard_sha256':'c'*64}
+        path = SimpleNamespace(lstat=lambda: SimpleNamespace(st_uid=0,
+                               st_mode=stat.S_IFREG|0o644, st_size=300),
+                               read_text=lambda **kwargs: json.dumps(marker))
+        with patch.dict(os.environ, {'CLARA_STAGING_LEASE_FILE':'/run/staging/lease.json'}), \
+                patch.object(deployment_health, 'Path', return_value=path), \
+                patch.object(deployment_health.time, 'time', return_value=1000), \
+                patch.object(deployment_health, 'RELEASE', 'a'*40):
+            response = self.client.get(deployment_health.HEALTH_PATH)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()['staging_lease'], marker)
+            marker['deadline'] = 999
+            response = self.client.get(deployment_health.HEALTH_PATH)
+            self.assertEqual(response.status_code, 503)
+            self.assertFalse(response.json()['ready'])
+
+    def test_untrusted_or_missing_staging_marker_does_not_fall_back_to_ready(self):
+        for mode in [stat.S_IFREG|0o666, stat.S_IFLNK|0o777]:
+            path = SimpleNamespace(lstat=lambda: SimpleNamespace(st_uid=0, st_mode=mode, st_size=20))
+            with patch.dict(os.environ, {'CLARA_STAGING_LEASE_FILE':'/run/staging/lease.json'}), \
+                    patch.object(deployment_health, 'Path', return_value=path), \
+                    patch.object(deployment_health, 'RELEASE', 'a'*40):
+                self.assertEqual(self.client.get(deployment_health.HEALTH_PATH).status_code, 503)
 
     def test_background_lease_covers_waiting_and_running_work(self):
         from django_q import tasks

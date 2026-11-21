@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "live_enabled": false,
+  "region": "ap-southeast-2",
+  "instance_id": "REPLACE_WITH_STAGING_INSTANCE_ID",
+  "state_bucket": "REPLACE_WITH_PRIVATE_STAGING_BUCKET",
+  "state_key": "staging/lifecycle.json",
+  "policy_revision": "REPLACE_WITH_REVIEWED_POLICY_SHA",
+  "guard_revision": "REPLACE_WITH_REVIEWED_GUARD_SHA",
+  "max_lease_minutes": 120,
+  "monthly_seconds": 288000,
+  "lambda_reserved_concurrency": 1,
+  "scheduler_expression": "rate(1 minute)",
+  "scheduler_maximum_event_age_seconds": 60,
+  "scheduler_maximum_retry_attempts": 0,
+  "shutdown_behavior": "stop"
+}

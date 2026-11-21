@@ -1,0 +1,26 @@
+[Unit]
+Description=Community Dictionaries bounded staging boot gate
+Wants=network-online.target time-sync.target
+After=network-online.target time-sync.target
+Before=gunicorn-clara-staging.service understanding-clara-staging.service
+
+[Service]
+Type=notify
+User=root
+Group=root
+ExecStart=/opt/clara-staging-guard/bin/python /opt/clara-staging-deploy/staging_guard.py --config /etc/clara-staging-lease.json
+ExecStopPost=/usr/bin/systemctl poweroff --no-block
+TimeoutStartSec=30
+TimeoutStopSec=10
+Restart=no
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/run/clara-staging-deploy
+RuntimeDirectory=clara-staging-deploy
+RuntimeDirectoryMode=0755
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
