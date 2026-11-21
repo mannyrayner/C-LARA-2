@@ -57,6 +57,7 @@
 
   document.querySelectorAll('[data-draft-form]').forEach(async form => {
     const key = `${document.body.dataset.user}:${new URL(form.action).pathname}:${location.search}`;
+    const privatePractice = form.matches('[data-picture-practice]');
     const status = message => form.querySelectorAll('[data-draft-status], [data-save-status]').forEach(el => { el.textContent = message; });
     const error = form.querySelector('[data-submit-error]');
     const files = {};
@@ -69,6 +70,35 @@
     form.addEventListener('submit', event => { if (!ready) event.preventDefault(); });
     const tellError = message => { error.textContent = message; error.hidden = false; error.focus(); };
     const clearError = () => { error.hidden = true; error.textContent = ''; };
+    const showAllowance = allowance => {
+      document.querySelectorAll('[data-allowance-offer]').forEach(el => el.remove());
+      const panel = document.createElement('section');
+      panel.className = 'panel'; panel.dataset.allowanceOffer = '';
+      panel.setAttribute('role', 'status'); panel.tabIndex = -1;
+      const text = (tag, value) => { const el = document.createElement(tag); el.textContent = value; panel.append(el); return el; };
+      text('h2', gettext('Daily allowance used up'));
+      text('p', allowance.message);
+      const preview = allowance.url && new URL(allowance.url, location.href);
+      if (allowance.proposed && preview && preview.origin === location.origin) {
+        text('p', gettext('Would you like to add more? Review the estimated cost before confirming.'));
+        const costForm = document.createElement('form');
+        costForm.method = 'post'; costForm.action = preview.href; costForm.className = 'stack';
+        costForm.target = '_blank'; costForm.rel = 'noopener';
+        for (const [name, value] of [['csrfmiddlewaretoken', form.elements.csrfmiddlewaretoken.value],
+            ['daily_limit', allowance.proposed], ['action', 'preview']]) {
+          const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; costForm.append(input);
+        }
+        const button = document.createElement('button'); button.type = 'submit';
+        button.textContent = gettext('Add %(count)s more').replace('%(count)s', String(allowance.extra));
+        costForm.append(button); panel.append(costForm);
+        text('p', gettext('The cost preview opens in a new tab. Return here after increasing the allowance, then try again.')).className = 'help';
+      } else {
+        text('p', allowance.server_limit
+          ? gettext('The server limit has been reached. Try again later, or contact the site administrator if you need a higher limit.')
+          : gettext('Ask a dictionary owner to increase the allowance, or try again later.'));
+      }
+      form.before(panel); panel.focus();
+    };
     const fields = () => Array.from(form.elements).filter(el => el.name && !['file', 'submit', 'button'].includes(el.type) && el.name !== 'csrfmiddlewaretoken' && (el.type !== 'radio' || el.checked));
     const snapshot = () => ({values: fields().map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]), files: {...files}, updated: Date.now()});
     async function persist(force = false) {
@@ -81,17 +111,22 @@
       writes = write.catch(() => {});
       try {
         await write;
-        if (!sending && !leaving && version === revision) status(gettext('Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.'));
+        if (!sending && !leaving && version === revision) status((privatePractice ? gettext('Your practice draft is stored on this device. Submit when ready.') : gettext('Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.')));
       } catch (_) {
         if (!sending && !leaving) status(gettext('Not saved. Draft recovery is unavailable on this device. Keep this page open and choose Save.'));
       }
     }
     function changed() {
       dirty = true; revision += 1;
-      if (!sending) status(gettext('Not saved to the dictionary. Preparing a recovery draft…'));
+      if (!sending) status((privatePractice ? gettext('Preparing a private recovery draft…') : gettext('Not saved to the dictionary. Preparing a recovery draft…')));
       clearTimeout(timer);
       timer = setTimeout(persist, 250);
     }
+    form.addEventListener('community-practice-hint-used', () => {
+      // Preserve help used with an existing learner draft, without treating a
+      // hint alone as unsaved work or prompting before choosing another image.
+      if (privatePractice && dirty) { revision += 1; void persist(); }
+    });
     function preview(kind) {
       if (previews[kind]) URL.revokeObjectURL(previews[kind]);
       const target = form.querySelector(kind === 'audio' ? '[data-audio-preview]' : '[data-photo-preview]');
@@ -160,6 +195,10 @@
       if (existing) {
         existing.values.forEach(([name, value]) => {
           const element = form.elements.namedItem(name);
+          // Recover content, but display the current estimate and ask for fresh
+          // words/image permission. The receipt ignores this quote's timestamp.
+          if (form.matches('[data-guided-start]') && ['words_quote', 'words_permission'].includes(name)) return;
+          if (form.matches('[data-picture-practice]') && ['quote', 'permission', 'image'].includes(name)) return;
           // Old drafts may contain the former consent checkbox. Do not restore
           // its value into the new explicit Save/permission submit button.
           if (element && name !== 'csrfmiddlewaretoken' && !['file', 'submit', 'button'].includes(element.type)) {
@@ -169,12 +208,14 @@
         Object.assign(files, existing.files);
         preview('photo'); preview('audio');
         dirty = true;
-        status(gettext('Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.'));
+        status((privatePractice ? gettext('Practice draft restored. Confirm the current estimate before submitting.') : gettext('Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.')));
       }
     } catch (_) { status(gettext('Draft recovery is unavailable on this device. Keep this page open until you save.')); }
     ready = true;
-    form.dispatchEvent(new Event('community-draft-ready'));
     initialControls.forEach(([el, disabled]) => { el.disabled = disabled; });
+    // Route handlers run after the startup lock is lifted, so their inactive
+    // fieldsets stay disabled when a local draft has been restored.
+    form.dispatchEvent(new Event('community-draft-ready'));
     const recorderRoot = form.querySelector('[data-recorder]');
     if (recorderRoot && window.CommunityRecorder) {
       recorder = window.CommunityRecorder(recorderRoot, async file => {
@@ -209,7 +250,7 @@
       const controls = Array.from(form.elements).map(el => [el, el.disabled]);
       controls.forEach(([el]) => { el.disabled = true; });
       sending = true; dirty = true; clearTimeout(timer);
-      status(gettext('Saving to the dictionary… waiting for confirmation.'));
+      status((privatePractice ? gettext('Saving your private practice… waiting for confirmation.') : gettext('Saving to the dictionary… waiting for confirmation.')));
       const controller = new AbortController();
       let timeout;
       try {
@@ -223,15 +264,30 @@
           if (data.get('input_mode') !== 'voice') data.delete('audio');
           if (data.get('input_mode') !== 'text') data.set('description', '');
         }
+        if (form.matches('[data-guided-start]')) {
+          if (data.get('start_with') === 'words') {
+            data.delete('photo');
+            if (data.get('words_mode') !== 'voice') data.delete('audio');
+            else data.delete('words');
+          } else data.delete('audio');
+        }
+        if (form.matches('[data-picture-practice]') && data.get('mode') !== 'voice') data.delete('audio');
         timeout = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: controller.signal});
         const type = response.headers.get('Content-Type') || '';
         if (!type.includes('application/json')) throw new Error(response.status === 413 ? gettext('The upload is too large for this server. Try a smaller picture or recording.') : gettext('Your session may have expired, or the server could not respond. Your draft remains here. Reload or sign in, then retry.'));
         const result = await response.json();
+        if (result.code === 'allowance_exhausted' && result.allowance) {
+          showAllowance({...result.allowance, message:result.error});
+          sending = false; afterSave = null;
+          controls.forEach(([el, disabled]) => { el.disabled = disabled; });
+          status(gettext('Your words and recording stay here. Increase the allowance or try again later.'));
+          return;
+        }
         if (!response.ok || !result.saved) throw new Error(result.error || gettext('The server could not save this yet.'));
         try { await draftOperation(key, 'delete'); } catch (_) { /* Replaying the retained token is safe. */ }
         dirty = false; sending = false; confirmed = true; leaving = true;
-        status(gettext('Saved to the dictionary.'));
+        status((privatePractice ? gettext('Practice saved privately.') : gettext('Saved to the dictionary.')));
         if (afterSave) afterSave();
         else location.assign(result.url);
       } catch (exc) {
@@ -252,6 +308,7 @@
       if (recorder?.busy) { tellError(gettext('Finish recording or stop the microphone check before leaving.')); return; }
       if (dialog.open) return;
       const save = form.querySelector('[data-save-submit]') || form.querySelector('button:not([type]), button[type=submit]');
+      dialog.querySelector('#leave-description').textContent = (privatePractice ? gettext('Your practice has not been submitted. Leaving can discard your draft.') : gettext('Your changes have not been saved to the dictionary.'));
       dialog.querySelector('[data-leave-permission]').hidden = save?.name !== 'consent';
       dialog.querySelector('[data-leave-stay]').onclick = () => dialog.close();
       dialog.querySelector('[data-leave-save]').onclick = () => {

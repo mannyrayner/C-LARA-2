@@ -1,6 +1,6 @@
 # Create and rehearse on-demand Community Dictionaries staging
 
-**Prepared 16 November 2026; not provisioned or activated.** This is the operator
+**Prepared 16 November 2026; refreshed 21 November; not provisioned or activated.** This is the operator
 runbook for the [bootstrap specification](../roadmap/community-dictionary-aws-staging-bootstrap.md).
 The generator makes code bundles and CloudFormation templates without contacting
 AWS. The live workflow is a template, not an installed workflow. Keep the existing
@@ -224,6 +224,12 @@ static assets, sets up HTTP authentication and ACME TLS, and installs the boot
 guard and two actual app/worker units. It writes a sanitized bootstrap receipt
 to its own bucket and powers off on success or failure. Provider credentials,
 real dictionaries, production settings and database backups are not copied.
+
+The bootstrap creates its pinned SDK venv before downloading the host ZIP and
+uses that SDK for a bounded S3 read followed by SHA-256 verification. It does not
+require the `awscli` Debian package, which Ubuntu 24.04 removed. A failed or
+oversized download stops the command before unpacking; inspect the original SSM
+command and bootstrap timer before deciding whether a new attempt is appropriate.
 
 Once confirmed stopped, inspect the receipt, local config/permissions, TLS and
 package/service versions through the operator path. Apply **only to this host**

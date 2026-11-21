@@ -1,0 +1,17 @@
+{% load i18n %}{% with allowance=request.capture_allowance_offer %}{% if allowance %}
+<section class="panel" role="status" aria-labelledby="allowance-title" data-allowance-offer>
+<h2 id="allowance-title">{% translate "Daily allowance used up" %}</h2>
+<p>{{ allowance.message }}</p>
+{% if allowance.proposed %}
+<p>{% translate "Would you like to add more? Review the estimated cost before confirming." %}</p>
+<form method="post" action="{{ allowance.url }}" class="stack" target="_blank" rel="noopener">{% csrf_token %}
+<input type="hidden" name="daily_limit" value="{{ allowance.proposed }}">
+<button name="action" value="preview">{% blocktranslate with count=allowance.extra %}Add {{ count }} more{% endblocktranslate %}</button></form>
+<p class="help">{% translate "The cost preview opens in a new tab. Return here after increasing the allowance, then try again." %}</p>
+{% elif allowance.server_limit %}
+<p>{% translate "The server limit has been reached. Try again later, or contact the site administrator if you need a higher limit." %}</p>
+{% else %}
+<p>{% translate "Ask a dictionary owner to increase the allowance, or try again later." %}</p>
+{% endif %}
+<p class="help">{% translate "Earlier attempts stop counting after 24 hours. Increasing the allowance starts no AI requests." %}</p>
+</section>{% endif %}{% endwith %}

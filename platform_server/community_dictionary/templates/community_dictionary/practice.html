@@ -5,6 +5,10 @@
 <script src="{% static 'community_dictionary/practice.js' %}?v=4" defer></script>
 <div class="practice-intro"><div class="page-heading"><h1>{% translate "Practise" %}</h1><span>{{ dictionary.name }}</span></div>
 <p class="lead">{% translate "Learn with the pictures, voices and words you have collected together." %}</p></div>
+{% if describe_pictures %}<section class="panel"><h2>{% translate "Describe a picture" %}</h2>
+<p>{% translate "Speak or type a few words about a picture, then get private AI feedback." %}</p>
+<a class="button" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?category={{ selected_category|urlencode }}">{% translate "Describe a picture" %}</a>
+<p class="help">{% translate "AI charges are shown before you start. Nothing is added to the dictionary." %}</p></section>{% endif %}
 <div id="practice" data-url="{{ practice_data_url }}" data-category="{{ selected_category }}">
   <p id="practice-status" role="status" aria-live="polite"></p>
   <div id="practice-choices">

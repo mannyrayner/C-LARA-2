@@ -1,0 +1,51 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block title %}{% translate "Describe a picture" %}{% endblock %}
+{% block content %}
+<h1>{% translate "Describe a picture" %} · {{ dictionary.language }}</h1>
+<div class="capture-layout"><img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="{% translate "Picture to describe" %}">
+<section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
+{% if study.status == 'transcript' %}
+<h2>{% if help_targets and not info.recognition_help.meaning_unclear %}{% translate "I understood…" %}{% elif info.recognition_help.meaning_unclear %}{% translate "Let me check the meaning" %}{% else %}{% translate "Let me check what I heard" %}{% endif %}</h2>
+{% if info.recognition_question %}<p class="notice" dir="auto">{{ info.recognition_question }}</p>{% endif %}
+{% include 'community_dictionary/practice_recognition_help.html' %}
+{% if study.recording_path %}<details><summary>{% translate "My recording" %}</summary><audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'recording' %}"></audio></details>{% endif %}
+{% include 'community_dictionary/practice_edit.html' %}
+{% elif study.status == 'feedback' %}
+{% if feedback.outcome == 'clarify' %}<p class="notice" dir="auto">{{ feedback.question }}</p>
+{% else %}
+<p class="meaning" dir="auto">{{ feedback.text }}</p>
+{% if feedback.corrections %}<ul>{% for correction in feedback.corrections|slice:':2' %}<li dir="auto">{{ correction.reason }}</li>{% endfor %}</ul>{% else %}<p>{% translate "No correction was needed." %}</p>{% endif %}
+{% if clip.status == 'ready' %}<p class="help">{% translate "Play the AI-generated spoken version. Replaying is free." %}</p><audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'feedback' %}"></audio>
+{% elif clip.status == 'waiting' or clip.status == 'running' %}<p role="status">{% translate "Generating the spoken version…" %}</p>
+{% elif clip %}<p class="notice">{% translate "Audio could not finish. It will not be retried automatically." %}</p>
+{% elif can_listen %}<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
+<button name="action" value="listen" class="secondary">{% translate "Generate spoken version" %} · +~US${{ audio_estimate|floatformat:4 }}</button></form>{% endif %}
+{% endif %}
+{% if feedback.understood or feedback.corrections or feedback.suggestions %}<details><summary>{% translate "More feedback" %}</summary>
+{% if feedback.understood %}<p dir="auto">{{ feedback.understood }}</p>{% endif %}
+{% for correction in feedback.corrections %}<p dir="auto">{{ correction.before }} → <strong>{{ correction.after }}</strong>: {{ correction.reason }}</p>{% endfor %}
+{% for suggestion in feedback.suggestions %}<p dir="auto">{{ suggestion }}</p>{% endfor %}
+</details>{% endif %}
+{% elif study.status == 'failed' %}<p class="notice">{% translate "This attempt could not finish. Your saved words and recording stay private. No failed AI request is repeated automatically." %}</p>
+{% else %}<p role="status">{% if info.stage == 'transcribe' %}{% translate "Recognising your words…" %}{% else %}{% translate "Checking what was heard and preparing feedback…" %}{% endif %}</p>{% endif %}
+{% if study.status == 'transcript' or study.status == 'feedback' or study.status == 'failed' %}
+<p><a class="button" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?image={{ study.source_image_id }}&amp;from={{ study.pk }}&amp;category={{ info.category|urlencode }}">{% translate "Try again" %}</a> <a class="button secondary" href="{% url 'community_dictionary:picture-practice' dictionary.pk %}?skip={{ study.source_image_id }}&amp;category={{ info.category|urlencode }}">{% translate "Another picture" %}</a></p>{% endif %}
+{% if polling %}<p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p><details><summary>{% translate "If progress has stopped" %}</summary><form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="continue" class="secondary">{% translate "Continue pending work" %}</button></form></details>{% endif %}
+{% if study.status == 'feedback' or study.status == 'transcript' %}<p class="help">{% if cost_summary.has_known %}{% if cost_summary.complete %}{% blocktranslate with amount=cost_summary.known_total|floatformat:4 %}Estimated cost so far: US${{ amount }}.{% endblocktranslate %}{% else %}{% blocktranslate with amount=cost_summary.known_total|floatformat:4 %}Known cost so far: US${{ amount }}; some usage is unavailable or pending.{% endblocktranslate %}{% endif %}{% else %}{% translate "Cost so far is unavailable or pending." %}{% endif %}</p>{% endif %}
+<details class="entry-help"><summary>{% translate "Words and practice log" %}</summary>
+<details><summary>{% translate "Cost details" %}</summary>
+<ul>{% for row in cost_summary.items %}<li>{{ row.label }}: {% if row.cost != None %}~US${{ row.cost|floatformat:6 }}{% else %}{% translate "Unavailable or pending" %}{% endif %}</li>{% endfor %}</ul>
+<p class="help">{% translate "Includes recorded recognition, AI review and any generated speech for this attempt, including automatically prepared help pronunciations. Final feedback speech is extra until requested; replaying saved audio makes no AI call. Costs use returned usage and configured prices; speech generation uses a duration estimate. Unknown usage is not counted as zero." %}</p>
+</details><p dir="auto">{{ info.heard|default:info.original_text }}</p>
+{% if study.status == 'feedback' or study.status == 'failed' %}<details><summary>{% translate "Correct the transcript or edit my words" %}</summary>{% include 'community_dictionary/practice_edit.html' %}</details>{% endif %}
+<form method="post" action="{% url 'community_dictionary:picture-practice-report' dictionary.pk study.pk %}" class="stack">{% csrf_token %}
+<label>{% translate "Feedback on this attempt" %}<select name="problem"><option value="">{% translate "Sharing choice only" %}</option><option value="recognition">{% translate "Recognition mistake" %}</option><option value="feedback">{% translate "Feedback mistake" %}</option><option value="helpful">{% translate "Helpful feedback" %}</option><option value="other">{% translate "Other" %}</option></select></label>
+<label>{% translate "What I actually said (optional)" %}<textarea name="intended" maxlength="255" rows="2" dir="auto">{{ info.user_report.intended_text }}</textarea></label>
+<label>{% translate "Note (optional)" %}<textarea name="note" maxlength="600" rows="2">{{ info.user_report.note }}</textarea></label>
+<label class="check"><input type="checkbox" name="share_log" {% if info.share_log %}checked{% endif %}> <span>{% translate "Share this diagnostic log with dictionary owners" %}</span></label>
+<button class="secondary">{% translate "Save report and sharing choice" %}</button></form>
+<p><a href="{% url 'community_dictionary:picture-practice-log' dictionary.pk %}">{% translate "Download my practice log" %}</a> · <a href="{% url 'community_dictionary:picture-practice' dictionary.pk %}">{% translate "Practice history and logs" %}</a></p>
+<p class="help">{% translate "Private practice — nothing is added to the dictionary. AI feedback may be mistaken. Speech feedback concerns your confirmed words, not pronunciation." %}</p>
+<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<button name="action" value="discard" class="quiet">{% translate "Clear this practice attempt" %}</button></form>
+</details></section></div><script src="{% static 'community_dictionary/writing.js' %}" defer></script>
+{% endblock %}

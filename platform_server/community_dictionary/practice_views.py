@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from . import practice
+from . import practice, picture_practice
 from .lexicon import outdated_tts
 from .models import Contribution
 from .permissions import get_dictionary
@@ -22,6 +22,7 @@ def home(request, pk):
     dictionary = get_dictionary(request.user, pk)
     rows, categories, _ = practice.catalogue(dictionary, request.GET.get('category', ''))
     return render(request, 'community_dictionary/practice.html', context(request, dictionary,
+        describe_pictures=picture_practice.available(dictionary),
         **page_data(request, dictionary, rows, categories)))
 
 

@@ -11,7 +11,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy
 from django.views.decorators.http import require_http_methods, require_POST
-from . import capture, guided, learning, tts, writing
+from . import capture, capture_limits, guided, guided_words, learning, tts, writing
+from .guided_word_forms import WordStartForm
 from .models import Dictionary, PictureCapture, Participation, VoicePreference
 from .permissions import get_dictionary
 from .port_views import no_store
@@ -118,11 +119,13 @@ def new_attempt(request, dictionary, paths, prepared, source=None, previous=None
     return study
 
 
-def begin_saved(study):
+def begin_saved(study, request=None):
     try: guided.begin(study.pk)
     except Conflict as exc:
         # The upload remains private and recoverable even if credit/quota/setup
         # prevents the AI call. Never delete the successfully saved photograph.
+        if request and capture_limits.show_exhausted(request, exc):
+            return ''
         return str(exc)
     return ''
 
@@ -139,7 +142,39 @@ def start(request, pk, image_id=None):
     needs_consent = not learning.preference(request, dictionary)['consent']
     form = GuidedPictureForm(request.POST or None, request.FILES or None,
         needs_consent=needs_consent, initial={'quote': setup['mode_form'].initial['quote']})
-    if request.method == 'POST' and form.is_valid():
+    choices = learning.preference(request, dictionary).get('choices', {})
+    words_setup = guided_words.context(request.user, dictionary)
+    initial = {'start_with': 'picture', 'words_mode': 'text', 'words_language': dictionary.language,
+        'picture_style': 'photo', **{k: v for k, v in choices.items() if k not in {'styles', 'style_seen'}},
+        'words_quote': words_setup['words_quote']}
+    if source: initial['start_with'] = 'picture'
+    if request.GET.get('from'):
+        try:
+            previous = guided.own(request.user, dictionary, request.GET['from'])
+            previous_words = previous.result['guided'].get('words')
+            if previous_words and not source:
+                initial.update(start_with='words', words_mode='text', words_language=previous.input_language,
+                    words=previous_words['text'])
+        except (Conflict, ValueError, forms.ValidationError): pass
+    words_form = WordStartForm(request.POST or None, request.FILES or None, dictionary=dictionary,
+        choices=choices, existing=bool(source), initial=initial)
+    words_route = request.method == 'POST' and request.POST.get('start_with') == 'words'
+    if words_route and words_form.is_valid():
+        try:
+            def create_words(paths):
+                current = dictionary_for(request, pk)
+                current_quote = guided_words.approved_quote(words_form, request.user, current)
+                return url(guided_words.new_attempt(request, current, paths, words_form, current_quote))
+            # A refreshed signed estimate is not new content. Replay the same
+            # saved words before admitting any new paid work.
+            location = submit_once(request, dictionary, 'guided-words', create_words, ignore_fields=('words_quote',))
+            error = begin_saved(guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1]), request)
+            if error: messages.warning(request, error)
+            return saved(request, location)
+        except (Conflict, forms.ValidationError, OSError) as exc:
+            if not capture_limits.show_exhausted(request, exc):
+                words_form.add_error(None, str(exc))
+    if request.method == 'POST' and not words_route and words_form.is_valid() and form.is_valid():
         try:
             prepared = ((path_for(source.file_path).read_bytes(), 'image/jpeg', '.jpg') if source else
                 prepare_upload(form.cleaned_data['photo'], 'image') if form.cleaned_data.get('photo') else None)
@@ -150,18 +185,24 @@ def start(request, pk, image_id=None):
                 if needs_consent:
                     consent = approved_consent(form, request.user, current)
                     learning.save_preference(request, current, 'guided', consent)
+                if choices:
+                    learning.save_guided_choices(request, current, {**choices, 'start_with': 'picture'})
                 return url(new_attempt(request, current, paths, prepared, source))
             location = submit_once(request, dictionary, f'guided-picture:{image_id}', create)
             study = guided.own(request.user, dictionary, location.rstrip('/').split('/')[-1])
-            error = begin_saved(study)
+            error = begin_saved(study, request)
             if error: messages.warning(request, error)
             return saved(request, location)
         except (Conflict, forms.ValidationError, OSError) as exc:
-            form.add_error(None, str(exc) if not isinstance(exc, OSError) else _('The picture file is unavailable.'))
-    if request.method == 'POST' and form.errors and 'application/json' in request.headers.get('Accept', ''):
-        return fail(request, form.errors.as_text())
+            if not capture_limits.show_exhausted(request, exc):
+                form.add_error(None, str(exc) if not isinstance(exc, OSError) else _('The picture file is unavailable.'))
+    if request.method == 'POST' and (form.errors or words_form.errors or getattr(request, 'capture_allowance_offer', None)) and 'application/json' in request.headers.get('Accept', ''):
+        return fail(request, (words_form.errors if words_route else form.errors or words_form.errors).as_text())
     return no_store(render(request, 'community_dictionary/guided_start.html', context(request, dictionary,
-        **setup, form=form, image=source, needs_guided_consent=needs_consent,
+        **setup, **words_setup, form=form, words_form=words_form, image=source, needs_guided_consent=needs_consent,
+        style_first_use=not choices.get('style_seen'),
+        words_language_codes={name: tts.language_code(name) for name in [dictionary.language,
+            dictionary.explanation_language or 'English']},
         recent=PictureCapture.objects.filter(user=request.user, dictionary=dictionary, input_mode='guided',
             expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:8],
         submission_id=request.POST.get('submission_id') or context(request)['submission_id'])))
@@ -171,14 +212,16 @@ def page(request, dictionary, study, form=None):
     from .lexicon import word_row
     info = study.result['guided']
     suggestion = info.get('suggestion', {})
-    form = form or MeaningForm(initial={'description': suggestion.get('description', '')})
-    form.fields['description'].widget.attrs['lang'] = tts.language_code(study.explanation_language)
+    words_info = info.get('words', {})
+    form = form or MeaningForm(initial={'description': words_info.get('text', suggestion.get('description', ''))})
+    form.fields['description'].widget.attrs['lang'] = tts.language_code(study.input_language if words_info else study.explanation_language)
     rows = capture.sentence_context(study.saved_entry)['sentence_words'] if study.saved_entry_id else []
     sentence = word_row(study.saved_entry, dictionary) if study.saved_entry_id else None
     pending = study.speech.filter(status__in=['waiting', 'running']).exists()
     failed = capture.failed_audio(study)
     return no_store(render(request, 'community_dictionary/guided_detail.html', context(request, dictionary,
-        study=study, info=info, suggestion=suggestion, form=form,
+        study=study, info=info, suggestion=suggestion, form=form, words_info=words_info,
+        words_estimate=guided_words.estimate(words_info['quote']) if words_info else None,
         estimate=guided.estimate(info['consent']), personal=study.personal_key,
         sentence_row=sentence, word_rows=rows, pending=pending, failed_audio=failed,
         complete=study.status == 'saved' and not pending and not failed,
@@ -206,6 +249,10 @@ def action(request, pk, study_id):
             form = MeaningForm(request.POST)
             if not form.is_valid(): return page(request, dictionary, study, form)
             guided.approve(study.pk, request.user, form.cleaned_data['description'])
+        elif choice == 'generate':
+            form = MeaningForm(request.POST)
+            if not form.is_valid(): return page(request, dictionary, study, form)
+            guided_words.generate_from_transcript(study.pk, request.user, form.cleaned_data['description'])
         elif choice == 'continue':
             if study.status == 'draft':
                 error = begin_saved(study)
@@ -219,6 +266,12 @@ def action(request, pk, study_id):
             return saved(request, submit_once(request, dictionary, f'guided-audio:{study.pk}', retry))
         elif choice == 'retry':
             if study.status != 'failed': raise Conflict(_('Only a failed attempt can be retried.'))
+            if study.result['guided'].get('words'):
+                if study.file_path:
+                    location = submit_once(request, dictionary, f'guided-retry:{study.pk}',
+                        lambda paths: url(guided_words.retry_enrichment(study, paths)))
+                    return saved(request, location)
+                return redirect(reverse('community_dictionary:guided-start', args=[pk]) + '?from=' + str(study.pk))
             def again(paths):
                 old = guided.own(request.user, dictionary, study.pk)
                 prepared = (path_for(old.file_path).read_bytes(), 'image/jpeg', '.jpg')

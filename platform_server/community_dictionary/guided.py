@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db import close_old_connections, transaction
 from django.http import Http404
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from . import capture, capture_limits, guided_ai, learning, photo_ai
 from .models import PictureCapture
 from .permissions import get_dictionary
@@ -105,6 +106,8 @@ def approve(pk, user, description):
         if study.user_id != user.pk: raise Http404
         permitted(study)
         info = study.result['guided']
+        if info.get('words') and (info['words']['stage'] != 'ready' or description != info['words']['text']):
+            raise Conflict(_('The final words must match the words used to generate this picture. Start a new preview to change them.'))
         if study.status in {'approved', 'processing', 'ready', 'saved'} and info.get('approved_description'):
             if info['approved_description'] != description:
                 raise Conflict('This version is already approved. Open its result before editing again.')
@@ -136,7 +139,11 @@ def run(pk):
         study = capture.fetch(pk)
         if study.input_mode != 'guided': return
         if study.status == 'waiting':
-            describe(pk); return
+            if study.result['guided'].get('words'):
+                from .guided_words import run as words_run
+                words_run(pk)
+            else: describe(pk)
+            return
         if study.status == 'approved':
             permitted(study, payment=True)
             capture.prepare(pk)

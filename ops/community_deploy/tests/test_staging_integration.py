@@ -2,6 +2,8 @@
 import io
 import json
 from pathlib import Path
+import shlex
+import sys
 import tempfile
 import unittest
 from unittest.mock import Mock
@@ -129,6 +131,52 @@ class PackageTests(unittest.TestCase):
         self.assertNotIn('GetSecretValue','\n'.join(parameters['commands']))
         manifest['working_tree_unreviewed']=True
         with self.assertRaises(ValueError):staging_operator.prepare(*args)
+
+    def bootstrap_download(self):
+        manifest=dict(source_revision='a'*40,working_tree_unreviewed=False,live_enabled=False,
+                      host_code_key='staging/bootstrap/host-tools-'+'d'*64+'.zip',host_zip_sha256='d'*64,
+                      guard_sha256='e'*64)
+        _,parameters=staging_operator.prepare(manifest,{'InstanceId':'i-1234567890abcdef0'},
+            {'CredentialSecretArn':'own-secret','StateBucket':'own-bucket'},'b'*40,
+            'operator@example.org','code-bucket')
+        commands=parameters['commands']
+        download=next(c for c in commands if c.startswith('/opt/clara-staging-guard/bin/python -c '))
+        self.assertLess(commands.index('/opt/clara-staging-guard/bin/pip install boto3==1.35.99'),
+                        commands.index(download))
+        return shlex.split(download)[2]
+
+    def test_generated_bootstrap_download_uses_fixed_bounded_sdk_read_and_closes_stream(self):
+        program=self.bootstrap_download()
+        stream=io.BytesIO(b'host bundle')
+        client=Mock();client.get_object.return_value={'Body':stream}
+        sdk=SimpleNamespace(client=Mock(return_value=client))
+        config=SimpleNamespace(Config=Mock())
+        with patch.dict(sys.modules,{'boto3':sdk,'botocore':SimpleNamespace(),'botocore.config':config}), \
+                patch('pathlib.Path') as destination:
+            exec(compile(program,'<generated bootstrap download>','exec'),{})
+            destination.assert_called_once_with('/tmp/clara-host-tools.zip')
+            destination.return_value.write_bytes.assert_called_once_with(b'host bundle')
+        self.assertTrue(stream.closed)
+        client.get_object.assert_called_once_with(Bucket='code-bucket',
+            Key='staging/bootstrap/host-tools-'+'d'*64+'.zip')
+        config.Config.assert_called_once_with(connect_timeout=2,read_timeout=10,
+                                              retries={'total_max_attempts':1})
+
+    def test_failed_or_oversized_bootstrap_download_never_writes_bundle(self):
+        program=self.bootstrap_download()
+        for oversized in (False,True):
+            with self.subTest(oversized=oversized):
+                client=Mock()
+                stream=io.BytesIO(b'x'*(16*1024*1024+1)) if oversized else None
+                if oversized:client.get_object.return_value={'Body':stream}
+                else:client.get_object.side_effect=RuntimeError('unavailable')
+                with patch.dict(sys.modules,{'boto3':SimpleNamespace(client=Mock(return_value=client)),
+                        'botocore':SimpleNamespace(),'botocore.config':SimpleNamespace(Config=Mock())}), \
+                        patch('pathlib.Path') as destination, self.assertRaises(RuntimeError):
+                    exec(compile(program,'<generated bootstrap download>','exec'),{})
+                destination.assert_not_called()
+                self.assertEqual(client.get_object.call_count,1)
+                if stream is not None:self.assertTrue(stream.closed)
 
     def test_fault_is_exact_candidate_expiring_and_consumed_before_recovery(self):
         with tempfile.TemporaryDirectory() as directory:

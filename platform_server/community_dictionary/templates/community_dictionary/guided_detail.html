@@ -3,9 +3,30 @@
 {% block content %}
 <h1>{% translate "Picture, confirm and finish" %}</h1>
 <p><a href="{% url 'community_dictionary:guided-start' dictionary.pk %}">{% translate "My pictures — start or continue" %}</a></p>
-<div class="capture-layout"><img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="{% translate "Your picture" %}">
+<div class="capture-layout">{% if study.file_path %}<img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="{% translate "Your picture" %}">{% endif %}
 <section class="panel" data-writing-state="{{ study.status }}" data-poll="{{ polling|yesno:'yes,no' }}">
 {% if study.status == 'feedback' %}
+{% if words_info %}
+{% if words_info.stage == 'confirm' %}
+<h2>{% translate "Check your words" %}</h2>
+<p class="help">{% translate "Correct the transcription before generating your picture." %}</p>
+{% if study.recording_path %}<audio controls src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'recording' %}"></audio>{% endif %}
+<form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}" class="stack" data-writing-draft>{% csrf_token %}
+{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}
+<p>{% translate "Picture style" %}: {{ words_info.style_name }}</p>
+<button name="action" value="generate">{% translate "Generate picture" %}</button></form>
+{% else %}
+<h2>{% translate "Your words and picture" %}</h2>
+<p class="meaning" dir="auto">{{ words_info.text }}</p>
+<p class="help">{% translate "Picture style" %}: {{ words_info.style_name }}</p>
+<form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}">{% csrf_token %}
+<input type="hidden" name="description" value="{{ words_info.text }}">
+<button name="action" value="approve">{% translate "Use these words and finish" %}</button>
+<p class="help">{% translate "This shares your words and AI-generated picture and creates the translation, linked words and audio." %}</p>
+{% include 'community_dictionary/guided_cost.html' %}</form>
+{% endif %}
+<p><a href="{% url 'community_dictionary:guided-start' dictionary.pk %}?from={{ study.pk }}">{% translate "Change words or style" %}</a></p>
+{% else %}
 <h2>{% translate "Is this what you want to say?" %}</h2>
 {% if study.source_image.status == 'pending' %}<p class="help">{% translate "Confirming a description will also accept this picture." %}</p>{% endif %}
 {% if suggestion.question %}<p class="notice" dir="auto">{{ suggestion.question }}</p>{% else %}<p class="meaning" dir="auto">{{ suggestion.description }}</p>{% endif %}
@@ -16,27 +37,43 @@
 <button name="action" value="approve">{% translate "Use this description and finish" %}</button>
 <p class="help">{% translate "This shares the picture and creates the target-language sentence, linked words and audio automatically. You can check and edit the result afterwards." %}</p>
 {% include 'community_dictionary/guided_cost.html' %}</form>
+{% endif %}
 {% elif study.status == 'saved' %}
 <h2>{% if complete %}{% translate "Ready — your entry is complete" %}{% elif pending %}{% translate "Your text is shared; audio is being prepared" %}{% else %}{% translate "Your entry is shared; some audio needs attention" %}{% endif %}</h2>
 {% include 'community_dictionary/word_row.html' with row=sentence_row on_word_page=True %}
 <p><a class="button" href="{% url 'community_dictionary:entry' dictionary.pk study.saved_entry_id %}">{% translate "Open sentence, listen or edit" %}</a></p>
 <details><summary>{% translate "Words in this sentence" %}</summary>{% for row in word_rows %}{% include 'community_dictionary/word_row.html' %}{% endfor %}</details>
-<p class="help">{% translate "You confirmed the meaning. Target-language text, vocabulary and synthetic audio were generated automatically and may still need checking." %}</p>
+{% if words_info %}<p class="help">{% translate "Your confirmed words were kept exactly. The translation, vocabulary and synthetic audio were generated automatically and may still need checking." %}</p>
+{% else %}<p class="help">{% translate "You confirmed the meaning. Target-language text, vocabulary and synthetic audio were generated automatically and may still need checking." %}</p>{% endif %}
 {% for clip in failed_audio %}<p class="notice">{{ clip.text }}: {{ clip.failure_reason }}</p>{% endfor %}
 {% if failed_audio and not pending %}<form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 <p>{% translate "Retry only missing audio. This is a new paid attempt; successful recordings and your text are kept." %}</p>
 {% include 'community_dictionary/guided_cost.html' %}<button name="action" value="retry-audio">{% translate "Retry missing audio" %}</button></form>{% endif %}
 {% elif study.status == 'failed' %}
+{% if words_info %}
+<p class="notice">{% translate "This attempt could not finish. Your words are saved privately. No failed AI request is repeated automatically." %}</p>
+<p class="meaning" dir="auto">{{ words_info.text }}</p>
+{% if study.recording_path %}<audio controls src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'recording' %}"></audio>{% endif %}
+{% if study.file_path %}
+<form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
+{% include 'community_dictionary/guided_cost.html' %}<button name="action" value="retry">{% translate "Try again" %}</button></form>
+<p class="help">{% translate "Your picture and words are kept. Only the remaining text and audio processing is retried." %}</p>
+{% else %}<p><a class="button" href="{% url 'community_dictionary:guided-start' dictionary.pk %}?from={{ study.pk }}">{% translate "Start again with these words" %}</a></p>{% endif %}
+{% else %}
 <p class="notice">{% translate "This attempt could not finish. Your picture is still saved privately. No failed AI request is repeated automatically." %}</p>
 <p dir="auto">{{ info.approved_description }}</p>
 <form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {% include 'community_dictionary/guided_cost.html' %}<button name="action" value="retry">{% translate "Try again" %}</button></form>
 <p class="help">{% translate "A new description request costs again. If your meaning was already confirmed, we keep it and ask you to approve finishing again." %}</p>
+{% endif %}
 {% elif study.status == 'draft' %}
+{% if words_info %}<p>{% translate "Your words are saved privately. AI processing has not started; check your credit and daily allowance." %}</p><p dir="auto">{{ words_info.text }}</p>
+{% else %}
 <p>{% translate "Your picture is saved privately. AI processing has not started; check the message above or your credit and daily allowance." %}</p>
+{% endif %}
 <form method="post" action="{% url 'community_dictionary:guided-action' dictionary.pk study.pk %}">{% csrf_token %}{% include 'community_dictionary/guided_cost.html' %}<button name="action" value="continue">{% translate "Try the description now" %}</button></form>
 {% else %}
-<p role="status">{% if info.approved_description %}{% translate "Creating your sentence, words and audio…" %}{% else %}{% translate "Preparing a description in your explanation language…" %}{% endif %}</p><p dir="auto">{{ info.approved_description }}</p>
+<p role="status">{% if info.approved_description %}{% translate "Creating your sentence, words and audio…" %}{% elif words_info.stage == 'transcribe' %}{% translate "Transcribing your words…" %}{% elif words_info %}{% translate "Generating your picture…" %}{% else %}{% translate "Preparing a description in your explanation language…" %}{% endif %}</p><p dir="auto">{% firstof info.approved_description words_info.text %}</p>
 {% endif %}
 {% if polling %}<p class="help">{% translate "You can leave and return through My pictures. Processing continues in the background. Completion is shown here; no email is sent." %}</p>
 <p data-writing-status role="status"><a href="">{% translate "Refresh its status" %}</a></p>

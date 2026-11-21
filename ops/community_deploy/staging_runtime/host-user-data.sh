@@ -21,7 +21,7 @@ systemctl daemon-reload
 systemctl enable --now clara-bootstrap-deadline.timer
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y ca-certificates curl gnupg git unzip python3-venv python3-dev build-essential libpq-dev nginx apache2-utils certbot awscli
+apt-get install -y ca-certificates curl gnupg git unzip python3-venv python3-dev build-essential libpq-dev nginx apache2-utils certbot
 install -d -m 0755 /usr/share/postgresql-common/pgdg
 curl --fail --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
 . /etc/os-release

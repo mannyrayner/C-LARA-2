@@ -5,6 +5,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.core import signing
 from django.utils import timezone
+from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from .models import PictureCapture
 from . import photo_ai, vocabulary_policy
@@ -18,6 +20,54 @@ ESTIMATE_VERSION = 'capture-budget-vocabulary-3'
 INPUT_TOKENS = 16000
 OUTPUT_TOKENS = vocabulary_policy.MAX_OUTPUT_TOKENS
 AUDIO_ALLOWANCE_USD = Decimal('.30')
+NEW_DICTIONARY_LIMIT = 50
+
+
+class AllowanceExhausted(Conflict):
+    def __init__(self, dictionary, scope='dictionary'):
+        self.dictionary, self.scope = dictionary, scope
+        super().__init__(_('Your daily allowance for picture creation and practice is used up.'))
+
+
+def offer(request, dictionary, *, scope=None):
+    """A local preview offer, never an allocation or a paid request."""
+    from .permissions import is_owner
+    counts = usage(dictionary, request.user)
+    if scope is None:
+        if counts['account_remaining'] == 0:
+            scope = 'account'
+        elif counts['remaining'] == 0:
+            scope = 'dictionary'
+        else:
+            return None
+    # A dictionary increase cannot bypass the account/server ceiling.
+    if counts['account_remaining'] == 0 or counts['ceiling'] == 0:
+        scope = 'account'
+    proposed = min(counts['ceiling'], max(NEW_DICTIONARY_LIMIT,
+        dictionary.capture_daily_limit + 25, counts['used'] + 25))
+    can_increase = (scope == 'dictionary' and is_owner(request.user, dictionary)
+        and proposed > counts['limit'] and proposed > counts['used'])
+    request.capture_allowance_offer = {
+        'scope': scope, 'used': counts['used'], 'limit': counts['limit'],
+        'message': (_('Your daily allowance across dictionaries has been used up.') if scope == 'account'
+            else _('This dictionary’s daily allowance for picture creation and practice has been used up.')),
+        'proposed': proposed if can_increase else None,
+        'extra': proposed - counts['limit'] if can_increase else None,
+        'url': reverse('community_dictionary:capture-limit', args=[dictionary.pk]) if can_increase else '',
+        'dictionary_url': reverse('community_dictionary:dictionary', args=[dictionary.pk]),
+        'server_limit': scope == 'account' or counts['limit'] >= counts['ceiling'],
+    }
+    return request.capture_allowance_offer
+
+
+def show_exhausted(request, error):
+    if not isinstance(error, AllowanceExhausted):
+        return False
+    values = offer(request, error.dictionary, scope=error.scope)
+    if values and not values['server_limit']:
+        from .capture_allowance_mail import notify_owner
+        notify_owner(error.dictionary, request.user)
+    return True
 
 
 def ceiling():
@@ -49,12 +99,10 @@ def usage(dictionary, user=None):
 def enforce(dictionary, user):
     """Caller holds the dictionary and user locks across check and creation."""
     counts = usage(dictionary, user)
-    if counts['used'] >= counts['limit']:
-        raise Conflict('This dictionary has used its picture-description allowance for the last 24 hours. '
-            'The owner can change it under Settings → Picture-description allowance, or wait for earlier requests to leave the 24-hour window.')
     if counts['account_used'] >= counts['ceiling']:
-        raise Conflict('Your account has reached the server limit for picture descriptions across all dictionaries in the last 24 hours. '
-            'Wait for earlier requests to leave the window or contact the administrator.')
+        raise AllowanceExhausted(dictionary, 'account')
+    if counts['used'] >= counts['limit']:
+        raise AllowanceExhausted(dictionary)
 
 
 def unit_estimate(prices):

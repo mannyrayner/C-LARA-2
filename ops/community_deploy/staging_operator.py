@@ -28,15 +28,25 @@ def prepare(manifest,host,runtime,baseline,admin_email,artifact_bucket):
     import base64
     data=base64.b64encode(json.dumps(config).encode()).decode()
     script="printf %s "+shlex.quote(data)+' | base64 --decode >/etc/clara-staging-bootstrap.json; chmod 0600 /etc/clara-staging-bootstrap.json'
+    # Ubuntu 24.04 has no awscli deb. Use the same isolated, pinned SDK as the
+    # host guard, rather than depending on a separate CLI/snap installation.
+    download=("import boto3\nfrom botocore.config import Config\nfrom pathlib import Path\n"
+        "client=boto3.client('s3',region_name='ap-southeast-2',"
+        "config=Config(connect_timeout=2,read_timeout=10,retries={'total_max_attempts':1}))\n"
+        f"reply=client.get_object(Bucket={artifact_bucket!r},Key={manifest['host_code_key']!r})\n"
+        "with reply['Body'] as body:\n    raw=body.read(16*1024*1024+1)\n"
+        "if len(raw)>16*1024*1024: raise RuntimeError('host_bundle_too_large')\n"
+        "Path('/tmp/clara-host-tools.zip').write_bytes(raw)\n")
     commands=['set -eu',
-        'aws s3 cp '+shlex.quote('s3://'+artifact_bucket+'/'+manifest['host_code_key'])+' /tmp/clara-host-tools.zip --region ap-southeast-2',
+        'python3 -m venv /opt/clara-staging-guard',
+        '/opt/clara-staging-guard/bin/pip install boto3==1.35.99',
+        '/opt/clara-staging-guard/bin/python -c '+shlex.quote(download),
         "echo "+shlex.quote(manifest['host_zip_sha256']+'  /tmp/clara-host-tools.zip')+' | sha256sum --check --status',
         'install -d -m 0755 /opt/clara-staging-deploy',
         'unzip -oq /tmp/clara-host-tools.zip -d /opt/clara-staging-deploy',
         'chown -R root:root /opt/clara-staging-deploy',
         'chmod -R go-w /opt/clara-staging-deploy',
-        'python3 -m venv /opt/clara-staging-guard',
-        '/opt/clara-staging-guard/bin/pip install boto3==1.35.99',script,
+        script,
         '/opt/clara-staging-guard/bin/python /opt/clara-staging-deploy/staging_bootstrap_host.py --config /etc/clara-staging-bootstrap.json']
     return config,{'commands':commands,'executionTimeout':['1800']}
 

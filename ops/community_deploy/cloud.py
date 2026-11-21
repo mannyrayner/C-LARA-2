@@ -36,16 +36,60 @@ def verify_receipt(receipt, request):
         raise Stop('laptop_receipt_does_not_match_release_request')
 
 
+PROOF_FILES = ('current_release.json', '.github/workflows/laptop.yml', 'runner.py')
+
+
+def verify_release_snapshot(repo, run_sha, control_sha, snapshots):
+    """A helper-only update does not invalidate an unchanged laptop proof.
+
+    Compare immutable Git blobs, not mutable branches or just the candidate
+    commit. Changing the request, laptop workflow or controller requires a new
+    laptop run. The proof must also remain in the control main's ancestry.
+    """
+    run_sha = sha(run_sha)
+    if run_sha == control_sha:
+        return
+    comparison = call(['gh', 'api', f'repos/{repo}/compare/{run_sha}...{control_sha}'])
+    if comparison.get('behind_by') != 0 or comparison.get('merge_base_commit', {}).get('sha') != run_sha:
+        raise Stop('laptop_proof_is_not_from_control_main_history')
+    def snapshot(commit):
+        if commit not in snapshots:
+            snapshots[commit] = tuple(sha(call(['gh', 'api',
+                f'repos/{repo}/contents/{path}?ref={commit}']).get('sha')) for path in PROOF_FILES)
+        return snapshots[commit]
+    if snapshot(run_sha) != snapshot(control_sha):
+        raise Stop('laptop_proof_release_request_or_installer_changed')
+
+
 def proof(request):
     repo = os.environ['GITHUB_REPOSITORY']
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo):
         raise Stop('invalid_control_repository')
     control_sha = sha(os.environ['GITHUB_SHA'])
-    runs = call(['gh', 'api', f'repos/{repo}/actions/workflows/laptop.yml/runs?event=workflow_dispatch&branch=main&per_page=1'])['workflow_runs']
+    runs = call(['gh', 'api', f'repos/{repo}/actions/workflows/laptop.yml/runs?event=workflow_dispatch&branch=main&per_page=20'])['workflow_runs']
     if not runs:
         raise Stop('no_laptop_run')
-    run = runs[0]  # Never fall back to an older successful run after a failure.
-    verify_run(run, control_sha)
+    snapshots = {}
+    for run in runs[:20]:
+        # Validate identity before considering the narrow cancellation exception.
+        if (run.get('status') != 'completed' or run.get('event') != 'workflow_dispatch' or run.get('head_branch') != 'main' or
+                run.get('path') != '.github/workflows/laptop.yml'):
+            raise Stop('latest_laptop_run_is_not_a_success_for_this_release_request')
+        run_sha = sha(run.get('head_sha'))
+        verify_release_snapshot(repo, run_sha, control_sha, snapshots)
+        if run.get('status') == 'completed' and run.get('conclusion') == 'cancelled':
+            jobs = call(['gh', 'api', f'repos/{repo}/actions/runs/{int(run["id"])}/jobs?per_page=1'])
+            # Only a first-attempt queued cancellation with no jobs is harmless.
+            # Earlier attempts of a re-run might already have touched the host.
+            # Any started job, ambiguous response, failure or in-flight run blocks.
+            if run.get('run_attempt') == 1 and jobs.get('total_count') == 0 and jobs.get('jobs') == []:
+                print('Ignored queued cancellation of laptop run:', int(run['id']))
+                continue
+            raise Stop('cancelled_laptop_run_started_a_job_check_laptop_before_deploying')
+        verify_run(run, run_sha)
+        break
+    else:
+        raise Stop('no_successful_laptop_run_after_queued_cancellations')
     directory = Path('laptop-proof')
     if directory.exists():
         raise Stop('proof_directory_already_exists')
@@ -56,6 +100,7 @@ def proof(request):
         raise Stop('could_not_download_laptop_receipt')
     receipt = json.loads((directory / 'receipt.json').read_text(encoding='utf-8'))
     verify_receipt(receipt, request)
+    print('Verified successful laptop run:', int(run['id']))
     return int(run['id'])
 
 

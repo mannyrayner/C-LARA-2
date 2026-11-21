@@ -121,7 +121,7 @@ class AIDescriptionTests(TestCase):
         self.d.capture_daily_limit=0; self.d.save()
         data.update(photo=base.picture(),ai_consent='on')
         r=self.client.post(self.url('capture-start'),data)
-        self.assertContains(r,'picture-description allowance')
+        self.assertContains(r,'Daily allowance used up')
         self.assertEqual(PictureCapture.objects.count(),0)
         self.d.sentence_capture_enabled=False; self.d.save()
         self.assertEqual(self.client.get(self.url('capture-start')+'?input_mode=ai').status_code,403)

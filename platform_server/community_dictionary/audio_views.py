@@ -17,7 +17,7 @@ from . import tts, pronunciation, word_audio
 from .forms import AudioGenerateForm, AudioSaveForm
 from .models import AudioStudy, ContributionDependency, Dictionary, Entry, VoicePreference
 from .permissions import get_dictionary, is_editor
-from .services import Conflict, add_contributions, entry_url, event, submit_once
+from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
 from .views import context, fail, get_entry, private_media_response
 
@@ -237,10 +237,10 @@ def action(request, pk, study_id):
                 raise Conflict('The wording or language changed. Return to the entry and generate audio for the current wording.')
             data = {'prepared_audio': (path_for(study.file_path).read_bytes(), 'audio/wav', '.wav'),
                     'label': f'Synthetic voice: {study.source_text}'[:200]}
-            contribution = add_contributions(target, request.user, data, paths,
-                publish=is_editor(request.user, dictionary) and form.cleaned_data.get('publish_now', False))[0]
+            contribution = add_contributions(target, request.user, data, paths)[0]
             contribution.provenance = {'origin': 'synthetic', **word_audio.metadata(study.synthesis, study.voice), 'language': study.language, 'source_text': study.source_text,
                 'source_text_id': study.source_text_id, 'source_text_version': study.source_text_version,
+                'replace_entry_tts': contribution.pk,
                 'study_id': str(study.pk), 'generated_at': study.created_at.isoformat(),
                 'reviewed_by': request.user.pk, 'reviewed_at': timezone.now().isoformat()}
             if study.synthesis:
@@ -252,6 +252,8 @@ def action(request, pk, study_id):
             contribution.save(update_fields=['provenance', 'shared_from'])
             if study.source_meaning_id:
                 ContributionDependency.objects.get_or_create(derived=contribution, source_id=study.source_meaning_id)
+            if is_editor(request.user, dictionary) and form.cleaned_data.get('publish_now', False):
+                accept(contribution, request.user)
             old_path = study.file_path
             study.status, study.file_path, study.saved_contribution = 'saved', '', contribution
             study.save(update_fields=['status', 'file_path', 'saved_contribution'])

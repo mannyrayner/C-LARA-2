@@ -7320,3 +7320,684 @@ msgid ""
 msgstr ""
 "Odhadované dodatočné náklady na zvuk: %(audio_estimate)s USD. Skutočná "
 "spotreba sa môže líšiť."
+
+msgid "Check and improve"
+msgstr "Skontrolovať a vylepšiť"
+
+msgid "Anything you would like changed?"
+msgstr "Čo by ste chceli zmeniť?"
+
+msgid "Optional: describe an improvement or a word you want to keep."
+msgstr "Voliteľné: opíšte zlepšenie alebo slovo, ktoré chcete zachovať."
+
+msgid ""
+"I approve the estimate and may send these descriptions, picture and recent "
+"edits to OpenAI for a suggestion."
+msgstr ""
+"Schvaľujem odhad a mám povolenie odoslať tieto opisy, obrázok a nedávne "
+"úpravy službe OpenAI na návrh."
+
+msgid ""
+"Update the words and audio too. I approve the estimate and the existing "
+"provider permissions."
+msgstr ""
+"Aktualizovať aj slová a zvuk. Schvaľujem odhad a existujúce povolenia pre "
+"poskytovateľov."
+
+msgid ""
+"Compare both descriptions and suggest changes for you to review. Your "
+"wording stays saved until you approve a change."
+msgstr ""
+"Porovnať oba opisy a navrhnúť zmeny na kontrolu. Váš text zostane uložený, "
+"kým zmenu neschválite."
+
+msgid "Estimated check cost: US$%(estimate)s. Actual usage can vary."
+msgstr ""
+"Odhadovaná cena kontroly: %(estimate)s USD. Skutočná spotreba sa môže líšiť."
+
+msgid "Check both descriptions"
+msgstr "Skontrolovať oba opisy"
+
+msgid "Checking both descriptions. Your saved wording is safe…"
+msgstr "Kontrolujú sa oba opisy. Váš uložený text je v bezpečí…"
+
+msgid "The descriptions already match"
+msgstr "Opisy sa už zhodujú"
+
+msgid "Please review the intended meaning"
+msgstr "Skontrolujte zamýšľaný význam"
+
+msgid "Suggested changes"
+msgstr "Navrhované zmeny"
+
+msgid ""
+"The suggestion did not preserve a previous correction. Your wording has been"
+" kept; you can edit it below or request another check."
+msgstr ""
+"Návrh nezachoval predchádzajúcu opravu. Váš text zostal zachovaný; môžete ho"
+" upraviť nižšie alebo požiadať o novú kontrolu."
+
+msgid ""
+"Choose the meaning you want to keep. You can edit either suggestion before "
+"applying it."
+msgstr ""
+"Vyberte význam, ktorý chcete zachovať. Pred použitím môžete ktorýkoľvek "
+"návrh upraviť."
+
+msgid "Your current descriptions"
+msgstr "Vaše aktuálne opisy"
+
+msgid "Follow the %(language)s meaning"
+msgstr "Použiť význam textu v jazyku %(language)s"
+
+msgid ""
+"Estimated words and audio cost: US$%(estimate)s. Current material is reused;"
+" actual usage can vary."
+msgstr ""
+"Odhadovaná cena slov a zvuku: %(estimate)s USD. Aktuálne materiály sa "
+"použijú znova; skutočná spotreba sa môže líšiť."
+
+msgid "Apply suggestion and update words and audio"
+msgstr "Použiť návrh a aktualizovať slová a zvuk"
+
+msgid "Keep this wording and update words and audio"
+msgstr "Zachovať tento text a aktualizovať slová a zvuk"
+
+msgid "Keep my wording"
+msgstr "Zachovať môj text"
+
+msgid "Check again with different instructions"
+msgstr "Skontrolovať znova s inými pokynmi"
+
+msgid "Check both descriptions after saving (AI)"
+msgstr "Skontrolovať oba opisy po uložení (AI)"
+
+msgid ""
+"Sends these descriptions, picture and recent edits to OpenAI for a "
+"suggestion. Estimated check cost: US$%(cost)s."
+msgstr ""
+"Odošle opisy, obrázok a nedávne úpravy službe OpenAI na návrh. Odhadovaná "
+"cena kontroly: %(cost)s USD."
+
+msgid "Your edit is saved. Open Check and improve to start a fresh check."
+msgstr ""
+"Vaša úprava je uložená. Otvorte Skontrolovať a vylepšiť a spustite novú "
+"kontrolu."
+
+msgid "Start with a picture"
+msgstr "Začať obrázkom"
+
+msgid "Start with words"
+msgstr "Začať slovami"
+
+msgid "Where would you like to start?"
+msgstr "Čím chcete začať?"
+
+msgid "How would you like to enter your words?"
+msgstr "Ako chcete zadať svoj text?"
+
+msgid "Photorealistic"
+msgstr "Fotorealistický"
+
+msgid "Simple colour illustration"
+msgstr "Jednoduchá farebná ilustrácia"
+
+msgid "Cartoon"
+msgstr "Kreslený obrázok"
+
+msgid "Watercolour"
+msgstr "Akvarel"
+
+msgid "Describe another style…"
+msgstr "Opísať iný štýl…"
+
+msgid "Picture style"
+msgstr "Štýl obrázka"
+
+msgid "Style name"
+msgstr "Názov štýlu"
+
+msgid "Style description"
+msgstr "Opis štýlu"
+
+msgid "Choose a style for your picture. You can change this later."
+msgstr "Vyberte štýl obrázka. Neskôr ho môžete zmeniť."
+
+msgid "Generate picture"
+msgstr "Vytvoriť obrázok"
+
+msgid "Check my words"
+msgstr "Skontrolovať môj text"
+
+msgid ""
+"Your words are kept exactly as you confirm them. Speech is transcribed for "
+"you to check first."
+msgstr ""
+"Váš text sa zachová presne tak, ako ho potvrdíte. Pri hovorenom vstupe "
+"najprv skontrolujete prepis."
+
+msgid ""
+"I agree to send my words, recording if used, and style description to "
+"OpenAI, generate a picture, and pay the estimated costs shown here."
+msgstr ""
+"Súhlasím s odoslaním svojho textu, prípadnej nahrávky a opisu štýlu "
+"spoločnosti OpenAI, s vytvorením obrázka a s úhradou uvedených odhadovaných "
+"nákladov."
+
+msgid ""
+"Rough total estimate, including the picture, words and audio: US$%(amount)s."
+" Actual usage varies."
+msgstr ""
+"Približný celkový odhad vrátane obrázka, slov a zvuku: %(amount)s USD. "
+"Skutočné náklady sa môžu líšiť."
+
+msgid "Check your words"
+msgstr "Skontrolujte svoj text"
+
+msgid "Correct the transcription before generating your picture."
+msgstr "Pred vytvorením obrázka opravte prepis."
+
+msgid "Your words and picture"
+msgstr "Váš text a obrázok"
+
+msgid "Use these words and finish"
+msgstr "Použiť tento text a dokončiť"
+
+msgid ""
+"This shares your words and AI-generated picture and creates the translation,"
+" linked words and audio."
+msgstr ""
+"Týmto sa zdieľa váš text a obrázok vytvorený AI a pripraví sa preklad, "
+"prepojené slová a zvuk."
+
+msgid "Change words or style"
+msgstr "Zmeniť text alebo štýl"
+
+msgid "Transcribing your words…"
+msgstr "Prepisujeme váš hlasový vstup…"
+
+msgid "Generating your picture…"
+msgstr "Vytvárame váš obrázok…"
+
+msgid ""
+"Your confirmed words were kept exactly. The translation, vocabulary and "
+"synthetic audio were generated automatically and may still need checking."
+msgstr ""
+"Váš potvrdený text sa zachoval presne. Preklad, slovná zásoba a syntetický "
+"zvuk boli vytvorené automaticky a môžu ešte vyžadovať kontrolu."
+
+msgid ""
+"This attempt could not finish. Your words are saved privately. No failed AI "
+"request is repeated automatically."
+msgstr ""
+"Tento pokus sa nepodarilo dokončiť. Váš text je uložený súkromne. Žiadna "
+"neúspešná požiadavka AI sa automaticky neopakuje."
+
+msgid ""
+"Your picture and words are kept. Only the remaining text and audio "
+"processing is retried."
+msgstr ""
+"Váš obrázok a text sa zachovajú. Zopakuje sa len zostávajúce spracovanie "
+"textu a zvuku."
+
+msgid "Start again with these words"
+msgstr "Začať znova s týmto textom"
+
+msgid ""
+"Your words are saved privately. AI processing has not started; check your "
+"credit and daily allowance."
+msgstr ""
+"Váš text je uložený súkromne. Spracovanie AI sa ešte nezačalo; skontrolujte "
+"si kredit a denný limit."
+
+msgid "Reload this page to see the current picture-generation estimate."
+msgstr ""
+"Obnovte stránku, aby ste videli aktuálny odhad nákladov na vytvorenie "
+"obrázka."
+
+msgid ""
+"The AI settings changed. Reload this page and confirm the new estimate."
+msgstr "Nastavenia AI sa zmenili. Obnovte stránku a potvrďte nový odhad."
+
+msgid ""
+"The AI settings changed. Start a new preview with the current estimate."
+msgstr "Nastavenia AI sa zmenili. Vytvorte nový náhľad s aktuálnym odhadom."
+
+msgid "The image settings changed. Start a new preview."
+msgstr "Nastavenia obrázkov sa zmenili. Vytvorte nový náhľad."
+
+msgid "You can save up to 20 picture styles per dictionary."
+msgstr "Pre každý slovník si môžete uložiť najviac 20 štýlov obrázkov."
+
+msgid "This preview belongs to another user."
+msgstr "Tento náhľad patrí inému používateľovi."
+
+msgid "Open the current preview before continuing."
+msgstr "Pred pokračovaním otvorte aktuálny náhľad."
+
+msgid "Your balance is too low to generate this picture."
+msgstr "Na vytvorenie tohto obrázka nemáte dostatočný kredit."
+
+msgid ""
+"The daily image-generation limit has been reached. Please try tomorrow."
+msgstr "Bol dosiahnutý denný limit vytvárania obrázkov. Skúste to zajtra."
+
+msgid ""
+"Your previous image is still being generated. Open its recent attempt before"
+" starting another."
+msgstr ""
+"Váš predchádzajúci obrázok sa ešte vytvára. Pred začatím ďalšieho otvorte "
+"tento pokus."
+
+msgid "The owner can enable AI picture generation in Settings."
+msgstr "Vlastník môže v nastaveniach povoliť vytváranie obrázkov pomocou AI."
+
+msgid "Start with a picture when using an existing picture."
+msgstr "Ak používate existujúci obrázok, vyberte možnosť Začať obrázkom."
+
+msgid ""
+"The final words must match the words used to generate this picture. Start a "
+"new preview to change them."
+msgstr ""
+"Konečný text sa musí zhodovať s textom použitým na vytvorenie obrázka. Ak ho"
+" chcete zmeniť, vytvorte nový náhľad."
+
+msgid "Another picture"
+msgstr "Ďalší obrázok"
+
+msgid "Check what I said"
+msgstr "Skontrolovať, čo som povedal(a)"
+
+msgid "Checking what you said…"
+msgstr "Rozpoznávanie vašich slov…"
+
+msgid "Clear this practice attempt"
+msgstr "Vymazať tento pokus"
+
+msgid ""
+"Correct the transcript if needed, or try recording again. Feedback will use "
+"the words you confirm."
+msgstr ""
+"V prípade potreby opravte prepis alebo sa nahrajte znova. Spätná väzba bude "
+"vychádzať zo slov, ktoré potvrdíte."
+
+msgid "Get feedback"
+msgstr "Získať spätnú väzbu"
+
+msgid ""
+"I agree to send this picture and my text or recording to OpenAI and pay the "
+"estimated cost."
+msgstr ""
+"Súhlasím s odoslaním tohto obrázka a môjho textu alebo nahrávky spoločnosti "
+"OpenAI a s úhradou odhadovaných nákladov."
+
+msgid "Is this what you said?"
+msgstr "Je toto to, čo ste povedali?"
+
+msgid "Listen to this version"
+msgstr "Vypočuť si túto verziu"
+
+msgid "My recent practice"
+msgstr "Moje nedávne precvičovanie"
+
+msgid ""
+"No accepted pictures are available. Add a picture or choose another "
+"category."
+msgstr ""
+"Nie sú k dispozícii žiadne schválené obrázky. Pridajte obrázok alebo vyberte"
+" inú kategóriu."
+
+msgid "No example is available for this picture."
+msgstr "Pre tento obrázok nie je k dispozícii príklad."
+
+msgid "No practice attempts yet."
+msgstr "Zatiaľ nemáte žiadne pokusy."
+
+msgid "Preparing your feedback…"
+msgstr "Príprava spätnej väzby…"
+
+msgid ""
+"Say or write a few words. You can describe what you see, imagine a story, or"
+" invent some dialogue."
+msgstr ""
+"Povedzte alebo napíšte pár slov. Môžete opísať, čo vidíte, vymyslieť príbeh "
+"alebo dialóg."
+
+msgid "Show an example"
+msgstr "Zobraziť príklad"
+
+msgid "Use these words and get feedback"
+msgstr "Potvrdiť tieto slová a získať spätnú väzbu"
+
+msgid "What I understood"
+msgstr "Čo som pochopil"
+
+msgid "Audio could not finish. It will not be retried automatically."
+msgstr "Zvuk sa nepodarilo dokončiť. Pokus sa nebude automaticky opakovať."
+
+msgid ""
+"This attempt could not finish. Your saved words and recording stay private. "
+"No failed AI request is repeated automatically."
+msgstr ""
+"Tento pokus sa nepodarilo dokončiť. Uložené slová a nahrávka zostávajú "
+"súkromné. Neúspešná požiadavka AI sa automaticky neopakuje."
+
+msgid ""
+"Private practice — nothing is added to the dictionary. AI feedback may be "
+"mistaken. Speech feedback concerns your confirmed words, not pronunciation."
+msgstr ""
+"Súkromné precvičovanie — do slovníka sa nič nepridáva. Spätná väzba AI môže "
+"byť chybná. Týka sa potvrdených slov, nie výslovnosti."
+
+msgid ""
+"Attempts stay private for 30 days unless you clear them. Nothing is added to"
+" the dictionary. AI feedback may be mistaken; speech feedback concerns your "
+"confirmed words, not pronunciation."
+msgstr ""
+"Pokusy zostávajú súkromné 30 dní, pokiaľ ich nevymažete skôr. Do slovníka sa"
+" nič nepridáva. Spätná väzba AI môže byť chybná; týka sa potvrdených slov, "
+"nie výslovnosti."
+
+msgid ""
+"Speak or type a few words about a picture, then get private AI feedback."
+msgstr ""
+"Povedzte alebo napíšte pár slov o obrázku a získajte súkromnú spätnú väzbu "
+"AI."
+
+msgid ""
+"AI charges are shown before you start. Nothing is added to the dictionary."
+msgstr ""
+"Náklady na AI sa zobrazia pred začiatkom. Do slovníka sa nič nepridáva."
+
+msgid "Use %(language)s. A few words are enough."
+msgstr "Použite jazyk %(language)s. Stačí pár slov."
+
+msgid ""
+"Optional audio estimate: US$%(amount)s. Actual usage varies. Replaying saved"
+" audio is free."
+msgstr ""
+"Odhad ceny voliteľného zvuku: %(amount)s USD. Skutočná spotreba sa môže "
+"líšiť. Opakované počúvanie uloženého zvuku je bezplatné."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Listening is "
+"optional and charged separately."
+msgstr ""
+"Približný odhad ceny spätnej väzby: %(amount)s USD. Reč pridáva malý "
+"poplatok za prepis (približne 0,005 USD za 90 sekúnd). Skutočná spotreba sa "
+"môže líšiť. Počúvanie je voliteľné a účtuje sa osobitne."
+
+msgid "Choose an available picture."
+msgstr "Vyberte dostupný obrázok."
+
+msgid "Practice settings changed. Reload this page."
+msgstr "Nastavenia precvičovania sa zmenili. Obnovte túto stránku."
+
+msgid "Read the feedback first."
+msgstr "Najprv si prečítajte spätnú väzbu."
+
+msgid "Reload this page to confirm the current estimate."
+msgstr "Obnovte túto stránku a potvrďte aktuálny odhad."
+
+msgid "This transcript has already been submitted."
+msgstr "Tento prepis už bol odoslaný."
+
+msgid ""
+"The owner needs to enable Picture descriptions for a supported language."
+msgstr "Vlastník musí povoliť opisy obrázkov pre podporovaný jazyk."
+
+msgid "Private practice — nothing is added to the dictionary."
+msgstr "Súkromné precvičovanie — do slovníka sa nič nepridáva."
+
+msgid "Saving your private practice… waiting for confirmation."
+msgstr "Ukladanie vášho súkromného precvičovania… čaká sa na potvrdenie."
+
+msgid "Practice saved privately."
+msgstr "Precvičovanie bolo súkromne uložené."
+
+msgid "Preparing a private recovery draft…"
+msgstr "Príprava súkromného konceptu na obnovenie…"
+
+msgid "Your practice draft is stored on this device. Submit when ready."
+msgstr ""
+"Koncept precvičovania je uložený v tomto zariadení. Odošlite ho, keď budete "
+"pripravení."
+
+msgid ""
+"Practice draft restored. Confirm the current estimate before submitting."
+msgstr "Koncept bol obnovený. Pred odoslaním potvrďte aktuálny odhad."
+
+msgid "Your practice has not been submitted. Leaving can discard your draft."
+msgstr ""
+"Vaše precvičovanie nebolo odoslané. Pri odchode môžete stratiť koncept."
+
+msgid "Audio options"
+msgstr "Možnosti zvuku"
+
+msgid "Checking what was heard and preparing feedback…"
+msgstr "Kontrola rozpoznaných slov a príprava spätnej väzby…"
+
+msgid "Choose the kind of feedback."
+msgstr "Vyberte druh spätnej väzby."
+
+msgid "Confirm permission for this practice session."
+msgstr "Potvrďte súhlas s touto reláciou precvičovania."
+
+msgid "Correct the transcript or edit my words"
+msgstr "Opraviť prepis alebo upraviť moje slová"
+
+msgid ""
+"Diagnostic logs stay private for 30 days unless you share or clear them."
+msgstr ""
+"Diagnostické záznamy zostávajú súkromné 30 dní, pokiaľ ich nezdieľate alebo "
+"nevymažete."
+
+msgid ""
+"Did I hear this correctly? Please check the words before I give feedback."
+msgstr "Rozpoznal som to správne? Pred spätnou väzbou skontrolujte slová."
+
+msgid "Download my practice log"
+msgstr "Stiahnuť môj záznam precvičovania"
+
+msgid "End practice session"
+msgstr "Ukončiť reláciu precvičovania"
+
+msgid "Feedback mistake"
+msgstr "Chyba v spätnej väzbe"
+
+msgid "Feedback on this attempt"
+msgstr "Spätná väzba k tomuto pokusu"
+
+msgid "Helpful feedback"
+msgstr "Užitočná spätná väzba"
+
+msgid ""
+"I agree to this session’s AI practice requests and estimated charges. My "
+"attempts and diagnostic logs stay private unless I share them."
+msgstr ""
+"Súhlasím s požiadavkami AI a odhadovanými nákladmi počas tejto relácie. Moje"
+" pokusy a diagnostické záznamy zostávajú súkromné, pokiaľ ich nezdieľam."
+
+msgid "Keep the report short."
+msgstr "Správa má byť krátka."
+
+msgid "Let me check what I heard"
+msgstr "Overme si, čo som počul"
+
+msgid "More feedback"
+msgstr "Viac spätnej väzby"
+
+msgid "My proficiency"
+msgstr "Moja jazyková úroveň"
+
+msgid "Not specified"
+msgstr "Neuvedené"
+
+msgid "Note (optional)"
+msgstr "Poznámka (voliteľná)"
+
+msgid "Other"
+msgstr "Iné"
+
+msgid "Practice history and logs"
+msgstr "História a záznamy precvičovania"
+
+msgid "Preparing audio…"
+msgstr "Príprava zvuku…"
+
+msgid "Recognising your words…"
+msgstr "Rozpoznávanie vašich slov…"
+
+msgid "Recognition mistake"
+msgstr "Chyba rozpoznávania"
+
+msgid "Save report and sharing choice"
+msgstr "Uložiť správu a voľbu zdieľania"
+
+msgid ""
+"Share this attempt’s diagnostic log with dictionary owners for improving "
+"feedback."
+msgstr ""
+"Zdieľať diagnostický záznam tohto pokusu s vlastníkmi slovníka na zlepšenie "
+"spätnej väzby."
+
+msgid "Share this diagnostic log with dictionary owners"
+msgstr "Zdieľať tento diagnostický záznam s vlastníkmi slovníka"
+
+msgid "Sharing choice only"
+msgstr "Iba voľba zdieľania"
+
+msgid "Saved audio is unavailable for this language."
+msgstr "Uložený zvuk nie je pre tento jazyk dostupný."
+
+msgid "The AI settings changed. Reload this page."
+msgstr "Nastavenia AI sa zmenili. Obnovte túto stránku."
+
+msgid "Uses your personal OpenAI key."
+msgstr "Používa váš osobný kľúč OpenAI."
+
+msgid "View shared practice logs"
+msgstr "Zobraziť zdieľané záznamy precvičovania"
+
+msgid "Wait for the current attempt to finish."
+msgstr "Počkajte na dokončenie aktuálneho pokusu."
+
+msgid "What I actually said (optional)"
+msgstr "Čo som skutočne povedal(a) (voliteľné)"
+
+msgid "Words and practice log"
+msgstr "Slová a záznam precvičovania"
+
+msgid "Speech recognition"
+msgstr "Rozpoznávanie reči"
+
+msgid "AI image review and language feedback"
+msgstr "Analýza obrázka a jazyková spätná väzba AI"
+
+msgid "AI review after confirmation"
+msgstr "Kontrola AI po potvrdení"
+
+msgid "Spoken version generation"
+msgstr "Vytvorenie hovorenej verzie"
+
+msgid "Generate spoken version"
+msgstr "Vytvoriť hovorenú verziu"
+
+msgid "Play the AI-generated spoken version. Replaying is free."
+msgstr ""
+"Prehrajte si hovorenú verziu vytvorenú AI. Opakované prehrávanie je "
+"bezplatné."
+
+msgid "Generating the spoken version…"
+msgstr "Vytváranie hovorenej verzie…"
+
+msgid "Cost so far is unavailable or pending."
+msgstr "Doterajšia cena nie je k dispozícii alebo sa ešte spracúva."
+
+msgid "Cost details"
+msgstr "Podrobnosti o nákladoch"
+
+msgid "Unavailable or pending"
+msgstr "Nedostupné alebo sa spracúva"
+
+msgid "Estimated cost so far: US$%(amount)s."
+msgstr "Doterajšia odhadovaná cena: %(amount)s USD."
+
+msgid ""
+"Known cost so far: US$%(amount)s; some usage is unavailable or pending."
+msgstr ""
+"Doterajšie známe náklady: %(amount)s USD; niektoré údaje o spotrebe nie sú k"
+" dispozícii alebo sa ešte spracúvajú."
+
+msgid ""
+"Includes recorded recognition, AI review and any generated speech for this "
+"attempt. Optional speech generation is extra until requested; replaying "
+"saved audio makes no AI call. Costs use returned usage and configured "
+"prices; speech generation uses a duration estimate. Unknown usage is not "
+"counted as zero."
+msgstr ""
+"Zahŕňa zaznamenané rozpoznávanie, kontrolu AI a vytvorenú reč pre tento "
+"pokus. Voliteľné vytvorenie reči je dodatočný náklad až do jeho vyžiadania; "
+"opakované prehrávanie uloženého zvuku nevolá AI. Náklady vychádzajú z "
+"vrátenej spotreby a nastavených cien; tvorba reči používa odhad trvania. "
+"Neznáma spotreba sa nepočíta ako nulová."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Generating a "
+"spoken version is optional and charged separately. Replaying it is free."
+msgstr ""
+"Približný odhad ceny spätnej väzby: %(amount)s USD. Reč pridáva malý "
+"poplatok za prepis (približne 0,005 USD za 90 sekúnd). Skutočná spotreba sa "
+"môže líšiť. Vytvorenie hovorenej verzie je voliteľné a účtuje sa osobitne. "
+"Opakované prehrávanie je bezplatné."
+
+msgid "Hints"
+msgstr "Pomôcky"
+
+msgid "Vocabulary"
+msgstr "Slovná zásoba"
+
+msgid "Show words"
+msgstr "Zobraziť slová"
+
+msgid "Listen to words"
+msgstr "Vypočuť si slová"
+
+msgid "Some words have no recording yet."
+msgstr "Niektoré slová ešte nemajú nahrávku."
+
+msgid "No saved vocabulary is available for this picture."
+msgstr "K tomuto obrázku nie je k dispozícii uložená slovná zásoba."
+
+msgid "One possible description"
+msgstr "Jeden z možných opisov"
+
+msgid "Show sentence"
+msgstr "Zobraziť vetu"
+
+msgid "Listen to sentence"
+msgstr "Vypočuť si vetu"
+
+msgid "No saved sentence is available for this picture."
+msgstr "K tomuto obrázku nie je k dispozícii uložená veta."
+
+msgid "Hint audio"
+msgstr "Zvuková pomôcka"
+
+msgid "Stop"
+msgstr "Zastaviť"
+
+msgid "Reload this page to start a new practice attempt."
+msgstr "Obnovte túto stránku a začnite nový pokus."
+
+msgid "Dictionary forms"
+msgstr "Slovníkové tvary"
+
+msgid ""
+"When accepted, this recording replaces earlier AI-generated versions for "
+"this entry. Human recordings are kept."
+msgstr ""
+"Po prijatí táto nahrávka nahradí predchádzajúce verzie tejto položky "
+"vytvorené pomocou AI. Ľudské nahrávky zostanú zachované."

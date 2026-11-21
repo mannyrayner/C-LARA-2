@@ -1,0 +1,25 @@
+{% load i18n %}
+{% if help_targets %}
+<div class="recognition-help">
+<p class="meaning" dir="auto">{{ info.recognition_help.proposed_text }}</p>
+<p class="help">{% translate "Check this interpretation, or listen to a model pronunciation." %}</p>
+{% for target in help_targets %}
+<section aria-label="{{ target.word }}">
+<p dir="auto"><strong>{{ target.word }}</strong>{% if target.meaning %} · {{ target.meaning }}{% endif %}</p>
+{% for part in target.parts %}
+{% if part.part == 'word' %}<p class="help">{% translate "Word pronunciation" %}</p>{% endif %}
+{% if part.part == 'phrase' %}<p class="help" dir="auto">{% translate "Example phrase:" %} {{ part.text }}</p>{% endif %}
+{% if part.clip.status == 'ready' %}
+<audio controls preload="none" aria-label="{{ part.text }}" src="{% url 'community_dictionary:picture-practice-help-audio' dictionary.pk study.pk part.clip.pk %}"></audio>
+{% elif part.clip.status == 'waiting' or part.clip.status == 'running' %}
+<p role="status">{% translate "Generating pronunciation…" %}</p>
+{% elif part.clip %}<p class="notice">{% translate "Audio could not finish. It will not be retried automatically." %}</p>
+{% elif can_listen %}
+<p class="help">{% translate "Start a new attempt to prepare pronunciations automatically." %}</p>
+{% endif %}
+{% endfor %}
+</section>
+{% endfor %}
+<p class="help">{% translate "AI-generated model pronunciation. Replaying saved audio is free." %}</p>
+</div>
+{% endif %}

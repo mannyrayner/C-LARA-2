@@ -1,6 +1,7 @@
 """Picture capture lifecycle. Never hold a database transaction across a provider call."""
 from datetime import timedelta
 from decimal import Decimal
+import hashlib
 import logging
 from django.conf import settings
 from django.db import transaction
@@ -38,6 +39,9 @@ def available_images(user, dictionary):
 
 
 def allowed(study, *, payment=False):
+    if study.input_mode == 'practice':
+        from .picture_practice import permitted
+        return permitted(study, payment=payment)
     dictionary=get_dictionary(study.user,study.dictionary_id)
     revision=Participation.objects.filter(user=study.user,dictionary=dictionary).values_list('revision',flat=True).first() or 0
     if (not dictionary.sentence_capture_enabled or not dictionary.tts_enabled or
@@ -47,6 +51,9 @@ def allowed(study, *, payment=False):
         study.status=='discarded' or study.expires_at<=timezone.now()):
         raise Conflict('The capture settings or your participation changed. Start again from the dictionary.')
     word_audio.validate(dictionary, study.usage.get('word_audio_policy', {}))
+    if study.input_mode == 'guided' and study.result.get('guided', {}).get('words'):
+        from .guided_words import permitted
+        permitted(study, payment=payment)
     permitted_images=image_statuses(study.user,dictionary)
     if study.source_image_id and not Contribution.objects.filter(pk=study.source_image_id,
             entry__dictionary=dictionary,entry__archived=False,status__in=permitted_images,kind='image').exclude(file_path='').exists():
@@ -61,8 +68,11 @@ def allowed(study, *, payment=False):
     if study.input_mode == 'refresh':
         from .refresh import validate
         validate(study, payment=payment)
+    if study.input_mode == 'improve':
+        from .improve import validate
+        validate(study, payment=payment)
     if payment:
-        if study.usage.get('word_audio_policy', {}).get('method') == 'google_gemini':
+        if study.input_mode != 'improve' and study.usage.get('word_audio_policy', {}).get('method') == 'google_gemini':
             tts.require_google_credit(study.user)
         if not has_minimum_balance_for_compile(study.user):
             raise Conflict('Your balance is too low to continue generating audio.')
@@ -71,21 +81,34 @@ def allowed(study, *, payment=False):
             raise Conflict('Your API payment settings changed. Start a fresh capture.')
         if study.input_mode == 'guided':
             from .guided import consent_values
-            if study.result['guided']['consent'] != consent_values(study.user, dictionary):
+            expected = consent_values(study.user, dictionary)
+            if study.result['guided'].get('words'):
+                expected = {**expected, 'words_version': 'guided-words-1'}
+            if study.result['guided']['consent'] != expected:
                 raise Conflict('The AI prices, payment or dictionary settings changed. Renew the picture workflow in Settings and start a new attempt.')
         return key
+
+def charge_request_type(study, suffix):
+    value = f'capture:{study.pk}:{suffix}'
+    if len(value) > AIUsageCharge._meta.get_field('request_type').max_length:
+        # Keep the capture UUID and a stable stage identifier. PostgreSQL
+        # enforces this field's limit; SQLite silently accepts longer values.
+        value = f'capture:{study.pk}:{hashlib.sha256(suffix.encode()).hexdigest()[:16]}'
+    return value
+
 
 def charge(study, operation, cost, model, suffix, provider='openai'):
     if (study.personal_key and provider == 'openai') or cost is None:
         return
     cost=Decimal(cost).quantize(Decimal('.000001'))
+    request_type = charge_request_type(study, suffix)
     ledger=None
     if cost and credits_enabled():
         ledger=apply_credit_delta(user=study.user,amount_usd=-cost,entry_type=CreditLedgerEntry.ENTRY_USAGE,
             description='Community picture description: '+operation,
-            metadata={'provider':provider,'model':model,'operation':operation,'request_type':f'capture:{study.pk}:{suffix}','cost_usd':str(cost)})
+            metadata={'provider':provider,'model':model,'operation':operation,'request_type':request_type,'cost_usd':str(cost)})
     AIUsageCharge.objects.create(user=study.user,provider=provider,model=model,
-        operation='community_capture',request_type=f'capture:{study.pk}:{suffix}',cost_usd=cost,
+        operation='community_capture',request_type=request_type,cost_usd=cost,
         status=AIUsageCharge.STATUS_CHARGED if ledger else AIUsageCharge.STATUS_SKIPPED,ledger_entry=ledger,
         notes=('Google synthesis usage/estimate before allowances and tax; provider invoice is authoritative.' if provider=='google' else
                'Returned token usage, or estimated TTS duration/input cost; provider invoice is authoritative.'))
@@ -106,7 +129,7 @@ def account(study_id, stage, response, *, transcription=False):
 def prepare(study_id):
     with transaction.atomic():
         locks(); study=fetch(study_id,True)
-        if study.input_mode == 'refresh':
+        if study.input_mode in {'refresh', 'improve', 'practice'}:
             return  # Fixed sentences use the vocabulary-only processor.
         if study.status != ('approved' if study.input_mode in {'writing', 'guided'} else 'waiting'):
             return
@@ -129,7 +152,10 @@ def prepare(study_id):
         response=capture_ai.interpret(path_for(study.file_path).read_bytes(),{
             'target_language':study.language,'explanation_language':study.explanation_language,
             'generation_level': generation_level,
-            'input_language':study.input_language,'input_mode':{'writing':'approved-writing', 'guided':'approved-picture'}.get(study.input_mode, study.input_mode),
+            'input_language':study.input_language,'input_mode':(
+                'approved-writing' if study.input_mode == 'guided' and study.result['guided'].get('words') and
+                study.input_language == study.language else
+                {'writing':'approved-writing', 'guided':'approved-picture'}.get(study.input_mode, study.input_mode)),
             'description':description,'vocabulary':words},model=study.model,api_key=key)
         account(study.pk,'interpretation',response)
         result=capture_ai.parse(response)
@@ -139,7 +165,8 @@ def prepare(study_id):
                 raise ValueError('approved_writing_changed')
             result['writing'] = study.result['writing']
         if study.input_mode == 'guided':
-            if result['outcome'] != 'ready' or result['translation'] != description:
+            field = 'sentence' if study.result['guided'].get('words') and study.input_language == study.language else 'translation'
+            if result['outcome'] != 'ready' or result[field] != description:
                 raise ValueError('approved_picture_meaning_changed')
             result['guided'] = study.result['guided']
         # A model-supplied ID is only a candidate, not an authorization or edit.
@@ -181,7 +208,7 @@ def publish(study_id, user, *, vocabulary=None):
     try:
         with transaction.atomic():
             locks(); study=fetch(study_id,True)
-            if study.input_mode == 'refresh':
+            if study.input_mode in {'refresh', 'improve', 'practice'}:
                 raise Conflict('Use the sentence update workflow for this attempt.')
             if study.user_id!=user.pk: raise Http404
             allowed(study)
@@ -190,9 +217,10 @@ def publish(study_id, user, *, vocabulary=None):
             data=dict(study.result)
             if study.input_mode == 'writing' and data.get('sentence') != data.get('writing',{}).get('approved_text'):
                 raise Conflict('The final sentence must match the version you approved.')
-            if study.input_mode == 'guided' and (not data.get('guided', {}).get('approved_description') or
-                    data.get('translation') != data['guided']['approved_description']):
-                raise Conflict('The final meaning must match the description you approved.')
+            if study.input_mode == 'guided':
+                field = 'sentence' if data.get('guided', {}).get('words') and study.input_language == study.language else 'translation'
+                if not data.get('guided', {}).get('approved_description') or data.get(field) != data['guided']['approved_description']:
+                    raise Conflict('The final meaning must match the description you approved.')
             if vocabulary is not None:
                 # Revalidate under the same lock as publication. No IDs supplied by
                 # the browser are trusted; matching below is by local lemma/sense.
@@ -227,10 +255,17 @@ def publish(study_id, user, *, vocabulary=None):
                 provenance.update(guided_picture=True, guided_recipe=data['guided']['version'],
                     generation_level=data['guided']['level'], vocabulary_generated_automatically=True,
                     target_language_generated_automatically=True)
+                if data['guided'].get('words'):
+                    provenance.update(started_with_words=True, authoritative_language=study.input_language,
+                        target_language_generated_automatically=study.input_language != study.language)
             source=study.source_image
+            image_provenance = source.provenance if source else {'origin': 'human'}
+            if study.input_mode == 'guided' and data['guided'].get('words'):
+                from .guided_words import image_provenance as generated_provenance
+                image_provenance = generated_provenance(study)
             image=Contribution.objects.create(entry=entry,kind='image',status='accepted',
                 author=source.author if source else user,controlled_by=(source.controlled_by or source.author) if source else user,
-                shared_from=source,provenance=source.provenance if source else {'origin':'human'},
+                shared_from=source,provenance=image_provenance,
                 **write_upload((path_for(study.file_path).read_bytes(),'image/jpeg','.jpg'),study.dictionary_id,paths))
             entry.selected_image=image; entry.save(update_fields=['selected_image'])
             sentence=component(entry,user,'word',data['sentence'],provenance,[image])
@@ -251,6 +286,21 @@ def publish(study_id, user, *, vocabulary=None):
 
 def speech_allowed(clip, *, payment=False):
     key=allowed(clip.capture,payment=payment)
+    if clip.capture.input_mode == 'practice':
+        from .practice_recognition import KINDS, clip_spec
+        if not clip.capture.dictionary.tts_enabled or not tts.language_code(clip.language):
+            raise Conflict('Saved audio is unavailable for this language.')
+        info = clip.capture.result.get('practice', {})
+        if clip.kind in KINDS.values():
+            spec = clip_spec(info, clip.kind, clip.text_id)
+            if (not spec or clip.entry_id or clip.meaning_id or clip.contribution_id or
+                    clip.capture.status not in {'transcript', 'waiting', 'processing', 'feedback'} or
+                    info.get('mode') != 'voice' or clip.language != clip.capture.language or
+                    clip.text != spec['text'] or clip.meaning != spec['meaning']):
+                raise Conflict('Open the current recognition suggestion before listening.')
+        elif (clip.kind != 'feedback' or clip.entry_id or clip.capture.status != 'feedback' or
+                clip.text != info.get('feedback', {}).get('text')):
+            raise Conflict('Open the current practice feedback before listening.')
     if clip.kind == 'form':
         from .sentence_forms import current
         part = Contribution.objects.filter(pk=clip.text_id, entry_id=clip.entry_id, kind='form').select_related('entry__dictionary').first()
@@ -330,11 +380,18 @@ def speak(clip_id):
         if fresh.status!='running': raise Conflict('This audio attempt was cancelled.')
         speech_allowed(fresh,payment=True)
     try:
-        prepared,_=word_audio.synthesize(clip.text, dictionary=clip.capture.dictionary,
-            expected=clip.capture.usage.get('word_audio_policy', {}),language=tts.language_code(clip.language),model=tts.MODEL,
-            voice=clip.capture.voice,api_key=key,meaning=clip.meaning,meaning_language=clip.capture.explanation_language,
+        options = dict(language=tts.language_code(clip.language),model=tts.MODEL,
+            voice=clip.capture.voice,api_key=key,meaning=clip.meaning,
+            meaning_language=clip.capture.result.get('practice', {}).get('feedback_language', clip.capture.explanation_language),
             report=report,before_request=check,
-            speech_kind='sentence' if clip.kind=='feedback' or (clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
+            speech_kind='sentence' if clip.kind in {'feedback', 'help_phrase'} or (clip.entry_id and clip.kind != 'form' and clip.entry.entry_type=='sentence') else 'entry')
+        if clip.capture.input_mode == 'practice':
+            # Private practice consent and estimates cover OpenAI speech. The
+            # dictionary's Google word policy applies to published vocabulary.
+            prepared,_ = tts.synthesize(clip.text, **options)
+        else:
+            prepared,_ = word_audio.synthesize(clip.text, dictionary=clip.capture.dictionary,
+                expected=clip.capture.usage.get('word_audio_policy', {}), **options)
     except Exception as exc:
         code=tts.record_failure(report,exc)
         log.warning('Capture speech %s failed (%s; stage=%s; reason=%s)',
@@ -380,6 +437,12 @@ def discard(query):
     """Erase private previews; never remove separately published contributions."""
     for study in query.select_for_update():
         paths=[study.file_path,study.recording_path]+list(study.speech.exclude(file_path='').values_list('file_path',flat=True))
+        image_attempt = study.result.get('guided', {}).get('words', {}).get('image_attempt')
+        if image_attempt:
+            from .image_generation import discard_studies
+            from .models import ImageStudy
+            discard_studies(ImageStudy.objects.filter(pk=image_attempt, user_id=study.user_id,
+                dictionary_id=study.dictionary_id))
         study.status='discarded'; study.result={}; study.description=''; study.file_path=study.recording_path=''
         study.save(update_fields=['status','result','description','file_path','recording_path'])
         study.speech.update(status='discarded',text='',meaning='',file_path='',report={})

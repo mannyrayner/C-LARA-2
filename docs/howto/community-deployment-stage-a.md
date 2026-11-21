@@ -249,11 +249,17 @@ commit ancestry and local checks but does not query CI conclusions.
    procedure; a successful startup receipt is not an acceptance verdict.
 3. **Accept and deploy AWS:** Manny runs **Accept laptop and deploy AWS**, on private `main`.
    This explicit action is his acceptance. The workflow requires the configured human login,
-   the latest successful laptop run for the same private-control commit, its matching receipt
-   and an age under 24 hours. It sends the fixed SSM command and reports the outcome.
+   a successful laptop run, its matching receipt and an age under 24 hours. It skips only
+   first-attempt cancellations with no jobs: these never touched the laptop. Failed runs,
+   started cancellations and runs still in progress block deployment. It sends the fixed
+   SSM command and reports the outcome.
 
-Do not edit the private request between the laptop run and AWS acceptance. If a second laptop
-run fails, the AWS workflow will not fall back to an older successful run. Requests older than
+Do not edit the private request between the laptop run and AWS acceptance. A helper-only
+control update may reuse proof from an ancestor commit only when the request, laptop workflow
+and controller have exactly the same Git blobs. Any change to those files requires fresh proof.
+After a helper update, start a new AWS workflow on private `main`; re-running an old AWS run
+uses its old helper. If a second laptop run fails, the AWS workflow will not fall back to an
+older successful run. Requests older than
 24 hours need a newly prepared request and laptop run; set expected SHAs to what is actually
 installed. After any successful laptop installation, `expected_laptop` for the *next* request
 must be the newly installed SHA, not its predecessor.

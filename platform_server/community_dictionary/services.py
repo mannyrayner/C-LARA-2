@@ -18,9 +18,10 @@ def event(dictionary, user, action, entry=None, detail=''):
     Event.objects.create(dictionary=dictionary, actor=user, action=action, entry=entry, detail=detail[:400])
 
 
-def digest_request(request):
+def digest_request(request, ignore_fields=()):
     digest = hashlib.sha256()
-    fields = [(key, request.POST.getlist(key)) for key in sorted(request.POST) if key not in {'csrfmiddlewaretoken', 'submission_id'}]
+    fields = [(key, request.POST.getlist(key)) for key in sorted(request.POST)
+        if key not in {'csrfmiddlewaretoken', 'submission_id', *ignore_fields}]
     digest.update(json.dumps(fields, ensure_ascii=False).encode())
     for key in sorted(request.FILES):
         for upload in request.FILES.getlist(key):
@@ -31,13 +32,13 @@ def digest_request(request):
     return digest.hexdigest()
 
 
-def submit_once(request, dictionary, scope, callback):
+def submit_once(request, dictionary, scope, callback, *, ignore_fields=()):
     """The receipt and all database writes commit together. Rollbacks remove new files."""
     try:
         token = uuid.UUID(request.POST.get('submission_id', ''))
     except (ValueError, AttributeError):
         raise Conflict('The submission identifier is missing. Reload the form and try again.')
-    digest = digest_request(request)
+    digest = digest_request(request, ignore_fields)
 
     def replay():
         receipt = Submission.objects.get(token=token)
@@ -67,6 +68,30 @@ def submit_once(request, dictionary, scope, callback):
         for path in created_paths:
             delete_file(path)
         raise
+
+
+def _replace_entry_tts(contribution, user):
+    """Accept holds dictionary/entry locks. Supersession preserves old files.
+
+    The marker names this exact contribution so copied provenance cannot turn
+    an ordinary imported or alternative recording into a replacement command.
+    """
+    if (contribution.kind != 'audio' or contribution.status != 'accepted' or not contribution.file_path or
+            contribution.provenance.get('origin') != 'synthetic' or
+            'sentence_form' in contribution.provenance or
+            contribution.provenance.get('replace_entry_tts') != contribution.pk):
+        return
+    previous = Contribution.objects.select_for_update(of=('self',)).filter(entry_id=contribution.entry_id,
+        kind='audio', status='accepted', provenance__origin='synthetic').exclude(pk=contribution.pk).exclude(
+        provenance__has_key='sentence_form').exclude(shared_from__kind='form')
+    ids = list(previous.order_by('pk').values_list('pk', flat=True))
+    if not ids:
+        return
+    Contribution.objects.filter(pk__in=ids, status='accepted').update(status='superseded')
+    contribution.provenance = {**contribution.provenance, 'replaces_audio_ids': ids}
+    contribution.save(update_fields=['provenance'])
+    event(contribution.entry.dictionary, user, 'audio_replacement', contribution.entry,
+        f'Contribution {contribution.pk} replaces synthetic recordings {ids}')
 
 
 @transaction.atomic
@@ -101,6 +126,7 @@ def accept(contribution, user):
     entry.save()
     contribution.status = 'accepted'
     contribution.save(update_fields=['status'])
+    _replace_entry_tts(contribution, user)
     if contribution.request_id:
         req = contribution.request
         if not req.withdrawn and not req.completed_with_id:

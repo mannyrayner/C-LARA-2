@@ -7418,3 +7418,706 @@ msgid ""
 msgstr ""
 "Coût audio supplémentaire estimé : %(audio_estimate)s USD. La consommation "
 "réelle peut varier."
+
+msgid "Check and improve"
+msgstr "Vérifier et améliorer"
+
+msgid "Anything you would like changed?"
+msgstr "Que souhaites-tu modifier ?"
+
+msgid "Optional: describe an improvement or a word you want to keep."
+msgstr "Facultatif : indique une amélioration ou un mot à conserver."
+
+msgid ""
+"I approve the estimate and may send these descriptions, picture and recent "
+"edits to OpenAI for a suggestion."
+msgstr ""
+"J’approuve l’estimation et j’ai l’autorisation d’envoyer ces descriptions, "
+"l’image et les modifications récentes à OpenAI pour obtenir une suggestion."
+
+msgid ""
+"Update the words and audio too. I approve the estimate and the existing "
+"provider permissions."
+msgstr ""
+"Mettre aussi les mots et l’audio à jour. J’approuve l’estimation et les "
+"autorisations existantes des services utilisés."
+
+msgid ""
+"Compare both descriptions and suggest changes for you to review. Your "
+"wording stays saved until you approve a change."
+msgstr ""
+"Comparer les deux descriptions et proposer des modifications à vérifier. Ton"
+" texte est conservé jusqu’à ton approbation."
+
+msgid "Estimated check cost: US$%(estimate)s. Actual usage can vary."
+msgstr ""
+"Coût estimé de la vérification : %(estimate)s $US. Le coût réel peut varier."
+
+msgid "Check both descriptions"
+msgstr "Vérifier les deux descriptions"
+
+msgid "Checking both descriptions. Your saved wording is safe…"
+msgstr ""
+"Vérification des deux descriptions. Ton texte enregistré est conservé…"
+
+msgid "The descriptions already match"
+msgstr "Les descriptions correspondent déjà"
+
+msgid "Please review the intended meaning"
+msgstr "Vérifie le sens souhaité"
+
+msgid "Suggested changes"
+msgstr "Modifications proposées"
+
+msgid ""
+"The suggestion did not preserve a previous correction. Your wording has been"
+" kept; you can edit it below or request another check."
+msgstr ""
+"La suggestion n’a pas conservé une correction précédente. Ton texte est "
+"conservé ; tu peux le modifier ci-dessous ou demander une nouvelle "
+"vérification."
+
+msgid ""
+"Choose the meaning you want to keep. You can edit either suggestion before "
+"applying it."
+msgstr ""
+"Choisis le sens à conserver. Tu peux modifier chaque suggestion avant de "
+"l’appliquer."
+
+msgid "Your current descriptions"
+msgstr "Tes descriptions actuelles"
+
+msgid "Follow the %(language)s meaning"
+msgstr "Suivre le sens du texte en %(language)s"
+
+msgid ""
+"Estimated words and audio cost: US$%(estimate)s. Current material is reused;"
+" actual usage can vary."
+msgstr ""
+"Coût estimé des mots et de l’audio : %(estimate)s $US. Les éléments à jour "
+"sont réutilisés ; le coût réel peut varier."
+
+msgid "Apply suggestion and update words and audio"
+msgstr "Appliquer la suggestion et mettre les mots et l’audio à jour"
+
+msgid "Keep this wording and update words and audio"
+msgstr "Garder ce texte et mettre les mots et l’audio à jour"
+
+msgid "Keep my wording"
+msgstr "Garder mon texte"
+
+msgid "Check again with different instructions"
+msgstr "Vérifier avec d’autres indications"
+
+msgid "Check both descriptions after saving (AI)"
+msgstr "Vérifier les deux descriptions après enregistrement (IA)"
+
+msgid ""
+"Sends these descriptions, picture and recent edits to OpenAI for a "
+"suggestion. Estimated check cost: US$%(cost)s."
+msgstr ""
+"Envoie les descriptions, l’image et les modifications récentes à OpenAI pour"
+" obtenir une suggestion. Coût estimé : %(cost)s $US."
+
+msgid "Your edit is saved. Open Check and improve to start a fresh check."
+msgstr ""
+"Ta modification est enregistrée. Ouvre Vérifier et améliorer pour lancer une"
+" nouvelle vérification."
+
+msgid "Start with a picture"
+msgstr "Commencer par une image"
+
+msgid "Start with words"
+msgstr "Commencer par des mots"
+
+msgid "Where would you like to start?"
+msgstr "Par quoi souhaitez-vous commencer ?"
+
+msgid "How would you like to enter your words?"
+msgstr "Comment souhaitez-vous saisir votre texte ?"
+
+msgid "Photorealistic"
+msgstr "Photoréaliste"
+
+msgid "Simple colour illustration"
+msgstr "Illustration simple en couleur"
+
+msgid "Cartoon"
+msgstr "Dessin humoristique"
+
+msgid "Watercolour"
+msgstr "Aquarelle"
+
+msgid "Describe another style…"
+msgstr "Décrire un autre style…"
+
+msgid "Picture style"
+msgstr "Style de l’image"
+
+msgid "Style name"
+msgstr "Nom du style"
+
+msgid "Style description"
+msgstr "Description du style"
+
+msgid "Choose a style for your picture. You can change this later."
+msgstr ""
+"Choisissez un style pour votre image. Vous pourrez le modifier plus tard."
+
+msgid "Generate picture"
+msgstr "Créer l’image"
+
+msgid "Check my words"
+msgstr "Vérifier mon texte"
+
+msgid ""
+"Your words are kept exactly as you confirm them. Speech is transcribed for "
+"you to check first."
+msgstr ""
+"Votre texte est conservé exactement tel que vous le confirmez. Si vous "
+"parlez, vous vérifiez d’abord la transcription."
+
+msgid ""
+"I agree to send my words, recording if used, and style description to "
+"OpenAI, generate a picture, and pay the estimated costs shown here."
+msgstr ""
+"J’accepte d’envoyer mon texte, mon enregistrement éventuel et la description"
+" du style à OpenAI, de créer une image et de payer les frais estimés "
+"indiqués ici."
+
+msgid ""
+"Rough total estimate, including the picture, words and audio: US$%(amount)s."
+" Actual usage varies."
+msgstr ""
+"Estimation totale, image, mots et audio compris : %(amount)s $ US. Le coût "
+"réel peut varier."
+
+msgid "Check your words"
+msgstr "Vérifiez votre texte"
+
+msgid "Correct the transcription before generating your picture."
+msgstr "Corrigez la transcription avant de créer votre image."
+
+msgid "Your words and picture"
+msgstr "Votre texte et votre image"
+
+msgid "Use these words and finish"
+msgstr "Utiliser ce texte et terminer"
+
+msgid ""
+"This shares your words and AI-generated picture and creates the translation,"
+" linked words and audio."
+msgstr ""
+"Cela partage votre texte et l’image créée par l’IA et prépare la traduction,"
+" les mots associés et l’audio."
+
+msgid "Change words or style"
+msgstr "Modifier le texte ou le style"
+
+msgid "Transcribing your words…"
+msgstr "Transcription en cours…"
+
+msgid "Generating your picture…"
+msgstr "Création de votre image…"
+
+msgid ""
+"Your confirmed words were kept exactly. The translation, vocabulary and "
+"synthetic audio were generated automatically and may still need checking."
+msgstr ""
+"Votre texte confirmé a été conservé exactement. La traduction, le "
+"vocabulaire et l’audio de synthèse ont été créés automatiquement et peuvent "
+"encore nécessiter une vérification."
+
+msgid ""
+"This attempt could not finish. Your words are saved privately. No failed AI "
+"request is repeated automatically."
+msgstr ""
+"Cette tentative n’a pas pu aboutir. Votre texte reste enregistré en privé. "
+"Aucune requête IA ayant échoué n’est relancée automatiquement."
+
+msgid ""
+"Your picture and words are kept. Only the remaining text and audio "
+"processing is retried."
+msgstr ""
+"Votre image et votre texte sont conservés. Seul le traitement restant du "
+"texte et de l’audio est relancé."
+
+msgid "Start again with these words"
+msgstr "Recommencer avec ce texte"
+
+msgid ""
+"Your words are saved privately. AI processing has not started; check your "
+"credit and daily allowance."
+msgstr ""
+"Votre texte est enregistré en privé. Le traitement IA n’a pas commencé ; "
+"vérifiez votre crédit et votre quota quotidien."
+
+msgid "Reload this page to see the current picture-generation estimate."
+msgstr ""
+"Rechargez cette page pour voir l’estimation actuelle du coût de création "
+"d’image."
+
+msgid ""
+"The AI settings changed. Reload this page and confirm the new estimate."
+msgstr ""
+"Les paramètres IA ont changé. Rechargez cette page et confirmez la nouvelle "
+"estimation."
+
+msgid ""
+"The AI settings changed. Start a new preview with the current estimate."
+msgstr ""
+"Les paramètres IA ont changé. Créez un nouvel aperçu avec l’estimation "
+"actuelle."
+
+msgid "The image settings changed. Start a new preview."
+msgstr "Les paramètres d’image ont changé. Créez un nouvel aperçu."
+
+msgid "You can save up to 20 picture styles per dictionary."
+msgstr "Vous pouvez enregistrer jusqu’à 20 styles d’image par dictionnaire."
+
+msgid "This preview belongs to another user."
+msgstr "Cet aperçu appartient à une autre personne."
+
+msgid "Open the current preview before continuing."
+msgstr "Ouvrez l’aperçu actuel avant de continuer."
+
+msgid "Your balance is too low to generate this picture."
+msgstr "Votre crédit est insuffisant pour créer cette image."
+
+msgid ""
+"The daily image-generation limit has been reached. Please try tomorrow."
+msgstr ""
+"Le quota quotidien de création d’images est atteint. Réessayez demain."
+
+msgid ""
+"Your previous image is still being generated. Open its recent attempt before"
+" starting another."
+msgstr ""
+"Votre image précédente est encore en cours de création. Ouvrez cette "
+"tentative avant d’en commencer une autre."
+
+msgid "The owner can enable AI picture generation in Settings."
+msgstr ""
+"Le propriétaire peut activer la création d’images par IA dans les "
+"paramètres."
+
+msgid "Start with a picture when using an existing picture."
+msgstr ""
+"Pour utiliser une image existante, choisissez « Commencer par une image »."
+
+msgid ""
+"The final words must match the words used to generate this picture. Start a "
+"new preview to change them."
+msgstr ""
+"Le texte final doit être identique à celui utilisé pour créer cette image. "
+"Créez un nouvel aperçu pour le modifier."
+
+msgid "Another picture"
+msgstr "Une autre image"
+
+msgid "Check what I said"
+msgstr "Vérifier ce que j’ai dit"
+
+msgid "Checking what you said…"
+msgstr "Transcription de vos paroles…"
+
+msgid "Clear this practice attempt"
+msgstr "Effacer cet essai"
+
+msgid ""
+"Correct the transcript if needed, or try recording again. Feedback will use "
+"the words you confirm."
+msgstr ""
+"Corrigez la transcription si nécessaire, ou enregistrez un nouvel essai. Les"
+" commentaires porteront sur les mots que vous confirmez."
+
+msgid "Get feedback"
+msgstr "Obtenir des commentaires"
+
+msgid ""
+"I agree to send this picture and my text or recording to OpenAI and pay the "
+"estimated cost."
+msgstr ""
+"J’accepte d’envoyer cette image et mon texte ou enregistrement à OpenAI et "
+"de payer le coût estimé."
+
+msgid "Is this what you said?"
+msgstr "Est-ce bien ce que vous avez dit ?"
+
+msgid "Listen to this version"
+msgstr "Écouter cette version"
+
+msgid "My recent practice"
+msgstr "Mes essais récents"
+
+msgid ""
+"No accepted pictures are available. Add a picture or choose another "
+"category."
+msgstr ""
+"Aucune image acceptée n’est disponible. Ajoutez une image ou choisissez une "
+"autre catégorie."
+
+msgid "No example is available for this picture."
+msgstr "Aucun exemple n’est disponible pour cette image."
+
+msgid "No practice attempts yet."
+msgstr "Aucun essai pour le moment."
+
+msgid "Preparing your feedback…"
+msgstr "Préparation des commentaires…"
+
+msgid ""
+"Say or write a few words. You can describe what you see, imagine a story, or"
+" invent some dialogue."
+msgstr ""
+"Dites ou écrivez quelques mots. Vous pouvez décrire ce que vous voyez, "
+"imaginer une histoire ou inventer un dialogue."
+
+msgid "Show an example"
+msgstr "Voir un exemple"
+
+msgid "Use these words and get feedback"
+msgstr "Confirmer ces mots et obtenir des commentaires"
+
+msgid "What I understood"
+msgstr "Ce que j’ai compris"
+
+msgid "Audio could not finish. It will not be retried automatically."
+msgstr ""
+"La création audio n’a pas abouti. Elle ne sera pas relancée automatiquement."
+
+msgid ""
+"This attempt could not finish. Your saved words and recording stay private. "
+"No failed AI request is repeated automatically."
+msgstr ""
+"Cet essai n’a pas abouti. Vos mots et votre enregistrement restent privés. "
+"Aucune requête d’IA ayant échoué n’est relancée automatiquement."
+
+msgid ""
+"Private practice — nothing is added to the dictionary. AI feedback may be "
+"mistaken. Speech feedback concerns your confirmed words, not pronunciation."
+msgstr ""
+"Exercice privé : rien n’est ajouté au dictionnaire. Les commentaires de l’IA"
+" peuvent être erronés. Ils portent sur vos mots confirmés, pas sur la "
+"prononciation."
+
+msgid ""
+"Attempts stay private for 30 days unless you clear them. Nothing is added to"
+" the dictionary. AI feedback may be mistaken; speech feedback concerns your "
+"confirmed words, not pronunciation."
+msgstr ""
+"Les essais restent privés pendant 30 jours, sauf si vous les effacez avant. "
+"Rien n’est ajouté au dictionnaire. Les commentaires de l’IA peuvent être "
+"erronés ; ils portent sur vos mots confirmés, pas sur la prononciation."
+
+msgid ""
+"Speak or type a few words about a picture, then get private AI feedback."
+msgstr ""
+"Dites ou écrivez quelques mots sur une image, puis recevez des commentaires "
+"privés de l’IA."
+
+msgid ""
+"AI charges are shown before you start. Nothing is added to the dictionary."
+msgstr ""
+"Le coût de l’IA est indiqué avant de commencer. Rien n’est ajouté au "
+"dictionnaire."
+
+msgid "Use %(language)s. A few words are enough."
+msgstr "Utilisez le %(language)s. Quelques mots suffisent."
+
+msgid ""
+"Optional audio estimate: US$%(amount)s. Actual usage varies. Replaying saved"
+" audio is free."
+msgstr ""
+"Estimation audio facultative : %(amount)s $US. Le coût réel varie. Réécouter"
+" un enregistrement est gratuit."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Listening is "
+"optional and charged separately."
+msgstr ""
+"Coût estimé des commentaires : %(amount)s $US. La parole ajoute un petit "
+"coût de transcription (environ 0,005 $US pour 90 secondes). Le coût réel "
+"varie. L’écoute est facultative et facturée séparément."
+
+msgid "Choose an available picture."
+msgstr "Choisissez une image disponible."
+
+msgid "Practice settings changed. Reload this page."
+msgstr "Les réglages de l’exercice ont changé. Rechargez cette page."
+
+msgid "Read the feedback first."
+msgstr "Lisez d’abord les commentaires."
+
+msgid "Reload this page to confirm the current estimate."
+msgstr "Rechargez cette page pour confirmer l’estimation actuelle."
+
+msgid "This transcript has already been submitted."
+msgstr "Cette transcription a déjà été envoyée."
+
+msgid ""
+"The owner needs to enable Picture descriptions for a supported language."
+msgstr ""
+"Le propriétaire doit activer les descriptions d’images pour une langue prise"
+" en charge."
+
+msgid "Private practice — nothing is added to the dictionary."
+msgstr "Exercice privé : rien n’est ajouté au dictionnaire."
+
+msgid "Saving your private practice… waiting for confirmation."
+msgstr "Enregistrement de votre exercice privé… en attente de confirmation."
+
+msgid "Practice saved privately."
+msgstr "Exercice enregistré en privé."
+
+msgid "Preparing a private recovery draft…"
+msgstr "Préparation d’une copie privée de récupération…"
+
+msgid "Your practice draft is stored on this device. Submit when ready."
+msgstr ""
+"Votre brouillon est conservé sur cet appareil. Envoyez-le lorsque vous êtes "
+"prêt."
+
+msgid ""
+"Practice draft restored. Confirm the current estimate before submitting."
+msgstr ""
+"Brouillon restauré. Confirmez l’estimation actuelle avant de l’envoyer."
+
+msgid "Your practice has not been submitted. Leaving can discard your draft."
+msgstr ""
+"Votre exercice n’a pas été envoyé. Quitter la page peut entraîner la perte "
+"du brouillon."
+
+msgid "Audio options"
+msgstr "Options audio"
+
+msgid "Checking what was heard and preparing feedback…"
+msgstr "Vérification des paroles et préparation des commentaires…"
+
+msgid "Choose the kind of feedback."
+msgstr "Choisissez le type de retour."
+
+msgid "Confirm permission for this practice session."
+msgstr "Confirmez votre accord pour cette séance de pratique."
+
+msgid "Correct the transcript or edit my words"
+msgstr "Corriger la transcription ou modifier mes mots"
+
+msgid ""
+"Diagnostic logs stay private for 30 days unless you share or clear them."
+msgstr ""
+"Les journaux de diagnostic restent privés pendant 30 jours, sauf si vous les"
+" partagez ou les effacez."
+
+msgid ""
+"Did I hear this correctly? Please check the words before I give feedback."
+msgstr ""
+"Ai-je bien compris ? Vérifiez les mots avant que je vous donne des "
+"commentaires."
+
+msgid "Download my practice log"
+msgstr "Télécharger mon journal de pratique"
+
+msgid "End practice session"
+msgstr "Terminer la séance"
+
+msgid "Feedback mistake"
+msgstr "Erreur dans les commentaires"
+
+msgid "Feedback on this attempt"
+msgstr "Votre avis sur cet essai"
+
+msgid "Helpful feedback"
+msgstr "Commentaires utiles"
+
+msgid ""
+"I agree to this session’s AI practice requests and estimated charges. My "
+"attempts and diagnostic logs stay private unless I share them."
+msgstr ""
+"J’accepte les requêtes d’IA de cette séance et les coûts estimés. Mes essais"
+" et journaux de diagnostic restent privés, sauf si je les partage."
+
+msgid "Keep the report short."
+msgstr "Gardez le signalement court."
+
+msgid "Let me check what I heard"
+msgstr "Vérifions ce que j’ai entendu"
+
+msgid "More feedback"
+msgstr "Plus de commentaires"
+
+msgid "My proficiency"
+msgstr "Mon niveau"
+
+msgid "Not specified"
+msgstr "Non précisé"
+
+msgid "Note (optional)"
+msgstr "Remarque (facultative)"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Practice history and logs"
+msgstr "Historique et journaux de pratique"
+
+msgid "Preparing audio…"
+msgstr "Préparation audio…"
+
+msgid "Recognising your words…"
+msgstr "Reconnaissance de vos paroles…"
+
+msgid "Recognition mistake"
+msgstr "Erreur de reconnaissance"
+
+msgid "Save report and sharing choice"
+msgstr "Enregistrer l’avis et le choix de partage"
+
+msgid ""
+"Share this attempt’s diagnostic log with dictionary owners for improving "
+"feedback."
+msgstr ""
+"Partager le journal de diagnostic de cet essai avec les propriétaires du "
+"dictionnaire pour améliorer les commentaires."
+
+msgid "Share this diagnostic log with dictionary owners"
+msgstr ""
+"Partager ce journal de diagnostic avec les propriétaires du dictionnaire"
+
+msgid "Sharing choice only"
+msgstr "Choix de partage uniquement"
+
+msgid "Saved audio is unavailable for this language."
+msgstr "L’audio enregistré n’est pas disponible pour cette langue."
+
+msgid "The AI settings changed. Reload this page."
+msgstr "Les réglages de l’IA ont changé. Rechargez cette page."
+
+msgid "Uses your personal OpenAI key."
+msgstr "Utilise votre clé OpenAI personnelle."
+
+msgid "View shared practice logs"
+msgstr "Voir les journaux de pratique partagés"
+
+msgid "Wait for the current attempt to finish."
+msgstr "Attendez la fin de l’essai en cours."
+
+msgid "What I actually said (optional)"
+msgstr "Ce que j’ai réellement dit (facultatif)"
+
+msgid "Words and practice log"
+msgstr "Mots et journal de pratique"
+
+msgid "Speech recognition"
+msgstr "Reconnaissance vocale"
+
+msgid "AI image review and language feedback"
+msgstr "Analyse de l’image et commentaires linguistiques par l’IA"
+
+msgid "AI review after confirmation"
+msgstr "Analyse par l’IA après confirmation"
+
+msgid "Spoken version generation"
+msgstr "Création de la version parlée"
+
+msgid "Generate spoken version"
+msgstr "Créer une version parlée"
+
+msgid "Play the AI-generated spoken version. Replaying is free."
+msgstr "Écoutez la version parlée créée par l’IA. La réécoute est gratuite."
+
+msgid "Generating the spoken version…"
+msgstr "Création de la version parlée…"
+
+msgid "Cost so far is unavailable or pending."
+msgstr "Le coût actuel n’est pas encore disponible."
+
+msgid "Cost details"
+msgstr "Détail des coûts"
+
+msgid "Unavailable or pending"
+msgstr "Indisponible ou en cours"
+
+msgid "Estimated cost so far: US$%(amount)s."
+msgstr "Coût estimé jusqu’ici : %(amount)s $US."
+
+msgid ""
+"Known cost so far: US$%(amount)s; some usage is unavailable or pending."
+msgstr ""
+"Coût connu jusqu’ici : %(amount)s $US ; certaines données d’utilisation sont"
+" indisponibles ou en cours."
+
+msgid ""
+"Includes recorded recognition, AI review and any generated speech for this "
+"attempt. Optional speech generation is extra until requested; replaying "
+"saved audio makes no AI call. Costs use returned usage and configured "
+"prices; speech generation uses a duration estimate. Unknown usage is not "
+"counted as zero."
+msgstr ""
+"Inclut la reconnaissance, l’analyse par l’IA et toute création audio "
+"enregistrées pour cet essai. La création audio facultative est un supplément"
+" jusqu’à sa demande ; réécouter un enregistrement ne fait aucun appel à "
+"l’IA. Les coûts utilisent les données d’utilisation reçues et les tarifs "
+"configurés ; la création audio repose sur une durée estimée. Une "
+"consommation inconnue n’est pas comptée comme nulle."
+
+msgid ""
+"Rough feedback estimate: US$%(amount)s. Speech adds a small transcription "
+"charge (about US$0.005 for 90 seconds). Actual usage varies. Generating a "
+"spoken version is optional and charged separately. Replaying it is free."
+msgstr ""
+"Coût estimé des commentaires : %(amount)s $US. La parole ajoute un petit "
+"coût de transcription (environ 0,005 $US pour 90 secondes). Le coût réel "
+"varie. Créer une version parlée est facultatif et facturé séparément. La "
+"réécoute est gratuite."
+
+msgid "Hints"
+msgstr "Indices"
+
+msgid "Vocabulary"
+msgstr "Vocabulaire"
+
+msgid "Show words"
+msgstr "Afficher les mots"
+
+msgid "Listen to words"
+msgstr "Écouter les mots"
+
+msgid "Some words have no recording yet."
+msgstr "Certains mots n’ont pas encore d’enregistrement."
+
+msgid "No saved vocabulary is available for this picture."
+msgstr "Aucun vocabulaire enregistré n’est disponible pour cette image."
+
+msgid "One possible description"
+msgstr "Une description possible"
+
+msgid "Show sentence"
+msgstr "Afficher la phrase"
+
+msgid "Listen to sentence"
+msgstr "Écouter la phrase"
+
+msgid "No saved sentence is available for this picture."
+msgstr "Aucune phrase enregistrée n’est disponible pour cette image."
+
+msgid "Hint audio"
+msgstr "Enregistrement de l’indice"
+
+msgid "Stop"
+msgstr "Arrêter"
+
+msgid "Reload this page to start a new practice attempt."
+msgstr "Rechargez cette page pour commencer un nouvel essai."
+
+msgid "Dictionary forms"
+msgstr "Formes du dictionnaire"
+
+msgid ""
+"When accepted, this recording replaces earlier AI-generated versions for "
+"this entry. Human recordings are kept."
+msgstr ""
+"Une fois accepté, cet enregistrement remplace les anciennes versions "
+"générées par l’IA pour cette entrée. Les enregistrements humains sont "
+"conservés."

@@ -862,3 +862,52 @@ msgstr "vertical"
 
 msgid "Refresh to check progress. Your saved writing is safe."
 msgstr "Actualisez pour vérifier l’avancement. Votre texte enregistré est en sécurité."
+
+msgid "Generate picture"
+msgstr "Créer l’image"
+
+msgid "Check my words"
+msgstr "Vérifier mon texte"
+
+msgid "Check what I said"
+msgstr "Vérifier ce que j’ai dit"
+
+msgid "Get feedback"
+msgstr "Obtenir des commentaires"
+
+msgid "Saving your private practice… waiting for confirmation."
+msgstr "Enregistrement de votre exercice privé… en attente de confirmation."
+
+msgid "Practice saved privately."
+msgstr "Exercice enregistré en privé."
+
+msgid "Preparing a private recovery draft…"
+msgstr "Préparation d’une copie privée de récupération…"
+
+msgid "Your practice draft is stored on this device. Submit when ready."
+msgstr ""
+"Votre brouillon est conservé sur cet appareil. Envoyez-le lorsque vous êtes "
+"prêt."
+
+msgid ""
+"Practice draft restored. Confirm the current estimate before submitting."
+msgstr ""
+"Brouillon restauré. Confirmez l’estimation actuelle avant de l’envoyer."
+
+msgid "Your practice has not been submitted. Leaving can discard your draft."
+msgstr ""
+"Votre exercice n’a pas été envoyé. Quitter la page peut entraîner la perte "
+"du brouillon."
+
+msgid "Hide words"
+msgstr "Masquer les mots"
+
+msgid "Hide sentence"
+msgstr "Masquer la phrase"
+
+msgid "This recording could not play. Try the player controls."
+msgstr ""
+"Impossible de lire cet enregistrement. Essayez les commandes du lecteur."
+
+msgid "Stop recording before listening to a hint."
+msgstr "Arrêtez l’enregistrement avant d’écouter un indice."

@@ -1,14 +1,18 @@
-{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
 {% block title %}{% translate "Picture, confirm and finish" %}{% endblock %}
 {% block content %}
 <h1>{% translate "Picture, confirm and finish" %}</h1>
-<p>{% translate "Saving starts paid AI analysis. Your picture stays private until you confirm its description." %}</p>
-{% if not needs_guided_consent and guided_estimate != None %}<p class="help">{% blocktranslate with amount=guided_estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %}</p>{% endif %}
 {% if guided_setup_error %}<p class="notice">{{ guided_setup_error }}</p>{% endif %}
 {% if not guided_mode %}<p><a class="button" href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Enable Picture, confirm and finish in Settings first." %}</a></p>{% else %}
-<form method="post" enctype="multipart/form-data" class="stack" data-draft-form>
-{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ form.non_field_errors }}
+<form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-guided-start>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ words_form.non_field_errors }}
+{% if not image %}<fieldset class="capture-modes guided-choices"><legend>{% translate "Where would you like to start?" %}</legend>{{ words_form.start_with }}{{ words_form.start_with.errors }}</fieldset>{% endif %}
 <section class="panel">
+<fieldset class="guided-fields" data-guided-picture {% if words_form.start_with.value == 'words' %}disabled hidden{% endif %}>
+<legend class="sr-only">{% translate "Picture" %}</legend>
+{{ form.non_field_errors }}
+<p class="help">{% translate "Saving starts paid AI analysis. Your picture stays private until you confirm its description." %}</p>
+{% if not needs_guided_consent and guided_estimate != None %}<p class="help">{% blocktranslate with amount=guided_estimate|floatformat:4 %}Rough total estimate per picture, including words and audio: US${{ amount }}.{% endblocktranslate %}</p>{% endif %}
 {% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="{% translate "Picture to describe" %}">
 {% if image.status == 'pending' %}<p class="help">{% translate "Confirming a description will also accept this picture." %}</p>{% endif %}
 {% else %}
@@ -22,11 +26,34 @@
 {{ form.quote }}<label class="check">{{ form.permission }} <span>{{ form.permission.label }}</span></label>{{ form.permission.errors }}
 {% endif %}
 <button data-save-submit>{% translate "Save picture and suggest a description" %}</button>
+</fieldset>
+{% if not image %}<fieldset class="guided-fields" data-guided-words {% if words_form.start_with.value != 'words' %}disabled hidden{% endif %}>
+<legend class="sr-only">{% translate "Start with words" %}</legend>
+{% if dictionary.image_generation_enabled %}
+<fieldset class="capture-modes guided-choices"><legend>{{ words_form.words_mode.label }}</legend>{{ words_form.words_mode }}{{ words_form.words_mode.errors }}</fieldset>
+<p>{{ words_form.words_language.label_tag }}{{ words_form.words_language }}{{ words_form.words_language.errors }}</p>
+<fieldset class="guided-fields" data-guided-type {% if words_form.words_mode.value == 'voice' %}disabled hidden{% endif %}><legend class="sr-only">{% translate "Type" %}</legend>{{ words_form.words.label_tag }}{{ words_form.words }}{{ words_form.words.errors }}</fieldset>
+<fieldset class="guided-fields" data-guided-speak {% if words_form.words_mode.value != 'voice' %}disabled hidden{% endif %}><legend class="sr-only">{% translate "Speak" %}</legend>{% include 'community_dictionary/recording.html' %}{{ words_form.audio.errors }}</fieldset>
+<p>{{ words_form.picture_style.label_tag }}{{ words_form.picture_style }}{{ words_form.picture_style.errors }}</p>
+{% if style_first_use %}<p class="help">{% translate "Choose a style for your picture. You can change this later." %}</p>{% endif %}
+<fieldset class="guided-fields" data-guided-custom {% if words_form.picture_style.value != 'custom' %}disabled hidden{% endif %}><legend class="sr-only">{% translate "Describe another style…" %}</legend>
+<p>{{ words_form.style_name.label_tag }}{{ words_form.style_name }}{{ words_form.style_name.errors }}</p>
+<p>{{ words_form.style_description.label_tag }}{{ words_form.style_description }}{{ words_form.style_description.errors }}</p>
+</fieldset>
+{% if words_setup_error %}<p class="notice">{{ words_setup_error }}</p>{% endif %}
+<p class="help">{% translate "Your words are kept exactly as you confirm them. Speech is transcribed for you to check first." %}</p>
+{% if words_estimate != None %}<p class="help">{% blocktranslate with amount=words_estimate|floatformat:2 %}Rough total estimate, including the picture, words and audio: US${{ amount }}. Actual usage varies.{% endblocktranslate %}</p>{% endif %}
+{{ words_form.words_quote }}<label class="check">{{ words_form.words_permission }} <span>{{ words_form.words_permission.label }}</span></label>{{ words_form.words_permission.errors }}{{ words_form.words_quote.errors }}
+<button data-words-submit type="submit">{% translate "Generate picture" %}</button>
+{% else %}<p>{% translate "The owner can enable AI picture generation in Settings." %}</p>{% endif %}
+</fieldset>{% endif %}
 {% include 'community_dictionary/draft_status.html' %}</section></form>{% endif %}
 <details class="entry-help"><summary>{% translate "Help" %}</summary>
 <p>{% translate "Save a picture. Check what it says. Let the app finish the rest." %}</p>
 <p><a href="{% url 'community_dictionary:new' dictionary.pk %}?usual=1">{% translate "Use the usual contribution form" %}</a> · <a href="{% url 'community_dictionary:settings' dictionary.pk %}#personal-workflow">{% translate "Change my workflow" %}</a></p>
 </details>
+{{ words_language_codes|json_script:"guided-language-codes" }}
+<script src="{% static 'community_dictionary/guided_start.js' %}?v=2" defer></script>
 <details class="panel entry-help"><summary>{% translate "My recent pictures" %}</summary>
 <p class="help">{% translate "Private previews are kept for 30 days unless cleared earlier. Shared entries remain in the dictionary." %}</p>
 <ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:guided-detail' dictionary.pk item.pk %}">{% if item.description %}{{ item.description|truncatechars:70 }}{% elif item.result.guided.suggestion.description %}{{ item.result.guided.suggestion.description|truncatechars:70 }}{% else %}{{ dictionary.language }}{% endif %}</a> · {% if item.status == 'feedback' %}{% translate "Description ready" %}{% elif item.status == 'saved' %}{% translate "Shared — check audio progress" %}{% elif item.status == 'failed' or item.status == 'draft' %}{% translate "Needs attention" %}{% else %}{% translate "In progress" %}{% endif %}</li>{% empty %}<li>{% translate "No guided pictures yet." %}</li>{% endfor %}</ul></details>

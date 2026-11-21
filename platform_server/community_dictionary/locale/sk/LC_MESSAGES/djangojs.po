@@ -843,3 +843,50 @@ msgstr "zvisle"
 
 msgid "Refresh to check progress. Your saved writing is safe."
 msgstr "Obnovte stránku a skontrolujte priebeh. Váš uložený text je v bezpečí."
+
+msgid "Generate picture"
+msgstr "Vytvoriť obrázok"
+
+msgid "Check my words"
+msgstr "Skontrolovať môj text"
+
+msgid "Check what I said"
+msgstr "Skontrolovať, čo som povedal(a)"
+
+msgid "Get feedback"
+msgstr "Získať spätnú väzbu"
+
+msgid "Saving your private practice… waiting for confirmation."
+msgstr "Ukladanie vášho súkromného precvičovania… čaká sa na potvrdenie."
+
+msgid "Practice saved privately."
+msgstr "Precvičovanie bolo súkromne uložené."
+
+msgid "Preparing a private recovery draft…"
+msgstr "Príprava súkromného konceptu na obnovenie…"
+
+msgid "Your practice draft is stored on this device. Submit when ready."
+msgstr ""
+"Koncept precvičovania je uložený v tomto zariadení. Odošlite ho, keď budete "
+"pripravení."
+
+msgid ""
+"Practice draft restored. Confirm the current estimate before submitting."
+msgstr "Koncept bol obnovený. Pred odoslaním potvrďte aktuálny odhad."
+
+msgid "Your practice has not been submitted. Leaving can discard your draft."
+msgstr ""
+"Vaše precvičovanie nebolo odoslané. Pri odchode môžete stratiť koncept."
+
+msgid "Hide words"
+msgstr "Skryť slová"
+
+msgid "Hide sentence"
+msgstr "Skryť vetu"
+
+msgid "This recording could not play. Try the player controls."
+msgstr ""
+"Túto nahrávku sa nepodarilo prehrať. Skúste ovládacie prvky prehrávača."
+
+msgid "Stop recording before listening to a hint."
+msgstr "Pred vypočutím pomôcky zastavte nahrávanie."

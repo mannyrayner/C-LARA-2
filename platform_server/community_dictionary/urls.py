@@ -9,11 +9,15 @@ from .deployment_health import health as deployment_health
 from . import evaluation_views, mwe_audio, audio_evaluation_views
 from . import batch_views, public_views, discovery_views, profile_views, public_practice, workflow_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
-from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
+from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views, picture_practice_views
 from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review, audio_review_pages, refresh_views
+from . import improve_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/entries/<int:entry_id>/check-improve/', improve_views.start, name='improve-start'),
+    path('<int:pk>/entry-checks/<uuid:study_id>/', improve_views.detail, name='improve-detail'),
+    path('<int:pk>/entry-checks/<uuid:study_id>/action/', improve_views.action, name='improve-action'),
     path('<int:pk>/entries/<int:entry_id>/update-words-audio/', refresh_views.start, name='refresh-start'),
     path('<int:pk>/word-audio-updates/<uuid:study_id>/', refresh_views.detail, name='refresh-detail'),
     path('<int:pk>/word-audio-updates/<uuid:study_id>/action/', refresh_views.action, name='refresh-action'),
@@ -106,6 +110,13 @@ urlpatterns = [
     path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/attention/', port_views.attention, name='port-attention'),
     path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/<str:kind>/', port_views.media, name='port-media'),
     path('<int:pk>/practise/', practice_views.home, name='practice'),
+    path('<int:pk>/practise/describe/', picture_practice_views.start, name='picture-practice'),
+    path('<int:pk>/practise/describe/log/', picture_practice_views.diagnostic_log, name='picture-practice-log'),
+    path('<int:pk>/practise/describe/end/', picture_practice_views.end_session, name='picture-practice-end'),
+    path('<int:pk>/practise/describe/<uuid:study_id>/', picture_practice_views.detail, name='picture-practice-detail'),
+    path('<int:pk>/practise/describe/<uuid:study_id>/action/', picture_practice_views.action, name='picture-practice-action'),
+    path('<int:pk>/practise/describe/<uuid:study_id>/report/', picture_practice_views.report, name='picture-practice-report'),
+    path('<int:pk>/practise/describe/<uuid:study_id>/pronunciation/<int:clip_id>/', picture_practice_views.help_audio, name='picture-practice-help-audio'),
     path('<int:pk>/practise/data/', practice_views.data, name='practice-data'),
     path('<int:pk>/practise/media/<int:contribution_id>/', practice_views.media, name='practice-media'),
     path('<int:pk>/settings/copy-images/', image_copy.copy_view, name='image-only-copy'),

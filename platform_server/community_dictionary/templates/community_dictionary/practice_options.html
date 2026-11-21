@@ -1,0 +1,6 @@
+{% load i18n %}
+<p>{{ form.feedback_language.label_tag }}{{ form.feedback_language }}{{ form.feedback_language.errors }}</p>
+<p>{{ form.voice.label_tag }}{{ form.voice }}{{ form.voice.errors }}</p>
+<p>{{ form.level.label_tag }}{{ form.level }}{{ form.level.errors }}</p>
+<label class="check">{{ form.share_log }} <span>{{ form.share_log.label }}</span></label>{{ form.share_log.errors }}
+<p class="help">{% translate "Diagnostic logs stay private for 30 days unless you share or clear them." %}</p>

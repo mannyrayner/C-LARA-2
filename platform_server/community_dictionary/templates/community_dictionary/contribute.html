@@ -39,6 +39,9 @@
 <p>{{ form.word.label_tag }}{{ form.word }}</p>
 <p>{{ form.meaning.label_tag }}{{ form.meaning }}</p>
 <p>{{ form.category.label_tag }}{{ form.category }}</p>
+{% if form.check_after_save %}{{ form.check_quote }}
+<label class="check">{{ form.check_after_save }}{{ form.check_after_save.label }}</label>
+<p class="help">{{ form.check_after_save.help_text }}</p>{% endif %}
 </section>
 {% else %}
 <p><a href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">{% translate "Add or edit the word and its meaning →" %}</a></p>

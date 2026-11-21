@@ -1,0 +1,15 @@
+{% load i18n %}
+<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}" class="stack" data-writing-draft>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="mode" value="text">
+{{ form.non_field_errors }}
+{% if study.status == 'transcript' and help_targets %}
+{% include 'community_dictionary/practice_permission.html' %}
+<button name="action" value="use_suggestion" formnovalidate {% if setup_error %}disabled{% endif %}>{% translate "Yes, use these words" %}</button>
+<details {% if form.errors %}open{% endif %}><summary>{% translate "Use different words" %}</summary>
+{% endif %}
+{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}
+{% if study.status != 'transcript' or not help_targets %}{% include 'community_dictionary/practice_permission.html' %}{% endif %}
+<button name="action" value="{% if study.status == 'transcript' %}check{% else %}revise{% endif %}" {% if setup_error %}disabled{% endif %}>{% translate "Use these words and get feedback" %}</button>
+{% if study.status == 'transcript' and help_targets %}</details>{% endif %}
+<details><summary>{% translate "More options" %}</summary>{% include 'community_dictionary/practice_options.html' %}</details>
+</form>
