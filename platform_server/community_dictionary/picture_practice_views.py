@@ -22,6 +22,7 @@ from .views import context, fail, saved, private_media_response
 from .voices import VOICE_CHOICES
 from .practice_costs import summary as cost_summary
 from .learning import LEVELS
+from . import practice_history
 
 SALT = 'picture-practice-2'
 SESSION_SECONDS = 7200
@@ -126,10 +127,11 @@ def start(request, pk):
     image_id = request.POST.get('image') if request.method == 'POST' else request.GET.get('image')
     if image_id:
         image = get_object_or_404(candidates, pk=image_id)
+        if request.method == 'GET':
+            practice_history.select(request, dictionary, candidates, image=image)
     else:
         skip = candidates.filter(pk=request.GET.get('skip')).first() if request.GET.get('skip', '').isdigit() else None
-        remaining = candidates.exclude(file_path=skip.file_path) if skip else candidates
-        image = remaining.order_by('?').first() or candidates.order_by('?').first()
+        image = practice_history.select(request, dictionary, candidates, skip=skip) if request.method == 'GET' else None
     if request.method == 'GET' and image and not image_id:
         # Pin the picture in the URL, so a recovered device draft cannot silently
         # be paired with a newly chosen random image after a reload.
@@ -198,6 +200,7 @@ def start(request, pk):
         form=form, image=image, hints=practice_hints.material(image, dictionary),
         hint_language=tts.language_code(dictionary.language), recent=recent,
         category=category, needs_permission=needs_permission, **config,
+        practice_overview=practice_history.overview(request.user, dictionary),
         submission_id=request.POST.get('submission_id') or context(request)['submission_id'])))
 
 

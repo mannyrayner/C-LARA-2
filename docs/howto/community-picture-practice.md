@@ -204,3 +204,36 @@ spoken feedback. The original references fail those regressions.
 
 After installing the repair, explicitly start a new speech attempt. Existing
 failed attempts remain private and do not restart provider requests automatically.
+
+
+## Picture rotation and My practice
+
+Picture selection now keeps a private history per learner and dictionary across
+logins and devices, using the existing contribution-preference JSON field. It
+aims for two unseen pictures then one review once a review pool exists, avoids
+the five most recent pictures when the category is large enough, and reviews
+less-used, older pictures first. Small categories relax the recent-five rule;
+two pictures alternate and one picture necessarily repeats. Existing category,
+acceptance and withdrawal checks still determine the eligible pictures. Shared
+file copies count as one picture; separately uploaded files are distinct.
+
+The first visit seeds the rotation from up to 2,000 retained private practice
+attempts. Earlier pictures merely viewed or skipped cannot be reconstructed.
+Pinned links, reloads and Try again keep the selected picture and do not add
+consecutive exposures. Explicit entry links remain usable. The history remembers
+up to 2,000 picture identities, storing hashes, exposure counts and ordering,
+with no words, recordings or media paths. Workflow changes preserve this UI
+metadata and never treat it as permission for paid processing. Viewing or
+skipping a picture creates no practice attempt, consumes no allowance and makes
+no AI call. No migration or new dependency is required.
+
+The existing history/log section is now **My practice**. It shows pictures in the
+rotation history, plus completed attempts, completed spoken attempts and active
+practice days in the last 30 days. These totals are private to the learner and
+use the dictionary's current language. Cleared and expired attempts are excluded;
+recognition clarification and failed requests are not completed attempts. Active
+days include days with an attempted request, using the site's configured time
+zone. Pictures explored counts retained rotation identities, including earlier
+practice; it is bounded by the 2,000-picture history. The overview measures
+activity, not proficiency, pronunciation quality or learning gains. Existing
+shared diagnostic-log permissions are unchanged.
