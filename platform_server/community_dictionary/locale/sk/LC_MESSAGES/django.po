@@ -8393,3 +8393,215 @@ msgstr "Vlastníci a editori môžu generovať obrázky z opisov. Automatické o
 #: community_dictionary/forms.py
 msgid "For AI-supported languages, send each new accepted lemma and translation to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above."
 msgstr "Pre jazyky podporované AI odošlite každú novú schválenú lemu a preklad do OpenAI. Automaticky zverejnite jeden spoločný obrázok slova na náklady vlastníka slovníka. Niektoré slová používajú symbol Bez jednoduchého obrázka. Vyžaduje zapnuté generovanie obrázkov AI vyššie."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Actual batch cost"
+msgstr "Skutočná cena dávky"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "All word-picture attempts in this dictionary, including planning, regenerations and charged failures."
+msgstr "Všetky pokusy o obrázky slov v tomto slovníku vrátane plánovania, opätovného generovania a spoplatnených neúspešných pokusov."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Batch cost so far"
+msgstr "Doterajšia cena dávky"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Clear selection"
+msgstr "Zrušiť výber"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Completed %(finished)s of %(total)s attempts. Original estimate: US$%(estimate)s."
+msgstr "Dokončené pokusy: %(finished)s z %(total)s. Pôvodný odhad: %(estimate)s USD."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Confirm generation"
+msgstr "Potvrdiť generovanie"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Cumulative word-picture cost"
+msgstr "Celková cena obrázkov slov"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Estimate unavailable"
+msgstr "Odhad nie je k dispozícii"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Estimated batch cost"
+msgstr "Odhadovaná cena dávky"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Estimated selected cost"
+msgstr "Odhadovaná cena výberu"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Find a word"
+msgstr "Nájsť slovo"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Generate/regenerate selected"
+msgstr "Vygenerovať alebo znovu vygenerovať vybrané"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Generation costs"
+msgstr "Ceny generovania"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Generation was cancelled. Select this word to start a fresh attempt."
+msgstr "Generovanie bolo zrušené. Vyberte toto slovo a začnite nový pokus."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "More word pictures"
+msgstr "Ďalšie obrázky slov"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Next words"
+msgstr "Ďalšie slová"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "No word pages match this view."
+msgstr "Tomuto zobrazeniu nezodpovedajú žiadne stránky slov."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Not yet attempted"
+msgstr "Zatiaľ bez pokusu"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Partial total: cost information is incomplete for %(count)s attempts."
+msgstr "Čiastočný súčet: údaje o cene sú neúplné pri %(count)s pokusoch."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Picture unavailable or outdated"
+msgstr "Obrázok nie je k dispozícii alebo je neaktuálny"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Pictures restored: %(count)s. Changed or withdrawn pictures were kept as they are."
+msgstr "Obnovené obrázky: %(count)s. Zmenené alebo stiahnuté obrázky zostali bez zmeny."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Previous words"
+msgstr "Predchádzajúce slová"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Progress"
+msgstr "Priebeh"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Recent batches"
+msgstr "Nedávne dávky"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Recorded costs use returned provider usage and the prices for each attempt. Missing cost information is not treated as free. Provider billing is authoritative."
+msgstr "Zaznamenané ceny používajú údaje o využití od poskytovateľa a sadzby pre každý pokus. Chýbajúce údaje o cene neznamenajú bezplatný pokus. Rozhodujúce je vyúčtovanie poskytovateľa."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Remove selected pictures"
+msgstr "Odstrániť vybrané obrázky"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Resource limit reached"
+msgstr "Dosiahnutý limit zdrojov"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Resource-limit skips: %(count)s. These attempts did not start a provider request."
+msgstr "Pokusy vynechané pre limit zdrojov: %(count)s. Pri týchto pokusoch sa nezačala požiadavka u poskytovateľa."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Retry"
+msgstr "Skúsiť znova"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Review the batch estimate before approving generation."
+msgstr "Pred schválením generovania skontrolujte odhad ceny dávky."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Select all shown"
+msgstr "Vybrať všetky zobrazené"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Select at most 50 pictures for one bulk action."
+msgstr "Pre jednu hromadnú akciu vyberte najviac 50 obrázkov."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Select between 1 and 50 word pictures. Refresh the overview if the selection expired."
+msgstr "Vyberte 1 až 50 obrázkov slov. Ak výber vypršal, obnovte prehľad."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Selected pictures removed. You can undo this removal below."
+msgstr "Vybrané obrázky boli odstránené. Toto odstránenie môžete nižšie vrátiť späť."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Selections are kept while you load more words or refresh progress. Generate up to 50 selected pictures per batch. Existing pictures stay visible until a replacement succeeds."
+msgstr "Výber sa zachová pri načítaní ďalších slov alebo obnovení priebehu. V jednej dávke môžete generovať najviac 50 vybraných obrázkov. Existujúce obrázky zostávajú viditeľné, kým sa nepodarí ich náhrada."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Show more words"
+msgstr "Zobraziť viac slov"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Showing words %(first)s–%(last)s of %(total)s."
+msgstr "Zobrazené slová: %(first)s–%(last)s z %(total)s."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Some selected pictures are still being prepared. Wait or resume the queued work."
+msgstr "Niektoré vybrané obrázky sa ešte pripravujú. Počkajte alebo pokračujte v požiadavkách vo fronte."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Some selected pictures changed. Refresh before removing them."
+msgstr "Niektoré vybrané obrázky sa zmenili. Pred odstránením obnovte prehľad."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Some selected words or meanings changed or are unavailable. Refresh the overview."
+msgstr "Niektoré vybrané slová alebo významy sa zmenili alebo nie sú k dispozícii. Obnovte prehľad."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "The actual cost may differ. This batch uses your account."
+msgstr "Skutočná cena sa môže líšiť. Táto dávka používa váš účet."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "The selection changed. Preview its cost again before generating."
+msgstr "Výber sa zmenil. Pred generovaním znova zobrazte odhad ceny."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "The words or meanings changed, or a word-picture attempt changed. Preview the batch again."
+msgstr "Slová alebo významy sa zmenili alebo sa zmenil pokus o obrázok slova. Znova zobrazte náhľad dávky."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "This estimate expired or the settings changed. Preview the selected cost again."
+msgstr "Tento odhad vypršal alebo sa zmenili nastavenia. Znova zobrazte odhad ceny výberu."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "This removal can no longer be undone."
+msgstr "Toto odstránenie už nemožno vrátiť späť."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Undo picture removal"
+msgstr "Vrátiť odstránenie obrázkov"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "selected"
+msgstr "vybrané"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "word pictures"
+msgstr "obrázky slov"
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Approve selected generation"
+msgstr "Schváliť generovanie výberu"
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Selected word pictures: %(count)s"
+msgstr "Vybrané obrázky slov: %(count)s"
+
+#: community_dictionary/templates/community_dictionary/tools.html
+msgid "Manage word pictures"
+msgstr "Spravovať obrázky slov"
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Select word pictures to generate, regenerate or remove, and review batch and cumulative costs."
+msgstr "Vyberte obrázky slov na generovanie, opätovné generovanie alebo odstránenie a skontrolujte ceny dávok a celkovú cenu."
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Partial total. Attempts with incomplete cost information: %(count)s."
+msgstr "Čiastočný súčet. Pokusy s neúplnými údajmi o cene: %(count)s."

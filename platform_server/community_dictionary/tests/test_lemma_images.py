@@ -205,7 +205,7 @@ class LemmaImageTests(TestCase):
         self.assertEqual(self.client.post(self.url('word-images'), data).status_code, 302)
         self.assertEqual(self.client.post(self.url('word-images'), data).status_code, 302)
         self.assertEqual(LemmaImage.objects.count(), 5)
-        self.assertEqual(len(self.client.get(self.url('word-images')).context['candidates']), 2)
+        self.assertEqual(self.client.get(self.url('word-images')).context['missing_count'], 2)
 
     def test_stale_batch_quote_and_stale_editor_form_are_rejected(self):
         entry = self.word()
@@ -339,13 +339,13 @@ class LemmaImageTests(TestCase):
         for _ in range(2):
             preview = self.client.get(self.url('word-images'), {'action':'preview', 'limit':2})
             self.assertContains(preview, 'Preview ready. Selected word pages: 2.')
-            self.assertContains(preview, '2. Approve and generate pictures')
+            self.assertContains(preview, 'Approve selected generation')
             self.assertContains(preview, 'name="action" value="generate"')
             self.assertEqual(len(preview.context['candidates']), 2)
         refreshed = self.client.get(self.url('word-images'), {'refresh':1})
         self.assertContains(refreshed, 'Progress updated.')
         self.assertContains(refreshed, 'No word-picture batch has been started')
-        self.assertContains(refreshed, '?refresh=1#word-image-progress')
+        self.assertContains(refreshed, 'refresh=1#word-image-progress')
         self.assertNotContains(refreshed, 'This field is required.')
         self.assertFalse(LemmaImage.objects.exists())
         self.assertFalse(ImageStudy.objects.exists())
@@ -358,7 +358,7 @@ class LemmaImageTests(TestCase):
         data = {'limit':1, 'quote':page.context['quote'], 'submission_id':str(uuid.uuid4()), 'action':'generate'}
         denied = self.client.post(self.url('word-images'), data)
         self.assertContains(denied, 'Confirm AI processing')
-        self.assertContains(denied, '2. Approve and generate pictures')
+        self.assertContains(denied, 'Approve selected generation')
         data.update(ai_consent='on', quote=denied.context['quote'])
         started = self.client.post(self.url('word-images'), data, follow=True)
         self.assertContains(started, 'Your word-picture batch has started.')
@@ -425,7 +425,7 @@ class LemmaImageTests(TestCase):
             self.assertEqual(list(pictures.missing(self.d)), [blocked.entry])
             page = self.client.get(self.url('word-images'), {'action':'preview','limit':5})
             self.assertContains(page, 'Remaining: 0.')
-            self.assertContains(page, '>Retry</span>')
+            self.assertContains(page, 'Resource limit reached')
         with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=2):
             data = self.batch_data()
             started = self.client.post(self.url('word-images'), data, follow=True)

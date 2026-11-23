@@ -14,6 +14,7 @@ from django.utils.translation import gettext as _
 
 from projects.billing import credits_enabled, get_user_balance_usd
 from . import image_generation as images, photo_ai, public_browsing as public
+from . import lemma_picture_costs as costs
 from .models import Contribution, ContributionDependency, Dictionary, Entry, ImageStudy, LemmaImage, Participation
 from .permissions import get_dictionary, is_owner, require_editor
 from .port_costs import text_cost
@@ -147,7 +148,7 @@ def missing(dictionary):
 
 
 def daily_usage(dictionary, user):
-    recent = ImageStudy.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
+    recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
     limit = max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT))
     account_used = recent.filter(user=user).count()
     dictionary_used = recent.filter(dictionary=dictionary).count()
@@ -198,6 +199,7 @@ def request(entry, user, *, automatic=False, replace=False, extra_allowance=Fals
     if row is None:
         row = LemmaImage(entry=entry, requested_by=user)
     else:
+        costs.supersede(row.study)
         row.revision += 1
         if row.snapshot != basis(entry):
             row.image = None
@@ -297,11 +299,14 @@ def run(pk, revision):
             Dictionary.objects.select_for_update().get(pk=d_id)
             row = fetch(pk)
             if row.revision != revision or row.status != 'waiting':
+                costs.cancel_revision(pk, revision)
                 return
+            if row.study and row.study.usage.get(costs.KEY, {}).get('revision') == revision:
+                study = row.study
             key = permitted(row)
             owner_id = row.requested_by_id
             get_user_model().objects.select_for_update().get(pk=owner_id)
-            recent = ImageStudy.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
+            recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
             limit = max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT))
             extra = temporary_allowance(row)
             if limit == 0 or (not extra and (recent.filter(user_id=owner_id).count() >= limit
@@ -316,29 +321,28 @@ def run(pk, revision):
             if (not row.quote['personal'] and credits_enabled() and
                     get_user_balance_usd(row.requested_by) < estimate(row.quote)):
                 raise Conflict('Insufficient credit for this word picture.')
-            study = ImageStudy.objects.create(dictionary_id=d_id, entry=row.entry, user=row.requested_by,
-                kind='entry', expires_at=timezone.now()+timedelta(days=1), subject=row.entry.word,
-                model=row.quote['model'], quality=images.QUALITY, personal_key=row.quote['personal'],
-                style_description=row.quote['style_description'], source_style_id=row.quote['style'],
-                style_baseline_id=row.quote['style'], policy_revision=row.quote['policy'],
-                membership_revision=row.quote['membership'], participation_revision=row.quote['participation'])
+            study = study or costs.create_study(row)
+            costs.track(study, started=True, status='analysing', planning_started=True)
+            ImageStudy.objects.filter(pk=study.pk).update(created_at=timezone.now(), expires_at=timezone.now()+timedelta(days=1))
             row.study, row.status, row.updated_at = study, 'analysing', timezone.now()
             row.analysis = {}
             row.save(update_fields=['study', 'status', 'updated_at', 'analysis'])
         response = analyse(row, key)
         # Account returned analysis usage even if parsing or later validation fails.
         usage = getattr(response, 'usage', None)
-        with transaction.atomic():
-            if usage:
-                from .capture import charge
-                charge(study, 'lemma_picture_plan', text_cost(row.quote,
-                    usage.input_tokens, usage.output_tokens), row.quote['analysis_model'], 'lemma_picture_plan')
+        if usage:
+            from .capture import charge
+            planning_cost = text_cost(row.quote, usage.input_tokens, usage.output_tokens).quantize(Decimal('.000001'))
+            costs.track(study, planning_cost=str(planning_cost))
+            with transaction.atomic():
+                charge(study, 'lemma_picture_plan', planning_cost, row.quote['analysis_model'], 'lemma_picture_plan')
         result = parse(response)
         with transaction.atomic():
             Dictionary.objects.select_for_update().get(pk=d_id)
             now = fetch(pk)
             if now.revision != revision or now.status != 'analysing':
                 ImageStudy.objects.filter(pk=study.pk).update(status='discarded')
+                costs.track(study, status='cancelled', finished=True)
                 return
             key = permitted(now)
             now.analysis = {**now.analysis, **result}
@@ -348,13 +352,17 @@ def run(pk, revision):
                 now.updated_at = timezone.now()
                 now.save()
                 ImageStudy.objects.filter(pk=study.pk).update(status='saved')
+                costs.track(study, status='none', finished=True)
                 return
             study.subject = result['subject']
             study.prompt = images.prompt_for(study.subject, study.style_description)
             study.save(update_fields=['subject', 'prompt'])
             now.status, now.updated_at = 'generating', timezone.now()
             now.save()
+            costs.track(study, status='generating', image_started=True)
         prepared, usage, failure = images.generate(study, key)
+        image_cost = images.usage_cost(usage)
+        costs.track(study, image_cost=str(image_cost) if image_cost is not None else None)
         # Usage accounting must survive a stale result or publication failure.
         with transaction.atomic():
             receipt = ImageStudy.objects.select_for_update().select_related('user').get(pk=study.pk)
@@ -366,6 +374,7 @@ def run(pk, revision):
             row = fetch(pk)
             if row.revision != revision or row.status != 'generating':
                 ImageStudy.objects.filter(pk=study.pk).update(status='discarded')
+                costs.track(study, status='cancelled', finished=True)
                 return
             permitted(row)
             if not prepared:
@@ -386,6 +395,7 @@ def run(pk, revision):
             row.save()
             receipt.status, receipt.saved_contribution = 'saved', part
             receipt.save(update_fields=['status', 'saved_contribution'])
+            costs.track(study, status='ready', finished=True)
             event(row.entry.dictionary, row.requested_by, 'lemma_image', row.entry,
                 f'Picture {part.pk} published automatically; no human review claimed')
     except Exception as exc:
@@ -397,6 +407,9 @@ def run(pk, revision):
                 else 'The request could not be completed. Check your settings before retrying.'})
         if study:
             ImageStudy.objects.filter(pk=study.pk, status__in=['processing', 'ready']).update(status='failed', failure_code='lemma_picture_error')
+            code = ('daily_limit' if str(exc) == 'Daily image limit reached.' else
+                    'credit' if str(exc) == 'Insufficient credit for this word picture.' else '')
+            costs.track(study, status='failed', finished=True, error_code=code)
     finally:
         if owner_id:
             next_row = LemmaImage.objects.filter(requested_by_id=owner_id, status='waiting').order_by('pk').first()

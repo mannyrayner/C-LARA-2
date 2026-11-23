@@ -5,6 +5,7 @@ import logging
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
+from django.db.models import Q
 
 from core.ai_api import OpenAIClient
 from core.config import OpenAIConfig
@@ -22,6 +23,13 @@ PROMPT_VERSION = 'dictionary-illustration-1'
 # Direct Images API text inputs only. Official standard token rates, 3 Oct 2026.
 TEXT_RATE, OUTPUT_RATE = Decimal('5'), Decimal('30')
 TIMEOUT = 240
+
+
+def started_studies():
+    # Bulk word-picture receipts exist before provider work. They neither spend
+    # today's allowance nor block the payer while they are waiting in the queue.
+    return ImageStudy.objects.filter(Q(usage__lemma_picture__isnull=True) |
+                                     Q(usage__lemma_picture__started=True))
 
 
 def active_style(dictionary):
@@ -73,14 +81,20 @@ def generate(study, api_key):
     return prepared, usage, failure
 
 
+def usage_cost(usage):
+    if usage.get('completion_tokens', 0) > 0:
+        return (Decimal(usage.get('prompt_tokens', 0)) * TEXT_RATE +
+                Decimal(usage['completion_tokens']) * OUTPUT_RATE) / 1_000_000
+    return None
+
+
 def account(study, usage):
     """One accounting record per attempt, including failed image validation."""
     if study.accounted:
         return
-    study.usage = usage
-    if usage.get('completion_tokens', 0) > 0:
-        study.cost_usd = (Decimal(usage.get('prompt_tokens', 0)) * TEXT_RATE +
-            Decimal(usage['completion_tokens']) * OUTPUT_RATE) / 1_000_000
+    retained = {k:v for k,v in study.usage.items() if k == 'lemma_picture'}
+    study.usage = {**usage, **retained}
+    study.cost_usd = usage_cost(usage)
     ledger = None
     if not study.personal_key and study.cost_usd is not None and credits_enabled():
         ledger = apply_credit_delta(user=study.user, amount_usd=-study.cost_usd,

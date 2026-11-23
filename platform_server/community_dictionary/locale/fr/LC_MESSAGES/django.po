@@ -8513,3 +8513,215 @@ msgstr "Les propriétaires et les éditeurs peuvent générer des images à part
 #: community_dictionary/forms.py
 msgid "For AI-supported languages, send each new accepted lemma and translation to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above."
 msgstr "Pour les langues prises en charge par l’IA, envoyer chaque nouveau lemme et sa traduction acceptés à OpenAI. Publier automatiquement une image partagée du mot, facturée au propriétaire du dictionnaire. Certains mots utilisent le symbole Pas d’image simple. Nécessite la génération d’images IA ci-dessus."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Actual batch cost"
+msgstr "Coût réel du lot"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "All word-picture attempts in this dictionary, including planning, regenerations and charged failures."
+msgstr "Toutes les tentatives d’images de mots de ce dictionnaire, y compris la préparation, les régénérations et les échecs facturés."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Batch cost so far"
+msgstr "Coût du lot à ce stade"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Clear selection"
+msgstr "Effacer la sélection"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Completed %(finished)s of %(total)s attempts. Original estimate: US$%(estimate)s."
+msgstr "Tentatives terminées : %(finished)s sur %(total)s. Estimation initiale : %(estimate)s USD."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Confirm generation"
+msgstr "Confirmer la génération"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Cumulative word-picture cost"
+msgstr "Coût cumulé des images de mots"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Estimate unavailable"
+msgstr "Estimation indisponible"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Estimated batch cost"
+msgstr "Coût estimé du lot"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Estimated selected cost"
+msgstr "Coût estimé de la sélection"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Find a word"
+msgstr "Rechercher un mot"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Generate/regenerate selected"
+msgstr "Générer/régénérer la sélection"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Generation costs"
+msgstr "Coûts de génération"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Generation was cancelled. Select this word to start a fresh attempt."
+msgstr "La génération a été annulée. Sélectionnez ce mot pour commencer une nouvelle tentative."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "More word pictures"
+msgstr "Autres images de mots"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Next words"
+msgstr "Mots suivants"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "No word pages match this view."
+msgstr "Aucune page de mot ne correspond à cette vue."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Not yet attempted"
+msgstr "Pas encore essayé"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Partial total: cost information is incomplete for %(count)s attempts."
+msgstr "Total partiel : informations de coût incomplètes pour %(count)s tentatives."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Picture unavailable or outdated"
+msgstr "Image indisponible ou périmée"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Pictures restored: %(count)s. Changed or withdrawn pictures were kept as they are."
+msgstr "Images rétablies : %(count)s. Les images modifiées ou retirées ont été conservées en l’état."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Previous words"
+msgstr "Mots précédents"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Progress"
+msgstr "Progression"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Recent batches"
+msgstr "Lots récents"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Recorded costs use returned provider usage and the prices for each attempt. Missing cost information is not treated as free. Provider billing is authoritative."
+msgstr "Les coûts enregistrés utilisent la consommation renvoyée par le fournisseur et les tarifs de chaque tentative. Un coût manquant n’est pas considéré comme gratuit. La facturation du fournisseur fait foi."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Remove selected pictures"
+msgstr "Retirer les images sélectionnées"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Resource limit reached"
+msgstr "Limite de ressources atteinte"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Resource-limit skips: %(count)s. These attempts did not start a provider request."
+msgstr "Tentatives ignorées pour limite de ressources : %(count)s. Elles n’ont lancé aucune requête au fournisseur."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Retry"
+msgstr "Réessayer"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Review the batch estimate before approving generation."
+msgstr "Vérifiez l’estimation du lot avant d’autoriser la génération."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Select all shown"
+msgstr "Sélectionner tous les mots affichés"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Select at most 50 pictures for one bulk action."
+msgstr "Sélectionnez au maximum 50 images pour une action groupée."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Select between 1 and 50 word pictures. Refresh the overview if the selection expired."
+msgstr "Sélectionnez entre 1 et 50 images de mots. Actualisez la vue d’ensemble si la sélection a expiré."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Selected pictures removed. You can undo this removal below."
+msgstr "Images sélectionnées retirées. Vous pouvez annuler ce retrait ci-dessous."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Selections are kept while you load more words or refresh progress. Generate up to 50 selected pictures per batch. Existing pictures stay visible until a replacement succeeds."
+msgstr "La sélection est conservée lorsque vous affichez d’autres mots ou actualisez la progression. Générez jusqu’à 50 images sélectionnées par lot. Les images existantes restent visibles jusqu’à la réussite de leur remplacement."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Show more words"
+msgstr "Afficher plus de mots"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Showing words %(first)s–%(last)s of %(total)s."
+msgstr "Mots affichés : %(first)s–%(last)s sur %(total)s."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Some selected pictures are still being prepared. Wait or resume the queued work."
+msgstr "Certaines images sélectionnées sont encore en préparation. Patientez ou reprenez les demandes en attente."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Some selected pictures changed. Refresh before removing them."
+msgstr "Certaines images sélectionnées ont changé. Actualisez avant de les retirer."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Some selected words or meanings changed or are unavailable. Refresh the overview."
+msgstr "Certains mots ou sens sélectionnés ont changé ou sont indisponibles. Actualisez la vue d’ensemble."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "The actual cost may differ. This batch uses your account."
+msgstr "Le coût réel peut différer. Ce lot utilise votre compte."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "The selection changed. Preview its cost again before generating."
+msgstr "La sélection a changé. Prévisualisez à nouveau son coût avant de générer."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "The words or meanings changed, or a word-picture attempt changed. Preview the batch again."
+msgstr "Les mots ou leurs sens ont changé, ou une tentative d’image de mot a changé. Prévisualisez à nouveau le lot."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "This estimate expired or the settings changed. Preview the selected cost again."
+msgstr "Cette estimation a expiré ou les paramètres ont changé. Prévisualisez à nouveau le coût de la sélection."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "This removal can no longer be undone."
+msgstr "Ce retrait ne peut plus être annulé."
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "Undo picture removal"
+msgstr "Annuler le retrait des images"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "selected"
+msgstr "sélectionnés"
+
+#: community_dictionary/lemma_picture_overview.py
+msgid "word pictures"
+msgstr "images de mots"
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Approve selected generation"
+msgstr "Autoriser la génération sélectionnée"
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Selected word pictures: %(count)s"
+msgstr "Images de mots sélectionnées : %(count)s"
+
+#: community_dictionary/templates/community_dictionary/tools.html
+msgid "Manage word pictures"
+msgstr "Gérer les images de mots"
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Select word pictures to generate, regenerate or remove, and review batch and cumulative costs."
+msgstr "Sélectionnez les images de mots à générer, régénérer ou retirer, et consultez les coûts par lot et cumulés."
+
+#: community_dictionary/templates/community_dictionary/word_images.html
+msgid "Partial total. Attempts with incomplete cost information: %(count)s."
+msgstr "Total partiel. Tentatives avec informations de coût incomplètes : %(count)s."

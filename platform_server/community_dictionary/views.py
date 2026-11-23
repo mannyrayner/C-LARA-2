@@ -698,7 +698,32 @@ def media(request, pk, contribution_id):
     # Withdrawn material is no longer shared, while editors can inspect rejected proposals.
     if item.status == 'rejected' and item.author_id != request.user.pk and not is_editor(request.user, dictionary):
         raise Http404
+    if request.GET.get('thumbnail') == '1' and item.kind == 'image':
+        return word_picture_thumbnail(item.file_path)
     return private_media_response(request, item.file_path, item.mime_type, f'contribution-{item.pk}')
+
+
+def word_picture_thumbnail(relative):
+    """Small private bytes, after the normal media permission check on every request."""
+    import io
+    import warnings
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', Image.DecompressionBombWarning)
+            with Image.open(path_for(relative)) as source:
+                if source.width * source.height > 16_000_000:
+                    raise Http404
+                image = ImageOps.exif_transpose(source).convert('RGBA')
+                image.thumbnail((256, 256))
+                background = Image.new('RGB', image.size, 'white')
+                background.paste(image, mask=image.getchannel('A'))
+                output = io.BytesIO()
+                background.save(output, 'JPEG', quality=80)
+    except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise Http404
+    return HttpResponse(output.getvalue(), content_type='image/jpeg', headers={
+        'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff'})
 
 
 def private_media_response(request, relative, mime_type, filename):

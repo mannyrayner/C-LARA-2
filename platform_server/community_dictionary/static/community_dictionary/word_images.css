@@ -1,0 +1,13 @@
+.picture-costs {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:1rem;margin:1rem 0}
+.picture-costs>div,.picture-batch {padding:1rem;border:1px solid #c9d7e8;background:#f3f7fc;border-radius:.7rem}
+.picture-costs h2 {font-size:1rem;margin:0 0 .5rem}.picture-costs strong,.picture-price strong {font-size:1.5rem;font-variant-numeric:tabular-nums}.cost-partial {color:#7b4800;font-weight:600}
+.picture-toolbar {display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;margin:1rem 0}.picture-toolbar button {margin:0}
+.word-picture-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9rem),1fr));gap:.8rem;margin:1rem 0}
+.word-picture-card {border:1px solid #ccd5df;border-radius:.65rem;padding:.65rem;min-width:0;background:white;overflow-wrap:anywhere}
+.word-picture-card:has(input:checked) {outline:3px solid #1f6989;background:#f0f9fc}.word-picture-select {display:flex;align-items:flex-start;gap:.5rem;cursor:pointer;min-height:3.5rem}
+.word-picture-select input {flex:0 0 auto;width:1.3rem;height:1.3rem;margin:.1rem 0}.word-picture-card img,.word-picture-placeholder {display:block;width:100%;aspect-ratio:1;object-fit:contain;background:#f4f5f7;border-radius:.4rem;margin-top:.5rem}
+.word-picture-placeholder {display:grid;place-items:center;font-size:3rem;color:#738395}.word-picture-card .badge {display:inline-block;margin:.6rem 0 .1rem}.word-picture-card .resource {background:#fff0ce;color:#704100}
+.word-picture-card .help {font-size:.85rem;margin:.35rem 0}.picture-pagination,.picture-search {display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.picture-search input {flex:1 1 10rem}.picture-preview {border:2px solid #1f6989}
+
+.picture-selected-list {list-style:none;padding:0;display:flex;gap:.5rem;flex-wrap:wrap}.picture-selected-list li {display:flex;align-items:center;gap:.4rem;background:#f3f7fc;border-radius:.35rem;padding:.4rem}.picture-selected-list img {object-fit:contain}.picture-accounting {margin:.5rem 0}
+@media(max-width:480px){.picture-costs {gap:.5rem}.picture-costs>div {padding:.65rem}.picture-costs h2 {font-size:.9rem}.picture-costs strong {font-size:1.3rem}}

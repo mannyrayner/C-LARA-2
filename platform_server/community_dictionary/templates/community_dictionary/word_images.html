@@ -1,48 +1,60 @@
 {% extends 'community_dictionary/base.html' %}{% load i18n static %}
 {% block title %}{% translate "Word pictures" %}{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'community_dictionary/word_images.css' %}?v=1">{% endblock %}
 {% block content %}
+<div id="word-picture-overview" data-storage-key="word-pictures-{{ request.user.pk }}-{{ dictionary.pk }}" data-unit-micro="{{ unit_micro }}" data-server-selection="{% if server_selection %}1{% else %}0{% endif %}" data-limit-message="{% translate 'Select at most 50 pictures for one bulk action.' %}">
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Word pictures" %}</h1>
-<p>{% translate "Add one picture per dictionary form. Forms in sentences share it. Existing pictures and deliberate No simple picture choices are kept. Picture games use only suitable dictionary-form clues." %}</p>
-{% include 'community_dictionary/word_picture_allowance.html' %}
-<p>{% blocktranslate %}Word pages needing a picture or a retry: {{ missing_count }}{% endblocktranslate %}</p>
-{% if setup_error %}<p class="notice" role="status">{{ setup_error }}</p>{% endif %}
-<section class="panel"><h2>{% translate "1. Choose words to preview" %}</h2>
-<form method="get" action="{% url 'community_dictionary:word-images' dictionary.pk %}#word-image-preview">
-{{ form.limit.errors }}<p>{{ form.limit.label_tag }} {{ form.limit }}</p>
-<button class="secondary" name="action" value="preview">{% translate "Preview this many" %}</button>
-</form>
-<p class="help">{% translate "Previewing only shows the words and estimated cost. It does not generate pictures or incur AI charges." %}</p>
+<section class="picture-costs" aria-label="{% translate 'Generation costs' %}">
+<div><h2>{% translate "Cumulative word-picture cost" %}</h2><strong>US${{ cumulative.amount }}</strong>{% if cumulative.unknown %}<p class="cost-partial">{% blocktranslate with count=cumulative.unknown %}Partial total. Attempts with incomplete cost information: {{ count }}.{% endblocktranslate %}</p>{% endif %}<p class="help">{% translate "All word-picture attempts in this dictionary, including planning, regenerations and charged failures." %}</p></div>
+<div><h2>{% translate "Estimated selected cost" %}</h2>{% if not setup_error %}<strong>US$<output data-selected-estimate>{{ estimate }}</output></strong>{% else %}<p>{% translate "Estimate unavailable" %}</p>{% endif %}<p class="help">{% translate "Review the batch estimate before approving generation." %}</p></div>
+{% if batch %}<div><h2>{% if batch.complete %}{% translate "Actual batch cost" %}{% else %}{% translate "Batch cost so far" %}{% endif %}</h2><strong>US${{ batch.amount }}</strong><p class="help">{% blocktranslate with finished=batch.finished total=batch.total estimate=batch.estimate %}Completed {{ finished }} of {{ total }} attempts. Original estimate: US${{ estimate }}.{% endblocktranslate %}</p>{% if batch.unknown %}<p class="cost-partial">{% blocktranslate with count=batch.unknown %}Partial total. Attempts with incomplete cost information: {{ count }}.{% endblocktranslate %}</p>{% endif %}</div>{% endif %}
 </section>
-{% if preview_ready %}
-<section class="panel" id="word-image-preview"><h2>{% translate "2. Approve and generate pictures" %}</h2>
-<p class="notice" role="status">{% blocktranslate with count=candidates|length %}Preview ready. Selected word pages: {{ count }}. This preview has not requested any pictures.{% endblocktranslate %}</p>
-<ul>{% for entry in candidates %}<li dir="auto">{{ entry.word }} — {{ entry.meaning }}{% if entry.lemma_image.status == 'failed' %} <span class="badge">{% translate "Retry" %}</span>{% endif %}</li>{% endfor %}</ul>
-<p>{% blocktranslate %}Estimated allowance for this batch: US${{ estimate }}. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account.{% endblocktranslate %}</p>
-<form method="post" action="{% url 'community_dictionary:word-images' dictionary.pk %}#word-image-preview">
-{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ quote }}"><input type="hidden" name="limit" value="{{ batch_limit }}">
-{{ form.non_field_errors }}<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p>
-{% include 'community_dictionary/word_picture_extra_allowance.html' %}
-<button name="action" value="generate">{% translate "Generate missing word pictures" %}</button>
-</form></section>
-{% else %}
-{% if form.non_field_errors %}<div class="notice" role="alert">{{ form.non_field_errors }}</div>{% endif %}
-{% if preview_requested and not candidates and not setup_error %}<p class="notice" id="word-image-preview" role="status">{% translate "No missing word pictures are available to preview. See existing attempts below." %}</p>{% endif %}
-{% endif %}
-<section class="panel" id="word-image-progress"><h2>{% translate "Progress" %}</h2>
-{% if progress_refreshed %}<p class="notice" role="status">{% translate "Progress updated." %}</p>{% endif %}
+<details class="picture-accounting"><summary>{% translate "Cost details" %}</summary><p class="help">{% translate "Recorded costs use returned provider usage and the prices for each attempt. Missing cost information is not treated as free. Provider billing is authoritative." %}</p></details>
+{% if setup_error %}<p class="notice" role="status">{{ setup_error }}</p>{% endif %}
+{% include 'community_dictionary/word_picture_allowance.html' %}
+{{ form.non_field_errors }}
+{% if preview_ready %}<section class="panel picture-preview" id="word-image-preview"><h2>{% translate "Approve selected generation" %}</h2>
+<p role="status">{% blocktranslate with count=candidates|length %}Preview ready. Selected word pages: {{ count }}. This preview has not requested any pictures.{% endblocktranslate %}</p>
+<p class="picture-price">{% translate "Estimated batch cost" %}: <strong>US${{ estimate }}</strong></p>
+<p class="help">{% translate "The actual cost may differ. This batch uses your account." %}</p>
+<details><summary>{% blocktranslate with count=candidates|length %}Selected word pictures: {{ count }}{% endblocktranslate %}</summary><ul class="picture-selected-list">{% for card in preview_cards %}<li>{% if card.image %}<img width="48" height="48" src="{% url 'community_dictionary:media' dictionary.pk card.image.pk %}?thumbnail=1" alt="">{% endif %}<span dir="auto">{{ card.entry.word }} — {{ card.entry.meaning }}</span></li>{% endfor %}</ul></details>
+<form method="post" action="#word-image-preview" data-approval-form>{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ quote }}"><input type="hidden" name="shown" value="{{ shown }}"><input type="hidden" name="page" value="{{ page.number }}"><input type="hidden" name="q" value="{{ q }}">
+<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p>{% include 'community_dictionary/word_picture_extra_allowance.html' %}
+<p hidden data-selection-changed role="status">{% translate "The selection changed. Preview its cost again before generating." %}</p>
+<button name="action" value="generate" data-confirm-generation>{% translate "Confirm generation" %}</button></form></section>
+{% elif preview_requested and not candidates and not setup_error %}<p id="word-image-preview" class="notice">{% translate "No missing word pictures are available to preview. See existing attempts below." %}</p>{% endif %}
+{% if undo %}<form method="post" class="panel">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="undo" value="{{ undo }}"><button class="secondary" name="action" value="undo">{% translate "Undo picture removal" %}</button></form>{% endif %}
+<form method="get" class="picture-search"><label for="picture-search">{% translate "Find a word" %}</label><input id="picture-search" name="q" value="{{ q }}" type="search"><button class="secondary">{% translate "Search" %}</button></form>
+<form method="post" action="#word-image-preview" data-picture-selection>{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="selected_tokens" value="" data-selection-tokens><input type="hidden" name="shown" value="{{ shown }}"><input type="hidden" name="page" value="{{ page.number }}"><input type="hidden" name="q" value="{{ q }}">
+<div class="picture-toolbar"><button type="button" class="secondary" data-select-visible>{% translate "Select all shown" %}</button><button type="button" class="secondary" data-clear-selection>{% translate "Clear selection" %}</button><span role="status"><strong data-selected-count>{{ candidates|length }}</strong> {% translate "selected" %}</span>
+{% if not setup_error %}<button name="action" value="preview" data-bulk-button>{% translate "Generate/regenerate selected" %}</button>{% endif %}<button class="secondary" name="action" value="remove" data-bulk-button>{% translate "Remove selected pictures" %}</button></div>
+<p data-selection-message class="help" role="status"></p>
+<div class="word-picture-grid">
+{% for card in cards %}<article class="word-picture-card" data-card="{{ card.entry.pk }}">
+<label class="word-picture-select"><input type="checkbox" name="selection" value="{{ card.token }}" data-picture-id="{{ card.entry.pk }}"{% if card.selected %} checked{% endif %}><span><strong dir="auto">{{ card.entry.word }}</strong><br><span dir="auto">{{ card.entry.meaning }}</span></span></label>
+{% if card.image %}<img loading="lazy" src="{% url 'community_dictionary:media' dictionary.pk card.image.pk %}?thumbnail=1" alt="{{ card.entry.word }}">{% else %}<div class="word-picture-placeholder" aria-hidden="true">{% if card.status == 'none' %}◇{% else %}▧{% endif %}</div>{% endif %}
+<p class="badge{% if card.status == 'resource' %} resource{% endif %}">{{ card.label }}</p>
+{% if card.image and card.suitability == 'illustration' %}<p class="help">{% translate "Illustration only — excluded from picture clues" %}</p>{% endif %}
+{% if card.status == 'resource' or card.status == 'failed' %}<p class="help">{% translate "Retry" %}{% if card.error %}: {{ card.error }}{% endif %}</p>{% endif %}
+</article>{% empty %}<p>{% translate "No word pages match this view." %}</p>{% endfor %}
+</div></form>
+<p class="help">{% blocktranslate with first=page.start_index last=page.end_index total=page.paginator.count %}Showing words {{ first }}–{{ last }} of {{ total }}.{% endblocktranslate %}</p>
+<nav class="picture-pagination" aria-label="{% translate 'More word pictures' %}">{% if more_url %}<a class="button secondary" href="{{ more_url }}" data-preserve-scroll>{% translate "Show more words" %}</a>{% endif %}{% if previous_url %}<a class="button secondary" href="{{ previous_url }}">{% translate "Previous words" %}</a>{% endif %}{% if next_url %}<a class="button secondary" href="{{ next_url }}">{% translate "Next words" %}</a>{% endif %}</nav>
+<section id="word-image-progress" class="panel">
+<h2>{% translate "Progress" %}</h2>{% if progress_refreshed %}<p class="notice" role="status">{% translate "Progress updated." %}</p>{% endif %}
 <p class="help">{% translate "Last checked:" %} <time data-word-image-checked datetime="{{ checked_at|date:'c' }}">{{ checked_at|date:'H:i:s T' }}</time></p>
-{% if counts %}
-{% if active %}<p role="status">{% translate "Pictures are being prepared in the background. You can leave this page and return later." %}</p>
-{% else %}<p role="status">{% translate "No word-picture requests are currently running." %}</p>{% endif %}
-<ul>{% for group in counts %}<li>{{ group.label }}: {{ group.total }}</li>{% endfor %}</ul>
-{% else %}
-<p class="notice" role="status">{% translate "No word-picture batch has been started for this dictionary." %}</p>
-{% if missing_count %}<p>{% translate "Choose Preview this many above, review the words and cost, tick the approval checkbox, then choose Generate missing word pictures." %}</p>
-{% else %}<p>{% translate "No accepted word pages need a new picture decision." %}</p>{% endif %}
-{% endif %}
-<p><a class="button secondary" href="{% url 'community_dictionary:word-images' dictionary.pk %}?refresh=1#word-image-progress">{% translate "Refresh progress" %}</a></p>
-{% if active %}<form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="resume">{% translate "Resume queued pictures" %}</button></form>{% endif %}
-<p class="help">{% translate "Failed words without a usable picture are included in the preview above. Review the cost and approve a fresh attempt to retry them. Resuming runs only unstarted queued work." %}</p>
-<ul>{% for job in jobs %}<li><a href="{% url 'community_dictionary:word-picture' dictionary.pk job.entry_id %}" dir="auto">{{ job.entry.word }}</a>: {% translate job.get_status_display %}{% if job.status == 'failed' and job.analysis.error %}<p class="help">{{ job.analysis.error }}</p>{% endif %}</li>{% endfor %}</ul></section>
-<script src="{% static 'community_dictionary/word_images.js' %}" defer></script>
+{% if batch %}<div class="picture-batch"><h3>{% if batch.complete %}{% translate "Actual batch cost" %}{% else %}{% translate "Batch cost so far" %}{% endif %}: <strong>US${{ batch.amount }}</strong></h3>
+<p>{% blocktranslate with finished=batch.finished total=batch.total estimate=batch.estimate %}Completed {{ finished }} of {{ total }} attempts. Original estimate: US${{ estimate }}.{% endblocktranslate %}</p>
+{% if batch.unknown %}<p class="cost-partial">{% blocktranslate with count=batch.unknown %}Partial total. Attempts with incomplete cost information: {{ count }}.{% endblocktranslate %}</p>{% endif %}
+{% if batch.skipped %}<p>{% blocktranslate with count=batch.skipped %}Resource-limit skips: {{ count }}. These attempts did not start a provider request.{% endblocktranslate %}</p>{% endif %}</div>
+{% elif not counts %}<p>{% translate "No word-picture batch has been started for this dictionary." %}</p>{% endif %}
+{% if active %}<p role="status">{% translate "Pictures are being prepared in the background. You can leave this page and return later." %}</p>{% else %}<p>{% translate "No word-picture requests are currently running." %}</p>{% endif %}
+{% if counts %}<p class="help">{% for group in counts %}{{ group.label }}: {{ group.total }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+<a class="button secondary" href="{{ refresh_url }}" data-preserve-scroll>{% translate "Refresh progress" %}</a>
+{% if active %}<form method="post" class="inline">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="resume">{% translate "Resume queued pictures" %}</button></form>{% endif %}
+{% if recent_batches %}<details><summary>{% translate "Recent batches" %}</summary><ul>{% for item in recent_batches %}<li><a href="{{ item.url }}"><time data-batch-date datetime="{{ item.created }}">{{ item.created }}</time> — {{ item.total }} {% translate "word pictures" %}</a></li>{% endfor %}</ul></details>{% endif %}
+</section>
+<p class="help">{% translate "Selections are kept while you load more words or refresh progress. Generate up to 50 selected pictures per batch. Existing pictures stay visible until a replacement succeeds." %}</p>
+{{ selection_data|json_script:'word-picture-selection' }}
+<script src="{% static 'community_dictionary/word_images.js' %}?v=2" defer></script></div>
 {% endblock %}

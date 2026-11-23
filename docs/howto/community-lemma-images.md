@@ -65,41 +65,62 @@ validation or publication fails; the provider invoice remains authoritative.
 
 ## Backfill and recovery
 
-Open **Tools → Add missing word pictures**. Start with the default five-word
-preview, or choose 1–50 missing words. The signed, expiring preview binds the
-selected entries, their words/meanings, attempt revisions and the displayed
-model/pricing settings.
-Confirm processing/publication, then start. Images and deliberate picture
-decisions are skipped. A subsequent batch continues with the remaining missing
-lemmas, including failed attempts without a usable accepted picture. Retry
-items are labelled in the preview. A failed regeneration with a usable existing
-picture keeps that picture and is not included in backfill. Progress lists the
-latest attempts and links to individual controls.
+Open **Tools → Manage word pictures**. The overview shows word/translation
+cards with the current private 256-pixel thumbnail or a state: Not yet attempted, No simple
+picture, Resource limit reached, Failed, Queued, Planning, Generating or Hidden.
+Illustration-only pictures carry their exercise-clue warning. Existing uploaded
+pictures and deliberate choices are shown as well as missing pictures.
 
-**Resume queued pictures** re-enqueues only unstarted work. A committed claim
-precedes each paid request. Broker redelivery cannot repeat an in-flight or
-completed call. Failed or uncertain paid attempts require an explicit new
-attempt; after an uncertain in-flight interruption wait ten minutes. Daily
-limits, missing credit or changed policy may leave failures needing a later
-retry. The page shows the normal rolling-24-hour limit and usage on both the
-requester’s account and dictionary. A batch exceeding the remaining allowance
-stays at the preview until the editor reduces its size, waits, or obtains an
-owner’s explicit temporary approval.
+Select cards, use **Select all shown** or **Clear selection**, then choose
+**Generate/regenerate selected**. Review the selected cost and approve one batch
+of 1–50 words. Existing pictures remain visible during regeneration and survive
+a failed replacement. **Show more words** expands the first page from 20 to 100
+cards; Previous/Next and search cover larger dictionaries. Browser-session
+selection and scroll restoration support loading and refreshing. Changing the
+selection requires a new cost preview. The server checks signed word/image
+states, accepted sources, permissions and prices again before starting.
 
-An owner or co-owner can tick **Allow these selected word pictures above the
-normal daily image limit, for this batch only** beside the cost approval. This
-creates a signed allowance for each of the selected attempts (at most 50), tied
-to its requester, dictionary, attempt and revision. It expires after 24 hours;
-redelivery cannot reuse it for another attempt. It does not change any normal
-daily setting or grant extra capacity to other requests. The owner approves
-charges on their own requesting account, with the usual credit check still in
-force. A server limit of zero continues to pause all image work. The same option
-is available for an individual **Generate or regenerate** attempt.
+**Remove selected pictures** hides their word-picture decisions without deleting
+word pages, contributions or billing history. **Undo picture removal** restores
+unchanged, still-visible choices. A newer manual choice, changed meaning or
+withdrawn picture is never overwritten. An unstarted queued attempt can be
+cancelled without a provider call; undo never silently restarts a paid attempt.
 
-Existing images are preserved when this prompt update is installed. Open a word’s
-**Word picture → Generate or regenerate** control to replace an earlier image
-with the independent-lemma recipe. Work is serialised per payer and uses the
-existing bounded task runner.
+### Three cost displays
+
+- **Estimated selected cost** updates with selection; the signed preview records
+  the batch estimate before consent.
+- **Batch cost so far / Actual batch cost** reports recorded planning and image
+  usage for that exact batch, including charged failures. The original estimate,
+  completion counts and resource skips remain available. The latest batch and
+  five recent batches persist across visits for their requester.
+- **Cumulative word-picture cost** covers all word-image attempts in this
+  dictionary, including previous regenerations and pictures later hidden.
+
+New attempts retain cost parts in the existing private ImageStudy usage receipt,
+including personal-key planning costs. Unknown provider usage is labelled as a
+partial total and never treated as free. Legacy records are reconstructed from
+image usage and matching planning charges; incomplete older records are flagged.
+Cost parts are summed before display rounding. Recorded usage/prices are not a
+promise that a provider invoice, allowances or tax will match exactly.
+
+### Allowance and recovery
+
+Failed words can be selected directly in the grid. Review and approve their next
+attempt; paid requests are never retried automatically. **Resume queued
+pictures** re-enqueues only unstarted work. A committed claim precedes each paid
+stage and redelivery cannot repeat an in-flight or completed call.
+
+The page shows normal rolling-24-hour account/dictionary usage. A batch exceeding
+remaining capacity requires a smaller selection, a renewed normal allowance, or
+an owner/co-owner’s explicit temporary approval. This signed permission applies
+only to the selected attempts, expires after 24 hours and changes no normal
+limit. Batches remain at most 50; the credit check and server pause at zero apply.
+Queued receipts do not consume the allowance or block ordinary/guided images
+until provider work is actually claimed. The per-payer serialisation remains.
+
+This overview needs no additional schema migration beyond 0030. Operational
+cost/batch receipts remain private and are excluded from dictionary exports.
 
 Source revisions, access, participation, policy and pricing are rechecked before
 provider stages and publication. A changed word or meaning invalidates its
