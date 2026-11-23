@@ -1,5 +1,6 @@
 """Costed, incremental backfill and optimistic per-lemma picture controls."""
 from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.db import transaction
@@ -43,7 +44,10 @@ class PictureForm(forms.Form):
 def backfill(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_editor(request.user, dictionary)
-    form = BatchForm(request.POST or None)
+    action = request.POST.get('action') if request.method == 'POST' else request.GET.get('action')
+    preview_requested = action == 'preview'
+    data = request.POST if request.method == 'POST' else request.GET if preview_requested else None
+    form = BatchForm(data)
     values, setup_error = None, ''
     try:
         if not pictures.enabled(dictionary):
@@ -53,9 +57,12 @@ def backfill(request, pk):
         setup_error = str(exc)
     if request.method == 'POST' and request.POST.get('action') == 'resume':
         def resume(paths):
-            for row in LemmaImage.objects.filter(entry__dictionary=dictionary, requested_by=request.user, status='waiting'):
+            waiting = list(LemmaImage.objects.filter(entry__dictionary=dictionary, requested_by=request.user, status='waiting'))
+            for row in waiting:
                 transaction.on_commit(lambda pk=row.pk, rev=row.revision: pictures.queue(pk, rev))
-            return reverse('community_dictionary:word-images', args=[pk])
+            messages.info(request, _('Queued word-picture requests have been resubmitted.') if waiting
+                          else _('There are no unstarted word-picture requests to resume.'))
+            return reverse('community_dictionary:word-images', args=[pk]) + '?refresh=1#word-image-progress'
         try:
             return redirect(submit_once(request, dictionary, 'lemma-image-resume', resume))
         except Conflict as exc:
@@ -82,16 +89,21 @@ def backfill(request, pk):
                 for entry in entries:
                     pictures.request(entry, request.user)
                 event(fresh, request.user, 'lemma_image_backfill', detail=f'Approved {len(entries)} missing word pictures')
-                return reverse('community_dictionary:word-images', args=[pk])
+                messages.success(request, _('Your word-picture batch has started. See Progress below.'))
+                return reverse('community_dictionary:word-images', args=[pk]) + '?refresh=1#word-image-progress'
             return redirect(submit_once(request, dictionary, 'lemma-image-backfill', create))
         except (signing.BadSignature, KeyError, TypeError):
             form.add_error(None, _('This estimate expired. Preview the batch again.'))
         except Conflict as exc:
             form.add_error(None, str(exc))
     limit = 5
-    if request.method == 'POST' and form.is_valid():
-        limit = form.cleaned_data['limit']
+    if form.is_bound:
+        form.is_valid()
+        if 'limit' in form.cleaned_data:
+            limit = form.cleaned_data['limit']
     candidates = list(pictures.missing(dictionary)[:limit])
+    preview_ready = bool(form.is_bound and action in {'preview', 'generate'}
+                         and 'limit' in form.cleaned_data and candidates and not setup_error)
     signed = signing.dumps({'user': request.user.pk, 'dictionary': pk,
         'ids': [e.pk for e in candidates], 'basis': [pictures.basis(e) for e in candidates],
         'quote': values}, salt='lemma-pictures') if values else ''
@@ -103,6 +115,8 @@ def backfill(request, pk):
         group['label'] = _(labels[group['status']])
     return render(request, 'community_dictionary/word_images.html', context(request, dictionary,
         form=form, candidates=candidates, missing_count=pictures.missing(dictionary).count(),
+        preview_ready=preview_ready, preview_requested=preview_requested, batch_limit=limit,
+        progress_refreshed=request.GET.get('refresh') == '1', checked_at=timezone.now(),
         quote=signed, estimate=pictures.estimate(values)*len(candidates) if values else '',
         setup_error=setup_error, jobs=jobs[:50], counts=counts,
         active=jobs.filter(status__in=['waiting', *pictures.ACTIVE]).exists()))

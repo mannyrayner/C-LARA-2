@@ -8389,3 +8389,59 @@ msgstr "Budget estimé pour une tentative IA : %(allowance)s USD. Le montant ré
 #: community_dictionary/lemma_images
 msgid "Estimated allowance for this batch: US$%(estimate)s. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account."
 msgstr "Budget estimé pour ce lot : %(estimate)s USD. Les frais réels peuvent différer ; les mots sans illustration utile nécessitent seulement la préparation. Ce lot utilise votre compte."
+
+#: community_dictionary/lemma_image_views.py
+msgid "1. Choose words to preview"
+msgstr "1. Choisir les mots à prévisualiser"
+
+#: community_dictionary/lemma_image_views.py
+msgid "2. Approve and generate pictures"
+msgstr "2. Approuver et générer les images"
+
+#: community_dictionary/lemma_image_views.py
+msgid "Previewing only shows the words and estimated cost. It does not generate pictures or incur AI charges."
+msgstr "La prévisualisation affiche uniquement les mots et le coût estimé. Elle ne génère pas d’images et n’entraîne aucuns frais d’IA."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Preview ready. Selected word pages: %(count)s. This preview has not requested any pictures."
+msgstr "Aperçu prêt. Pages de mots sélectionnées : %(count)s. Cet aperçu n’a demandé aucune image."
+
+#: community_dictionary/lemma_image_views.py
+msgid "No missing word pictures are available to preview. See existing attempts below."
+msgstr "Aucune image de mot manquante à prévisualiser. Consultez les tentatives existantes ci-dessous."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Progress updated."
+msgstr "Progression actualisée."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Last checked:"
+msgstr "Dernière vérification :"
+
+#: community_dictionary/lemma_image_views.py
+msgid "No word-picture requests are currently running."
+msgstr "Aucune demande d’image de mot n’est en cours."
+
+#: community_dictionary/lemma_image_views.py
+msgid "No word-picture batch has been started for this dictionary."
+msgstr "Aucun lot d’images de mots n’a été lancé pour ce dictionnaire."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Choose Preview this many above, review the words and cost, tick the approval checkbox, then choose Generate missing word pictures."
+msgstr "Choisissez Prévisualiser ce nombre ci-dessus, vérifiez les mots et le coût, cochez la case d’autorisation, puis choisissez Générer les images de mots manquantes."
+
+#: community_dictionary/lemma_image_views.py
+msgid "No accepted word pages need a new picture decision."
+msgstr "Aucune page de mot acceptée ne nécessite un nouveau choix d’image."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Your word-picture batch has started. See Progress below."
+msgstr "Votre lot d’images de mots a démarré. Consultez la progression ci-dessous."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Queued word-picture requests have been resubmitted."
+msgstr "Les demandes d’images de mots en attente ont été relancées."
+
+#: community_dictionary/lemma_image_views.py
+msgid "There are no unstarted word-picture requests to resume."
+msgstr "Aucune demande d’image de mot non commencée à reprendre."

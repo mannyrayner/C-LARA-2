@@ -195,7 +195,7 @@ class LemmaImageTests(TestCase):
 
     def test_backfill_preview_scope_consent_replay_and_preservation(self):
         entries = [self.word(str(i), 'meaning') for i in range(7)]
-        page = self.client.get(self.url('word-images'))
+        page = self.client.get(self.url('word-images'), {'action':'preview', 'limit':5})
         self.assertEqual(len(page.context['candidates']), 5)
         data = {'limit':5, 'quote':page.context['quote'], 'submission_id':str(uuid.uuid4()), 'action':'generate'}
         denied = self.client.post(self.url('word-images'), data)
@@ -209,7 +209,7 @@ class LemmaImageTests(TestCase):
 
     def test_stale_batch_quote_and_stale_editor_form_are_rejected(self):
         entry = self.word()
-        page = self.client.get(self.url('word-images'))
+        page = self.client.get(self.url('word-images'), {'action':'preview', 'limit':5})
         Entry.objects.filter(pk=entry.pk).update(meaning='changed')
         response = self.client.post(self.url('word-images'), {'limit':5, 'quote':page.context['quote'],
             'submission_id':str(uuid.uuid4()), 'action':'generate', 'ai_consent':'on'})
@@ -324,3 +324,64 @@ class LemmaImageTests(TestCase):
         self.assertEqual(row.status, 'failed')
         self.assertEqual(pictures.picture(row.entry)['id'], previous)
         self.assertTrue(practice.catalogue(self.d)[0][0]['image'])
+
+    def test_preview_and_refresh_give_feedback_without_starting_generation(self):
+        for word in ['katt','hund','fisk']:
+            self.word(word, word)
+        page = self.client.get(self.url('word-images'))
+        self.assertContains(page, 'No word-picture batch has been started')
+        self.assertNotContains(page, 'name="action" value="generate"')
+        for _ in range(2):
+            preview = self.client.get(self.url('word-images'), {'action':'preview', 'limit':2})
+            self.assertContains(preview, 'Preview ready. Selected word pages: 2.')
+            self.assertContains(preview, '2. Approve and generate pictures')
+            self.assertContains(preview, 'name="action" value="generate"')
+            self.assertEqual(len(preview.context['candidates']), 2)
+        refreshed = self.client.get(self.url('word-images'), {'refresh':1})
+        self.assertContains(refreshed, 'Progress updated.')
+        self.assertContains(refreshed, 'No word-picture batch has been started')
+        self.assertContains(refreshed, '?refresh=1#word-image-progress')
+        self.assertNotContains(refreshed, 'This field is required.')
+        self.assertFalse(LemmaImage.objects.exists())
+        self.assertFalse(ImageStudy.objects.exists())
+        self.assertFalse(AIUsageCharge.objects.exists())
+        self.queue.assert_not_called()
+
+    def test_start_confirmation_preserves_approval_errors_and_shows_queued_words(self):
+        self.word()
+        page = self.client.get(self.url('word-images'), {'action':'preview', 'limit':1})
+        data = {'limit':1, 'quote':page.context['quote'], 'submission_id':str(uuid.uuid4()), 'action':'generate'}
+        denied = self.client.post(self.url('word-images'), data)
+        self.assertContains(denied, 'Confirm AI processing')
+        self.assertContains(denied, '2. Approve and generate pictures')
+        data.update(ai_consent='on', quote=denied.context['quote'])
+        started = self.client.post(self.url('word-images'), data, follow=True)
+        self.assertContains(started, 'Your word-picture batch has started.')
+        self.assertContains(started, 'Queued: 1')
+        self.assertContains(started, 'Progress updated.')
+        self.assertNotContains(started, 'No word-picture batch has been started')
+        self.assertNotContains(started, 'This field is required.')
+        self.assertEqual(LemmaImage.objects.count(), 1)
+
+    def test_resume_empty_and_failed_progress_are_explicit_and_read_only(self):
+        self.word()
+        empty = self.client.post(self.url('word-images'), {'action':'resume', 'submission_id':str(uuid.uuid4())}, follow=True)
+        self.assertContains(empty, 'There are no unstarted word-picture requests to resume.')
+        row = self.attempt()
+        row.status = 'failed'; row.analysis = {'error':'Insufficient credit for this word picture.'}; row.save()
+        failed = self.client.get(self.url('word-images'), {'refresh':1})
+        self.assertContains(failed, 'Failed: 1')
+        self.assertContains(failed, 'Insufficient credit for this word picture.')
+        self.assertContains(failed, 'No word-picture requests are currently running.')
+        self.assertFalse(ImageStudy.objects.exists())
+        self.queue.assert_not_called()
+
+    def test_empty_and_translated_preview_states_are_visible(self):
+        empty = self.client.get(self.url('word-images'), {'action':'preview', 'limit':5})
+        self.assertContains(empty, 'No missing word pictures are available to preview.')
+        self.assertNotContains(empty, 'name="action" value="generate"')
+        self.word()
+        for language, label in [('fr', 'Aperçu prêt.'), ('sk', 'Náhľad je pripravený.')]:
+            self.client.post(reverse('community_dictionary:set-language'), {'language':language})
+            preview = self.client.get(self.url('word-images'), {'action':'preview', 'limit':1})
+            self.assertContains(preview, label)
