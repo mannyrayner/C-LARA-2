@@ -4,17 +4,43 @@
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Word pictures" %}</h1>
 <p>{% translate "Add one picture per dictionary form. Forms in sentences share it. Existing pictures and deliberate No simple picture choices are kept. Picture games use only suitable dictionary-form clues." %}</p>
 <p>{% blocktranslate %}Word pages without a picture decision: {{ missing_count }}{% endblocktranslate %}</p>
-{% if setup_error %}<p class="help">{{ setup_error }}</p>{% endif %}
-<section class="panel"><h2>{% translate "Preview a batch" %}</h2>
-<form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ quote }}">{{ form.non_field_errors }}{{ form.limit.errors }}<p>{{ form.limit.label_tag }} {{ form.limit }}</p><button class="secondary" name="action" value="preview">{% translate "Preview this many" %}</button>
-{% if candidates and not setup_error %}<ul>{% for entry in candidates %}<li dir="auto">{{ entry.word }} — {{ entry.meaning }}</li>{% endfor %}</ul>
+{% if setup_error %}<p class="notice" role="status">{{ setup_error }}</p>{% endif %}
+<section class="panel"><h2>{% translate "1. Choose words to preview" %}</h2>
+<form method="get" action="{% url 'community_dictionary:word-images' dictionary.pk %}#word-image-preview">
+{{ form.limit.errors }}<p>{{ form.limit.label_tag }} {{ form.limit }}</p>
+<button class="secondary" name="action" value="preview">{% translate "Preview this many" %}</button>
+</form>
+<p class="help">{% translate "Previewing only shows the words and estimated cost. It does not generate pictures or incur AI charges." %}</p>
+</section>
+{% if preview_ready %}
+<section class="panel" id="word-image-preview"><h2>{% translate "2. Approve and generate pictures" %}</h2>
+<p class="notice" role="status">{% blocktranslate with count=candidates|length %}Preview ready. Selected word pages: {{ count }}. This preview has not requested any pictures.{% endblocktranslate %}</p>
+<ul>{% for entry in candidates %}<li dir="auto">{{ entry.word }} — {{ entry.meaning }}</li>{% endfor %}</ul>
 <p>{% blocktranslate %}Estimated allowance for this batch: US${{ estimate }}. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account.{% endblocktranslate %}</p>
-<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p><button name="action" value="generate">{% translate "Generate missing word pictures" %}</button>{% endif %}
+<form method="post" action="{% url 'community_dictionary:word-images' dictionary.pk %}#word-image-preview">
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ quote }}"><input type="hidden" name="limit" value="{{ batch_limit }}">
+{{ form.non_field_errors }}<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p>
+<button name="action" value="generate">{% translate "Generate missing word pictures" %}</button>
 </form></section>
-<section class="panel"><h2>{% translate "Progress" %}</h2>
+{% else %}
+{% if form.non_field_errors %}<div class="notice" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+{% if preview_requested and not candidates and not setup_error %}<p class="notice" id="word-image-preview" role="status">{% translate "No missing word pictures are available to preview. See existing attempts below." %}</p>{% endif %}
+{% endif %}
+<section class="panel" id="word-image-progress"><h2>{% translate "Progress" %}</h2>
+{% if progress_refreshed %}<p class="notice" role="status">{% translate "Progress updated." %}</p>{% endif %}
+<p class="help">{% translate "Last checked:" %} <time data-word-image-checked datetime="{{ checked_at|date:'c' }}">{{ checked_at|date:'H:i:s T' }}</time></p>
+{% if counts %}
+{% if active %}<p role="status">{% translate "Pictures are being prepared in the background. You can leave this page and return later." %}</p>
+{% else %}<p role="status">{% translate "No word-picture requests are currently running." %}</p>{% endif %}
 <ul>{% for group in counts %}<li>{{ group.label }}: {{ group.total }}</li>{% endfor %}</ul>
-<p><a href="">{% translate "Refresh progress" %}</a></p>
-{% if active %}<p role="status">{% translate "Pictures are being prepared in the background. You can leave this page and return later." %}</p><form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="resume">{% translate "Resume queued pictures" %}</button></form>{% endif %}
+{% else %}
+<p class="notice" role="status">{% translate "No word-picture batch has been started for this dictionary." %}</p>
+{% if missing_count %}<p>{% translate "Choose Preview this many above, review the words and cost, tick the approval checkbox, then choose Generate missing word pictures." %}</p>
+{% else %}<p>{% translate "No accepted word pages need a new picture decision." %}</p>{% endif %}
+{% endif %}
+<p><a class="button secondary" href="{% url 'community_dictionary:word-images' dictionary.pk %}?refresh=1#word-image-progress">{% translate "Refresh progress" %}</a></p>
+{% if active %}<form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="resume">{% translate "Resume queued pictures" %}</button></form>{% endif %}
 <p class="help">{% translate "Failed attempts are not retried automatically. Open an individual word picture to retry after checking its settings, credit or daily limit. Resuming runs only unstarted queued work." %}</p>
-<ul>{% for job in jobs %}<li><a href="{% url 'community_dictionary:word-picture' dictionary.pk job.entry_id %}" dir="auto">{{ job.entry.word }}</a>: {% translate job.get_status_display %}</li>{% empty %}<li>{% translate "No word-picture attempts yet." %}</li>{% endfor %}</ul></section>
+<ul>{% for job in jobs %}<li><a href="{% url 'community_dictionary:word-picture' dictionary.pk job.entry_id %}" dir="auto">{{ job.entry.word }}</a>: {% translate job.get_status_display %}{% if job.status == 'failed' and job.analysis.error %}<p class="help">{{ job.analysis.error }}</p>{% endif %}</li>{% endfor %}</ul></section>
+<script src="{% static 'community_dictionary/word_images.js' %}" defer></script>
 {% endblock %}

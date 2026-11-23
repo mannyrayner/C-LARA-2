@@ -8269,3 +8269,59 @@ msgstr "Odhadovaná suma na jeden pokus AI: %(allowance)s USD. Skutočná suma s
 #: community_dictionary/lemma_images
 msgid "Estimated allowance for this batch: US$%(estimate)s. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account."
 msgstr "Odhadovaná suma pre túto dávku: %(estimate)s USD. Skutočné poplatky sa môžu líšiť; slová bez užitočnej ilustrácie vyžadujú iba plánovaciu požiadavku. Táto dávka používa váš účet."
+
+#: community_dictionary/lemma_image_views.py
+msgid "1. Choose words to preview"
+msgstr "1. Vyberte slová na náhľad"
+
+#: community_dictionary/lemma_image_views.py
+msgid "2. Approve and generate pictures"
+msgstr "2. Schváľte a vygenerujte obrázky"
+
+#: community_dictionary/lemma_image_views.py
+msgid "Previewing only shows the words and estimated cost. It does not generate pictures or incur AI charges."
+msgstr "Náhľad zobrazí iba slová a odhad ceny. Negeneruje obrázky ani neúčtuje poplatky za AI."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Preview ready. Selected word pages: %(count)s. This preview has not requested any pictures."
+msgstr "Náhľad je pripravený. Vybrané stránky slov: %(count)s. Tento náhľad nevyžiadal žiadne obrázky."
+
+#: community_dictionary/lemma_image_views.py
+msgid "No missing word pictures are available to preview. See existing attempts below."
+msgstr "Nie sú k dispozícii žiadne chýbajúce obrázky slov na náhľad. Existujúce pokusy nájdete nižšie."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Progress updated."
+msgstr "Priebeh bol aktualizovaný."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Last checked:"
+msgstr "Posledná kontrola:"
+
+#: community_dictionary/lemma_image_views.py
+msgid "No word-picture requests are currently running."
+msgstr "Momentálne neprebieha žiadna požiadavka na obrázok slova."
+
+#: community_dictionary/lemma_image_views.py
+msgid "No word-picture batch has been started for this dictionary."
+msgstr "Pre tento slovník sa zatiaľ nespustila žiadna dávka obrázkov slov."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Choose Preview this many above, review the words and cost, tick the approval checkbox, then choose Generate missing word pictures."
+msgstr "Vyberte vyššie Zobraziť tento počet, skontrolujte slová a cenu, začiarknite súhlas a potom vyberte Vygenerovať chýbajúce obrázky slov."
+
+#: community_dictionary/lemma_image_views.py
+msgid "No accepted word pages need a new picture decision."
+msgstr "Žiadna schválená stránka slova nepotrebuje nové rozhodnutie o obrázku."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Your word-picture batch has started. See Progress below."
+msgstr "Vaša dávka obrázkov slov sa spustila. Priebeh nájdete nižšie."
+
+#: community_dictionary/lemma_image_views.py
+msgid "Queued word-picture requests have been resubmitted."
+msgstr "Požiadavky na obrázky slov vo fronte boli znova odoslané."
+
+#: community_dictionary/lemma_image_views.py
+msgid "There are no unstarted word-picture requests to resume."
+msgstr "Nie sú k dispozícii žiadne nezačaté požiadavky na obrázky slov."
