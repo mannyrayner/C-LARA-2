@@ -8325,3 +8325,71 @@ msgstr "Požiadavky na obrázky slov vo fronte boli znova odoslané."
 #: community_dictionary/lemma_image_views.py
 msgid "There are no unstarted word-picture requests to resume."
 msgstr "Nie sú k dispozícii žiadne nezačaté požiadavky na obrázky slov."
+
+#: community_dictionary/lemma_images.py
+msgid "I approve sending these accepted words and translations to OpenAI, at the estimated cost shown. Publish the pictures automatically."
+msgstr "Súhlasím s odoslaním týchto schválených slov a prekladov do OpenAI za uvedenú odhadovanú cenu a s automatickým zverejnením obrázkov."
+
+#: community_dictionary/lemma_images.py
+msgid "I approve sending this word and translation to OpenAI at the estimated cost shown, and publishing its picture automatically."
+msgstr "Súhlasím s odoslaním tohto slova a prekladu do OpenAI za uvedenú odhadovanú cenu a s automatickým zverejnením obrázka."
+
+#: community_dictionary/lemma_images.py
+msgid "Allow these selected word pictures above the normal daily image limit, for this batch only."
+msgstr "Povoliť tieto vybrané obrázky slov nad bežný denný limit obrázkov iba pre túto dávku."
+
+#: community_dictionary/lemma_images.py
+msgid "Allow this word picture above the normal daily image limit, for this attempt only."
+msgstr "Povoliť tento obrázok slova nad bežný denný limit obrázkov iba pre tento pokus."
+
+#: community_dictionary/lemma_images.py
+msgid "A word-picture attempt changed. Preview the batch again."
+msgstr "Pokus o obrázok slova sa zmenil. Znova zobrazte náhľad dávky."
+
+#: community_dictionary/lemma_images.py
+msgid "A temporary word-picture allowance requires a dictionary owner and an enabled daily allowance."
+msgstr "Dočasný limit obrázkov slov vyžaduje vlastníka slovníka a povolený denný limit."
+
+#: community_dictionary/lemma_images.py
+msgid "This batch exceeds the remaining daily image allowance. Choose fewer words, wait for the allowance to renew, or approve a temporary allowance for this batch."
+msgstr "Táto dávka presahuje zostávajúci denný limit obrázkov. Vyberte menej slov, počkajte na obnovenie limitu alebo schváľte dočasné navýšenie pre túto dávku."
+
+#: community_dictionary/lemma_images.py
+msgid "The temporary word-picture allowance expired or changed. Preview a fresh batch."
+msgstr "Dočasné povolenie obrázkov slov vypršalo alebo sa zmenilo. Zobrazte nový náhľad dávky."
+
+#: community_dictionary/lemma_images.py
+msgid "Word pages needing a picture or a retry: %(missing_count)s"
+msgstr "Stránky slov vyžadujúce obrázok alebo nový pokus: %(missing_count)s"
+
+#: community_dictionary/lemma_images.py
+msgid "Failed words without a usable picture are included in the preview above. Review the cost and approve a fresh attempt to retry them. Resuming runs only unstarted queued work."
+msgstr "Slová s neúspešným pokusom bez použiteľného obrázka sú zahrnuté v náhľade vyššie. Skontrolujte cenu a schváľte nový pokus. Pokračovanie spustí iba nezačaté požiadavky vo fronte."
+
+#: community_dictionary/lemma_images.py
+msgid "New AI pictures illustrate the word and its translation, independently of example sentences."
+msgstr "Nové obrázky AI znázorňujú slovo a jeho preklad nezávisle od príkladových viet."
+
+#: community_dictionary/lemma_images.py
+msgid "Normal image allowance per 24 hours: %(limit)s. Started on your account: %(account)s; in this dictionary: %(dictionary_used)s. Remaining: %(remaining)s."
+msgstr "Bežný limit obrázkov za 24 hodín: %(limit)s. Začaté na vašom účte: %(account)s; v tomto slovníku: %(dictionary_used)s. Zostáva: %(remaining)s."
+
+#: community_dictionary/lemma_images.py
+msgid "AI image requests are paused by the server. A temporary allowance is unavailable."
+msgstr "Požiadavky na obrázky AI sú na serveri pozastavené. Dočasné navýšenie nie je k dispozícii."
+
+#: community_dictionary/lemma_images.py
+msgid "Optional owner approval. It applies only to the selected attempts, expires after 24 hours, and leaves the normal daily limit unchanged. The estimate above includes these attempts."
+msgstr "Voliteľný súhlas vlastníka. Platí iba pre vybrané pokusy, vyprší po 24 hodinách a nemení bežný denný limit. Uvedený odhad zahŕňa tieto pokusy."
+
+#: community_dictionary/lemma_images.py
+msgid "Ask a dictionary owner about a temporary allowance, or wait for the normal allowance to renew."
+msgstr "Požiadajte vlastníka slovníka o dočasné navýšenie alebo počkajte na obnovenie bežného limitu."
+
+#: community_dictionary/forms.py
+msgid "Owners and editors can generate pictures from descriptions. Automatic word pictures, when enabled below, use accepted lemmas and translations. API costs apply."
+msgstr "Vlastníci a editori môžu generovať obrázky z opisov. Automatické obrázky slov, ak sú nižšie povolené, používajú schválené lemy a preklady. Účtujú sa poplatky za API."
+
+#: community_dictionary/forms.py
+msgid "For AI-supported languages, send each new accepted lemma and translation to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above."
+msgstr "Pre jazyky podporované AI odošlite každú novú schválenú lemu a preklad do OpenAI. Automaticky zverejnite jeden spoločný obrázok slova na náklady vlastníka slovníka. Niektoré slová používajú symbol Bez jednoduchého obrázka. Vyžaduje zapnuté generovanie obrázkov AI vyššie."

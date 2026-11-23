@@ -6,29 +6,45 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core import signing
 from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from projects.billing import credits_enabled, get_user_balance_usd
 from . import image_generation as images, photo_ai, public_browsing as public
 from .models import Contribution, ContributionDependency, Dictionary, Entry, ImageStudy, LemmaImage, Participation
-from .permissions import get_dictionary, require_editor
+from .permissions import get_dictionary, is_owner, require_editor
 from .port_costs import text_cost
 from .services import Conflict, event
 from .storage import delete_file, write_upload
 from .tts import language_code
 
 log = logging.getLogger(__name__)
-VERSION = 'lemma-picture-1'
+VERSION = 'lemma-picture-2'
+ALLOWANCE_SALT = 'lemma-picture-batch-allowance-1'
+ALLOWANCE_SECONDS = 24 * 60 * 60
 DEFAULT_STYLE = 'Clear, friendly dictionary illustration; simple background; one recognisable subject or action.'
 ACTIVE = {'analysing', 'generating'}
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'properties': {
     'suitability': {'type': 'string', 'enum': ['clue', 'illustration', 'none']},
     'subject': {'type': 'string'}}, 'required': ['suitability', 'subject']}
-INSTRUCTIONS = '''Plan ONE picture teaching this dictionary lemma AND its particular translated sense.
-Use the accepted examples only to resolve meaning. Illustrate the dictionary form, not its
-inflected occurrence. Multiword expressions are single lexical items. Do not change the meaning.
+INSTRUCTIONS = '''Plan ONE standalone vocabulary picture for the supplied lemma and translated sense.
+The lemma and its translation are the entire subject. Illustrate that concept directly, using the
+simplest typical depiction; do not invent or reconstruct a sentence or a larger scene around it.
+Different lemmas need different visual concepts even when they occur together in a sentence.
+Illustrate the dictionary form. Multiword expressions are single lexical items. Preserve the sense.
+
+Examples of independent concepts (German lemma -> intended picture):
+Himmel / sky -> an open expanse of sky with a few soft clouds.
+vier / four -> exactly four identical, clearly separated neutral counters on a plain background.
+Teller / plate -> one plain, unadorned plate, clearly visible in isolation.
+blau / blue -> a large clear blue colour swatch, with no competing colours or objects.
+Muster / pattern -> a simple repeating geometric motif, with repetition clearly visible.
+For numbers, show the exact quantity, without written digits. For colours, make the colour itself
+dominant. For nouns, isolate a typical instance; for verbs, show a minimal, unambiguous action.
+
 Return suitability=clue only if a simple picture would make a fair, recognisable vocabulary
 clue for that lemma/sense. Return illustration if a picture helps understanding but would be
 too indirect or ambiguous as a quiz clue. For grammatical/function words, connectives or abstract
@@ -69,6 +85,7 @@ def quote(user, dictionary):
     analysis_model, _key, _personal, prices = photo_ai.configuration(user)
     style = images.active_style(dictionary)
     return {'version': VERSION, 'model': model, 'analysis_model': analysis_model,
+        'daily_limit': max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT)),
         'personal': personal, 'allowance': str(allowance),
         'input': str(prices['input']), 'output': str(prices['output']),
         'style': style.pk if style else None, 'style_description': style.body if style else DEFAULT_STYLE,
@@ -122,20 +139,56 @@ def clue_picture(entry, candidates):
 def missing(dictionary):
     own_picture = Contribution.objects.filter(entry_id=OuterRef('pk'), kind='image',
         status='accepted').exclude(file_path='')
-    return Entry.objects.filter(dictionary=dictionary, archived=False, entry_type='word',
-        lemma_image__isnull=True).exclude(word='').filter(
+    return Entry.objects.filter(dictionary=dictionary, archived=False, entry_type='word').filter(
+        Q(lemma_image__isnull=True) | Q(lemma_image__status='failed')).exclude(word='').filter(
             Q(current_text__isnull=True) | Q(current_text__status='accepted'),
             Q(current_meaning__isnull=True) | Q(current_meaning__status='accepted')).annotate(
-                has_own_picture=Exists(own_picture)).filter(has_own_picture=False).order_by('pk')
+                has_own_picture=Exists(own_picture)).filter(has_own_picture=False).select_related('lemma_image').order_by('pk')
 
 
-def request(entry, user, *, automatic=False, replace=False):
+def daily_usage(dictionary, user):
+    recent = ImageStudy.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
+    limit = max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT))
+    account_used = recent.filter(user=user).count()
+    dictionary_used = recent.filter(dictionary=dictionary).count()
+    return {'limit': limit, 'account_used': account_used, 'dictionary_used': dictionary_used,
+        'remaining': max(0, limit-max(account_used, dictionary_used))}
+
+
+def approve_capacity(dictionary, user, count, temporary_allowance=False):
+    counts = daily_usage(dictionary, user)
+    if temporary_allowance and (not is_owner(user, dictionary) or counts['limit'] == 0):
+        raise Conflict(_('A temporary word-picture allowance requires a dictionary owner and an enabled daily allowance.'))
+    if count > counts['remaining'] and not temporary_allowance:
+        raise Conflict(_('This batch exceeds the remaining daily image allowance. Choose fewer words, wait for the allowance to renew, or approve a temporary allowance for this batch.'))
+
+
+def temporary_allowance(row):
+    token = row.quote.get('daily_allowance')
+    if not token:
+        return False
+    try:
+        approved = signing.loads(token, salt=ALLOWANCE_SALT, max_age=ALLOWANCE_SECONDS)
+        expected = {'dictionary': row.entry.dictionary_id, 'user': row.requested_by_id,
+                    'attempt': row.pk, 'revision': row.revision}
+        if approved != expected or not is_owner(row.requested_by, row.entry.dictionary):
+            raise ValueError
+    except (signing.BadSignature, TypeError, ValueError):
+        raise Conflict(_('The temporary word-picture allowance expired or changed. Preview a fresh batch.'))
+    return True
+
+
+def request(entry, user, *, automatic=False, replace=False, extra_allowance=False):
     """Caller holds dictionary lock. No network calls; receipt commits first."""
     require_editor(user, entry.dictionary)
     if not enabled(entry.dictionary) or not accepted(entry):
         raise Conflict('Enable AI picture generation for a supported language and accept the word first.')
     if automatic and not entry.dictionary.automatic_word_images:
         return None
+    if extra_allowance:
+        if automatic:
+            raise Conflict('Automatic word pictures cannot use a temporary allowance.')
+        approve_capacity(entry.dictionary, user, 1, True)
     row = LemmaImage.objects.select_for_update().filter(entry=entry).first()
     if row and not replace:
         return row
@@ -152,6 +205,10 @@ def request(entry, user, *, automatic=False, replace=False):
     row.snapshot, row.quote, row.analysis, row.study = basis(entry), values, {}, None
     row.updated_at = timezone.now()
     row.save()
+    if extra_allowance:
+        row.quote['daily_allowance'] = signing.dumps({'dictionary': entry.dictionary_id,
+            'user': user.pk, 'attempt': row.pk, 'revision': row.revision}, salt=ALLOWANCE_SALT)
+        row.save(update_fields=['quote'])
     transaction.on_commit(lambda pk=row.pk, rev=row.revision: queue(pk, rev))
     return row
 
@@ -192,7 +249,7 @@ def permitted(row):
     entry.dictionary = d
     if (not user.is_active or not enabled(d) or not current(row) or
             (row.automatic and (not d.automatic_word_images or d.owner_id != user.pk)) or
-            quote(user, d) != row.quote):
+            quote(user, d) != {k:v for k,v in row.quote.items() if k != 'daily_allowance'}):
         raise Conflict('The word, permissions, payment or AI settings changed. Prepare a fresh attempt.')
     example_ids = row.analysis.get('example_ids', [])
     if example_ids and public.contributions(d).filter(pk__in=example_ids,
@@ -202,7 +259,10 @@ def permitted(row):
 
 
 def analyse(row, key):
-    content = {**row.snapshot, 'examples': row.analysis.get('examples', [])}
+    # Sentence context must not leak into a reusable lemma picture. The accepted
+    # translation supplies the sense; examples remain on the word page only.
+    content = {'lemma': row.snapshot['word'], 'sense': row.snapshot['meaning'],
+        'language': row.snapshot['language'], 'explanation_language': row.snapshot['explanation_language']}
     with photo_ai._openai_client(api_key=key, timeout=45, max_retries=0) as client:
         return client.responses.create(model=row.quote['analysis_model'], instructions=INSTRUCTIONS,
             input=json.dumps(content, ensure_ascii=False), store=False, max_output_tokens=700,
@@ -242,8 +302,10 @@ def run(pk, revision):
             owner_id = row.requested_by_id
             get_user_model().objects.select_for_update().get(pk=owner_id)
             recent = ImageStudy.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
-            limit = settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT
-            if recent.filter(user_id=owner_id).count() >= limit or recent.filter(dictionary_id=d_id).count() >= limit:
+            limit = max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT))
+            extra = temporary_allowance(row)
+            if limit == 0 or (not extra and (recent.filter(user_id=owner_id).count() >= limit
+                    or recent.filter(dictionary_id=d_id).count() >= limit)):
                 raise Conflict('Daily image limit reached.')
             # Serialise attempts per payer, including ordinary image previews.
             # Waiting rows can be resumed without repeating an uncertain call.
@@ -261,10 +323,7 @@ def run(pk, revision):
                 style_baseline_id=row.quote['style'], policy_revision=row.quote['policy'],
                 membership_revision=row.quote['membership'], participation_revision=row.quote['participation'])
             row.study, row.status, row.updated_at = study, 'analysing', timezone.now()
-            examples = list(public.sentence_links(row.entry.dictionary).filter(word_entry=row.entry).select_related(
-                'sentence_text__entry').order_by('pk')[:3])
-            row.analysis = {'example_ids': [link.sentence_text_id for link in examples],
-                'examples': [link.sentence_text.word for link in examples]}
+            row.analysis = {}
             row.save(update_fields=['study', 'status', 'updated_at', 'analysis'])
         response = analyse(row, key)
         # Account returned analysis usage even if parsing or later validation fails.

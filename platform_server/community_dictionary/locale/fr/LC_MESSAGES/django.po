@@ -8445,3 +8445,71 @@ msgstr "Les demandes d’images de mots en attente ont été relancées."
 #: community_dictionary/lemma_image_views.py
 msgid "There are no unstarted word-picture requests to resume."
 msgstr "Aucune demande d’image de mot non commencée à reprendre."
+
+#: community_dictionary/lemma_images.py
+msgid "I approve sending these accepted words and translations to OpenAI, at the estimated cost shown. Publish the pictures automatically."
+msgstr "J’autorise l’envoi de ces mots et traductions acceptés à OpenAI, au coût estimé indiqué, et la publication automatique des images."
+
+#: community_dictionary/lemma_images.py
+msgid "I approve sending this word and translation to OpenAI at the estimated cost shown, and publishing its picture automatically."
+msgstr "J’autorise l’envoi de ce mot et de sa traduction à OpenAI au coût estimé indiqué, et la publication automatique de son image."
+
+#: community_dictionary/lemma_images.py
+msgid "Allow these selected word pictures above the normal daily image limit, for this batch only."
+msgstr "Autoriser ces images de mots sélectionnées au-delà de la limite quotidienne habituelle, pour ce lot uniquement."
+
+#: community_dictionary/lemma_images.py
+msgid "Allow this word picture above the normal daily image limit, for this attempt only."
+msgstr "Autoriser cette image de mot au-delà de la limite quotidienne habituelle, pour cette tentative uniquement."
+
+#: community_dictionary/lemma_images.py
+msgid "A word-picture attempt changed. Preview the batch again."
+msgstr "Une tentative d’image de mot a changé. Prévisualisez à nouveau le lot."
+
+#: community_dictionary/lemma_images.py
+msgid "A temporary word-picture allowance requires a dictionary owner and an enabled daily allowance."
+msgstr "Une autorisation temporaire d’images de mots nécessite un propriétaire du dictionnaire et un quota quotidien actif."
+
+#: community_dictionary/lemma_images.py
+msgid "This batch exceeds the remaining daily image allowance. Choose fewer words, wait for the allowance to renew, or approve a temporary allowance for this batch."
+msgstr "Ce lot dépasse le quota quotidien d’images restant. Choisissez moins de mots, attendez le renouvellement du quota ou autorisez un dépassement temporaire pour ce lot."
+
+#: community_dictionary/lemma_images.py
+msgid "The temporary word-picture allowance expired or changed. Preview a fresh batch."
+msgstr "L’autorisation temporaire d’images de mots a expiré ou changé. Prévisualisez un nouveau lot."
+
+#: community_dictionary/lemma_images.py
+msgid "Word pages needing a picture or a retry: %(missing_count)s"
+msgstr "Pages de mots nécessitant une image ou une nouvelle tentative : %(missing_count)s"
+
+#: community_dictionary/lemma_images.py
+msgid "Failed words without a usable picture are included in the preview above. Review the cost and approve a fresh attempt to retry them. Resuming runs only unstarted queued work."
+msgstr "Les mots dont la tentative a échoué et sans image utilisable sont inclus dans l’aperçu ci-dessus. Vérifiez le coût et approuvez une nouvelle tentative pour les réessayer. Reprendre ne relance que les demandes en attente non commencées."
+
+#: community_dictionary/lemma_images.py
+msgid "New AI pictures illustrate the word and its translation, independently of example sentences."
+msgstr "Les nouvelles images IA illustrent le mot et sa traduction, indépendamment des phrases d’exemple."
+
+#: community_dictionary/lemma_images.py
+msgid "Normal image allowance per 24 hours: %(limit)s. Started on your account: %(account)s; in this dictionary: %(dictionary_used)s. Remaining: %(remaining)s."
+msgstr "Quota habituel d’images par 24 heures : %(limit)s. Demandes lancées sur votre compte : %(account)s ; dans ce dictionnaire : %(dictionary_used)s. Restant : %(remaining)s."
+
+#: community_dictionary/lemma_images.py
+msgid "AI image requests are paused by the server. A temporary allowance is unavailable."
+msgstr "Le serveur a suspendu les demandes d’images IA. Aucun dépassement temporaire n’est disponible."
+
+#: community_dictionary/lemma_images.py
+msgid "Optional owner approval. It applies only to the selected attempts, expires after 24 hours, and leaves the normal daily limit unchanged. The estimate above includes these attempts."
+msgstr "Autorisation facultative du propriétaire. Elle s’applique uniquement aux tentatives sélectionnées, expire après 24 heures et ne modifie pas la limite quotidienne habituelle. L’estimation ci-dessus inclut ces tentatives."
+
+#: community_dictionary/lemma_images.py
+msgid "Ask a dictionary owner about a temporary allowance, or wait for the normal allowance to renew."
+msgstr "Demandez une autorisation temporaire à un propriétaire du dictionnaire ou attendez le renouvellement du quota habituel."
+
+#: community_dictionary/forms.py
+msgid "Owners and editors can generate pictures from descriptions. Automatic word pictures, when enabled below, use accepted lemmas and translations. API costs apply."
+msgstr "Les propriétaires et les éditeurs peuvent générer des images à partir de descriptions. Les images automatiques de mots, si elles sont activées ci-dessous, utilisent les lemmes et traductions acceptés. Des frais d’API s’appliquent."
+
+#: community_dictionary/forms.py
+msgid "For AI-supported languages, send each new accepted lemma and translation to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above."
+msgstr "Pour les langues prises en charge par l’IA, envoyer chaque nouveau lemme et sa traduction acceptés à OpenAI. Publier automatiquement une image partagée du mot, facturée au propriétaire du dictionnaire. Certains mots utilisent le symbole Pas d’image simple. Nécessite la génération d’images IA ci-dessus."

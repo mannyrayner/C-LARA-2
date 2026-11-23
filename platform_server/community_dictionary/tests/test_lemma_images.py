@@ -294,7 +294,7 @@ class LemmaImageTests(TestCase):
             self.assertTrue(all(r['study'] is None and r['quote'] == {} and r['analysis'] == {} for r in decisions))
             self.assertEqual({r['status'] for r in decisions}, {'ready','none'})
 
-    def test_example_withdrawal_withdraws_dependent_image(self):
+    def test_example_withdrawal_keeps_independent_lemma_image(self):
         from community_dictionary.collections import withdraw
         entry = self.word()
         sentence = Entry.objects.create(dictionary=self.d, created_by=self.owner, entry_type='sentence')
@@ -304,15 +304,20 @@ class LemmaImageTests(TestCase):
         SentenceWord.objects.create(sentence_text=sentence.current_text, word_entry=entry,
             word_text=entry.current_text, surface='Katten')
         row = self.attempt(entry); self.run_job(row)
-        self.assertIn(sentence.current_text_id, row.analysis['example_ids'])
+        self.assertNotIn('example_ids', row.analysis)
+        self.assertNotIn('examples', row.analysis)
+        self.assertFalse(row.image.source_dependencies.filter(source_id=sentence.current_text_id).exists())
         withdraw(self.owner, [sentence.current_text_id], moderator_dictionary=self.d)
-        self.assertFalse(practice.catalogue(self.d)[0][0]['image'])
+        self.assertTrue(practice.catalogue(self.d)[0][0]['image'])
 
     def test_compiled_french_and_slovak_picture_controls(self):
         entry = self.word()
-        for language, label in [('fr', 'Image du mot'), ('sk', 'Obrázok slova')]:
+        for language, label, allowance in [('fr', 'Image du mot', 'Quota habituel'), ('sk', 'Obrázok slova', 'Bežný limit')]:
             self.client.post(reverse('community_dictionary:set-language'), {'language':language})
             self.assertContains(self.client.get(self.url('word-picture', entry.pk)), label)
+            preview = self.client.get(self.url('word-images'), {'action':'preview', 'limit':1})
+            self.assertContains(preview, allowance)
+            self.assertContains(preview, 'name="extra_allowance"')
 
     def test_failed_regeneration_preserves_existing_picture_and_clue(self):
         row = self.attempt(); self.run_job(row)
@@ -385,3 +390,163 @@ class LemmaImageTests(TestCase):
             self.client.post(reverse('community_dictionary:set-language'), {'language':language})
             preview = self.client.get(self.url('word-images'), {'action':'preview', 'limit':1})
             self.assertContains(preview, label)
+
+
+    def batch_data(self, limit=5, **changes):
+        page = self.client.get(self.url('word-images'), {'action':'preview', 'limit':limit})
+        return {'limit':limit, 'quote':page.context['quote'], 'submission_id':str(uuid.uuid4()),
+            'action':'generate', 'ai_consent':'on', **changes}
+
+    def test_planner_receives_only_lemma_and_translation_even_with_legacy_sentence_data(self):
+        self.d.language = 'German'; self.d.save()
+        for lemma, sense, scene in [('Himmel','sky','Vier Flugzeuge fliegen am Himmel.'),
+                ('vier','four','Vier Flugzeuge fliegen am Himmel.'),
+                ('Muster','pattern','Der Teller hat blaue Muster.'),
+                ('blau','blue','Der Teller hat blaue Muster.'),
+                ('Teller','plate','Der Teller hat blaue Muster.')]:
+            row = self.attempt(self.word(lemma, sense))
+            row.analysis = {'examples':[scene], 'example_ids':[999]}
+            with patch.object(pictures.photo_ai, '_openai_client') as client:
+                api = client.return_value.__enter__.return_value.responses.create
+                pictures.analyse(row, 'fixture-key')
+                payload = json.loads(api.call_args.kwargs['input'])
+                self.assertEqual(payload, {'lemma':lemma, 'sense':sense,
+                    'language':'German', 'explanation_language':'English'})
+                self.assertNotIn(scene, api.call_args.kwargs['input'])
+
+    def test_limit_blocked_words_return_to_backfill_after_an_increased_limit(self):
+        with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1):
+            completed = self.attempt(); self.run_job(completed)
+            blocked = self.attempt(self.word('hund','dog'))
+            analysis, image = self.run_job(blocked)
+            analysis.assert_not_called(); image.assert_not_called()
+            self.assertEqual(blocked.status, 'failed')
+            self.assertIsNone(blocked.study_id)
+            self.assertEqual(list(pictures.missing(self.d)), [blocked.entry])
+            page = self.client.get(self.url('word-images'), {'action':'preview','limit':5})
+            self.assertContains(page, 'Remaining: 0.')
+            self.assertContains(page, '>Retry</span>')
+        with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=2):
+            data = self.batch_data()
+            started = self.client.post(self.url('word-images'), data, follow=True)
+            self.assertContains(started, 'batch has started')
+            blocked.refresh_from_db()
+            self.assertEqual(blocked.revision, 2)
+            self.run_job(blocked)
+            self.assertEqual(blocked.status, 'ready')
+            self.assertEqual(ImageStudy.objects.count(), 2)
+            self.assertFalse(pictures.missing(self.d).exists())
+            completed.refresh_from_db(); self.assertEqual(completed.status, 'ready')
+
+    @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
+    def test_temporary_allowance_runs_only_the_approved_batch_without_changing_normal_limit(self):
+        completed = self.attempt(); self.run_job(completed)
+        words = [self.word('hund','dog'), self.word('fisk','fish')]
+        data = self.batch_data(limit=2)
+        denied = self.client.post(self.url('word-images'), data)
+        self.assertContains(denied, 'exceeds the remaining daily image allowance')
+        self.assertEqual(LemmaImage.objects.count(), 1)
+        data.update(extra_allowance='on', quote=denied.context['quote'])
+        started = self.client.post(self.url('word-images'), data, follow=True)
+        self.assertContains(started, 'batch has started')
+        self.assertEqual(self.client.post(self.url('word-images'), data).status_code, 302)
+        self.assertEqual(LemmaImage.objects.count(), 3)
+        for word in words:
+            row = LemmaImage.objects.get(entry=word)
+            self.run_job(row); self.assertEqual(row.status, 'ready')
+            with patch.object(pictures, 'analyse') as again:
+                pictures.run(row.pk, row.revision)
+                again.assert_not_called()
+        self.assertEqual(ImageStudy.objects.count(), 3)
+        self.assertEqual(AIUsageCharge.objects.count(), 6)
+        self.assertEqual(pictures.daily_usage(self.d,self.owner)['limit'], 1)
+        unapproved = self.attempt(self.word('mus','mouse'))
+        analysis, image = self.run_job(unapproved)
+        analysis.assert_not_called(); image.assert_not_called()
+        self.assertEqual(unapproved.status, 'failed')
+        self.assertEqual(ImageStudy.objects.count(), 3)
+
+    @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
+    def test_single_word_retry_can_use_an_explicit_temporary_allowance(self):
+        used = self.attempt(); self.run_job(used)
+        entry = self.word('hund','dog')
+        denied = self.post_picture(entry, action='generate', ai_consent='on')
+        self.assertContains(denied, 'exceeds the remaining daily image allowance')
+        self.assertFalse(LemmaImage.objects.filter(entry=entry).exists())
+        started = self.post_picture(entry, action='generate', ai_consent='on', extra_allowance='on')
+        self.assertEqual(started.status_code, 302)
+        row = LemmaImage.objects.get(entry=entry); self.run_job(row)
+        self.assertEqual(row.status, 'ready')
+
+    def test_temporary_allowance_cannot_be_copied_to_another_attempt_or_used_after_expiry(self):
+        from django.core import signing
+        from community_dictionary.services import Conflict
+        with transaction.atomic():
+            first = pictures.request(self.word(), self.owner, extra_allowance=True)
+            second = pictures.request(self.word('hund','dog'), self.owner, extra_allowance=True)
+        second.quote['daily_allowance'] = first.quote['daily_allowance']; second.save()
+        analysis, image = self.run_job(second)
+        analysis.assert_not_called(); image.assert_not_called()
+        self.assertEqual(second.status,'failed')
+        with patch('django.core.signing.time.time', return_value=0):
+            first.quote['daily_allowance'] = signing.dumps({'dictionary':self.d.pk, 'user':self.owner.pk,
+                'attempt':first.pk,'revision':first.revision}, salt=pictures.ALLOWANCE_SALT)
+        first.save()
+        analysis, image = self.run_job(first)
+        analysis.assert_not_called(); image.assert_not_called()
+        self.assertEqual(first.status,'failed')
+        self.assertFalse(ImageStudy.objects.exists())
+        self.assertFalse(AIUsageCharge.objects.exists())
+        with transaction.atomic():
+            third = pictures.request(self.word('fisk','fish'), self.owner, extra_allowance=True)
+        third.revision += 1; third.save()
+        with self.assertRaises(Conflict): pictures.temporary_allowance(third)
+
+    def test_only_owners_can_approve_extra_allowance_and_zero_limit_still_pauses_requests(self):
+        membership = Membership.objects.get(dictionary=self.d, user=self.member)
+        membership.role='editor'; membership.save()
+        self.word(); self.client.force_login(self.member)
+        page = self.client.get(self.url('word-images'), {'action':'preview','limit':1})
+        self.assertNotContains(page, 'name="extra_allowance"')
+        denied = self.client.post(self.url('word-images'), self.batch_data(1, extra_allowance='on'))
+        self.assertContains(denied,'requires a dictionary owner')
+        self.assertFalse(LemmaImage.objects.exists())
+        self.client.force_login(self.owner)
+        with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=0):
+            denied = self.client.post(self.url('word-images'), self.batch_data(1, extra_allowance='on'))
+            self.assertContains(denied,'paused by the server')
+            self.assertFalse(LemmaImage.objects.exists())
+        membership.role='co_owner'; membership.save(); self.client.force_login(self.member)
+        started = self.client.post(self.url('word-images'), self.batch_data(1, extra_allowance='on'))
+        self.assertEqual(started.status_code,302)
+        row=LemmaImage.objects.get(); self.assertEqual(row.requested_by,self.member)
+        self.run_job(row); self.assertEqual(row.status,'ready')
+
+    def test_recovery_keeps_existing_pictures_manual_choices_and_running_attempts(self):
+        good = self.attempt(); self.run_job(good)
+        self.post_picture(good.entry, action='generate', ai_consent='on')
+        good.refresh_from_db(); self.run_job(good, generate=(None, {}, 'provider_or_image_error'))
+        self.assertEqual(good.status,'failed')
+        deliberate = self.word('eftersom','because'); self.post_picture(deliberate,action='none')
+        hidden = self.word('båt','boat'); self.post_picture(hidden,action='remove')
+        self.attempt(self.word('hund','dog'))
+        failed = self.attempt(self.word('fisk','fish')); self.run_job(failed,generate=(None,{},'provider_or_image_error'))
+        self.assertEqual(list(pictures.missing(self.d)),[failed.entry])
+        self.assertTrue(pictures.picture(good.entry)['id'])
+        data=self.batch_data()
+        failed.revision+=1; failed.save()
+        changed=self.client.post(self.url('word-images'),data)
+        self.assertContains(changed,'attempt changed')
+        failed.refresh_from_db(); self.assertEqual(failed.status,'failed')
+
+    def test_temporary_allowance_still_requires_sufficient_credit(self):
+        with transaction.atomic():
+            row = pictures.request(self.word(), self.owner, extra_allowance=True)
+        with patch.object(pictures, 'credits_enabled', return_value=True), \
+             patch.object(pictures, 'get_user_balance_usd', return_value=0):
+            analysis, image = self.run_job(row)
+        analysis.assert_not_called(); image.assert_not_called()
+        self.assertEqual(row.status, 'failed')
+        self.assertIn('Insufficient credit', row.analysis['error'])
+        self.assertFalse(ImageStudy.objects.exists())
+        self.assertFalse(AIUsageCharge.objects.exists())

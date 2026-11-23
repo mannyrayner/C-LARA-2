@@ -1,0 +1,5 @@
+{% load i18n %}
+{% if can_extra_allowance and daily_counts.limit %}
+<p>{{ form.extra_allowance }} {{ form.extra_allowance.label_tag }}</p>
+<p class="help">{% translate "Optional owner approval. It applies only to the selected attempts, expires after 24 hours, and leaves the normal daily limit unchanged. The estimate above includes these attempts." %}</p>
+{% elif not can_extra_allowance and not daily_counts.remaining %}<p class="help">{% translate "Ask a dictionary owner about a temporary allowance, or wait for the normal allowance to renew." %}</p>{% endif %}
