@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 
 from . import lemma_images as pictures
 from .models import Entry, LemmaImage
-from .permissions import get_dictionary, require_editor
+from .permissions import get_dictionary, is_owner, require_editor
 from .services import Conflict, event, submit_once
 from .storage import prepare_upload, write_upload
 from .views import context
@@ -22,7 +22,9 @@ class BatchForm(forms.Form):
     limit = forms.IntegerField(min_value=1, max_value=50, initial=5,
         label=gettext_lazy('Number of missing word pictures to try'))
     ai_consent = forms.BooleanField(required=False, label=gettext_lazy(
-        'I approve sending these accepted words, translations and up to three example sentences per word to OpenAI, at the estimated cost shown. Publish the pictures automatically.'))
+        'I approve sending these accepted words and translations to OpenAI, at the estimated cost shown. Publish the pictures automatically.'))
+    extra_allowance = forms.BooleanField(required=False, label=gettext_lazy(
+        'Allow these selected word pictures above the normal daily image limit, for this batch only.'))
 
 
 class PictureForm(forms.Form):
@@ -30,7 +32,9 @@ class PictureForm(forms.Form):
     photo = forms.FileField(required=False, label=gettext_lazy('Replacement picture'),
         widget=forms.FileInput(attrs={'accept': 'image/*'}))
     ai_consent = forms.BooleanField(required=False, label=gettext_lazy(
-        'I approve sending this word, translation and up to three example sentences to OpenAI at the estimated cost shown, and publishing its picture automatically.'))
+        'I approve sending this word and translation to OpenAI at the estimated cost shown, and publishing its picture automatically.'))
+    extra_allowance = forms.BooleanField(required=False, label=gettext_lazy(
+        'Allow this word picture above the normal daily image limit, for this attempt only.'))
     upload_consent = forms.BooleanField(required=False, label=gettext_lazy(
         'I have permission to share this replacement picture.'))
 
@@ -86,8 +90,12 @@ def backfill(request, pk):
                     raise Conflict(_('The missing words changed. Preview the batch again.'))
                 if [pictures.basis(e) for e in entries] != approved['basis']:
                     raise Conflict(_('The words or meanings changed. Preview the batch again.'))
+                if [getattr(getattr(e, 'lemma_image', None), 'revision', 0) for e in entries] != approved['revisions']:
+                    raise Conflict(_('A word-picture attempt changed. Preview the batch again.'))
+                pictures.approve_capacity(fresh, request.user, len(entries), form.cleaned_data['extra_allowance'])
                 for entry in entries:
-                    pictures.request(entry, request.user)
+                    pictures.request(entry, request.user, replace=True,
+                        extra_allowance=form.cleaned_data['extra_allowance'])
                 event(fresh, request.user, 'lemma_image_backfill', detail=f'Approved {len(entries)} missing word pictures')
                 messages.success(request, _('Your word-picture batch has started. See Progress below.'))
                 return reverse('community_dictionary:word-images', args=[pk]) + '?refresh=1#word-image-progress'
@@ -106,6 +114,7 @@ def backfill(request, pk):
                          and 'limit' in form.cleaned_data and candidates and not setup_error)
     signed = signing.dumps({'user': request.user.pk, 'dictionary': pk,
         'ids': [e.pk for e in candidates], 'basis': [pictures.basis(e) for e in candidates],
+        'revisions': [getattr(getattr(e, 'lemma_image', None), 'revision', 0) for e in candidates],
         'quote': values}, salt='lemma-pictures') if values else ''
     jobs = LemmaImage.objects.filter(entry__dictionary=dictionary).select_related('entry').order_by('-updated_at')
     from django.db.models import Count
@@ -119,6 +128,8 @@ def backfill(request, pk):
         progress_refreshed=request.GET.get('refresh') == '1', checked_at=timezone.now(),
         quote=signed, estimate=pictures.estimate(values)*len(candidates) if values else '',
         setup_error=setup_error, jobs=jobs[:50], counts=counts,
+        daily_counts=pictures.daily_usage(dictionary, request.user),
+        can_extra_allowance=is_owner(request.user, dictionary),
         active=jobs.filter(status__in=['waiting', *pictures.ACTIVE]).exists()))
 
 
@@ -161,7 +172,8 @@ def word_picture(request, pk, entry_id):
                         raise Conflict(_('The word, settings or prices changed. Reload before generating.'))
                 except (signing.BadSignature, KeyError, TypeError):
                     raise Conflict(_('This estimate expired. Reload before generating.'))
-                pictures.request(target, request.user, replace=True)
+                pictures.approve_capacity(fresh, request.user, 1, form.cleaned_data['extra_allowance'])
+                pictures.request(target, request.user, replace=True, extra_allowance=form.cleaned_data['extra_allowance'])
             elif action == 'resume':
                 if current and current.status == 'waiting':
                     transaction.on_commit(lambda: pictures.queue(current.pk, current.revision))
@@ -212,5 +224,7 @@ def word_picture(request, pk, entry_id):
     return render(request, 'community_dictionary/word_picture.html', context(request, dictionary,
         entry=entry, form=form, lemma_picture=pictures.picture(entry), allowance=allowance,
         generation_quote=generation_quote, picture_error=row.analysis.get('error', '') if row else '',
+        daily_counts=pictures.daily_usage(dictionary, request.user),
+        can_extra_allowance=is_owner(request.user, dictionary),
         setup_error=setup_error, own_pictures=public.contributions(dictionary).filter(entry=entry,
             kind='image').exclude(file_path='')))

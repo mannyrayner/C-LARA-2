@@ -5,12 +5,14 @@
 <p dir="auto">{{ entry.meaning }}</p>
 {% include 'community_dictionary/lemma_picture.html' with manage_picture=True %}
 {% if picture_error %}<p role="status">{{ picture_error }}</p>{% endif %}
+<p>{% translate "New AI pictures illustrate the word and its translation, independently of example sentences." %}</p>
 <p>{% translate "This picture is shared by the dictionary form and its forms in sentences. Picture games use dictionary forms only." %}</p>
 {% if lemma_picture.suitability == 'clue' %}<p class="badge">{% translate "Available as a picture clue" %}</p>{% elif lemma_picture.suitability == 'illustration' and lemma_picture.id %}<p class="badge">{% translate "Illustration only — excluded from picture clues" %}</p>{% endif %}
 {% if setup_error %}<p class="help">{{ setup_error }}</p>{% else %}<p>{% blocktranslate %}Estimated allowance for one AI attempt: US${{ allowance }}. The actual charge may differ. Automatic generation uses the dictionary owner's account; this requested attempt uses your account.{% endblocktranslate %}</p>{% endif %}
+{% include 'community_dictionary/word_picture_allowance.html' %}
 <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ generation_quote }}">{{ form.revision }}{{ form.non_field_errors }}{{ form.revision.errors }}
 <section class="panel"><h2>{% translate "Generate a word picture" %}</h2>
-{% if not setup_error %}<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p><button name="action" value="generate">{% if lemma_picture.status == 'failed' %}{% translate "Retry word picture" %}{% else %}{% translate "Generate or regenerate" %}{% endif %}</button>{% endif %}
+{% if not setup_error %}<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p>{% include 'community_dictionary/word_picture_extra_allowance.html' %}<button name="action" value="generate">{% if lemma_picture.status == 'failed' %}{% translate "Retry word picture" %}{% else %}{% translate "Generate or regenerate" %}{% endif %}</button>{% endif %}
 {% if lemma_picture.status == 'waiting' %}<button class="secondary" name="action" value="resume">{% translate "Resume queued picture" %}</button>{% endif %}
 <p class="help">{% translate "Generation runs in the background. A failed or interrupted paid request is never retried automatically. After an uncertain interruption, wait ten minutes before explicitly starting another attempt." %}</p></section>
 <section class="panel"><h2>{% translate "Choose how to use this picture" %}</h2>

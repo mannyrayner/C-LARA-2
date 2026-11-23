@@ -3,7 +3,8 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Word pictures" %}</h1>
 <p>{% translate "Add one picture per dictionary form. Forms in sentences share it. Existing pictures and deliberate No simple picture choices are kept. Picture games use only suitable dictionary-form clues." %}</p>
-<p>{% blocktranslate %}Word pages without a picture decision: {{ missing_count }}{% endblocktranslate %}</p>
+{% include 'community_dictionary/word_picture_allowance.html' %}
+<p>{% blocktranslate %}Word pages needing a picture or a retry: {{ missing_count }}{% endblocktranslate %}</p>
 {% if setup_error %}<p class="notice" role="status">{{ setup_error }}</p>{% endif %}
 <section class="panel"><h2>{% translate "1. Choose words to preview" %}</h2>
 <form method="get" action="{% url 'community_dictionary:word-images' dictionary.pk %}#word-image-preview">
@@ -15,11 +16,12 @@
 {% if preview_ready %}
 <section class="panel" id="word-image-preview"><h2>{% translate "2. Approve and generate pictures" %}</h2>
 <p class="notice" role="status">{% blocktranslate with count=candidates|length %}Preview ready. Selected word pages: {{ count }}. This preview has not requested any pictures.{% endblocktranslate %}</p>
-<ul>{% for entry in candidates %}<li dir="auto">{{ entry.word }} — {{ entry.meaning }}</li>{% endfor %}</ul>
+<ul>{% for entry in candidates %}<li dir="auto">{{ entry.word }} — {{ entry.meaning }}{% if entry.lemma_image.status == 'failed' %} <span class="badge">{% translate "Retry" %}</span>{% endif %}</li>{% endfor %}</ul>
 <p>{% blocktranslate %}Estimated allowance for this batch: US${{ estimate }}. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account.{% endblocktranslate %}</p>
 <form method="post" action="{% url 'community_dictionary:word-images' dictionary.pk %}#word-image-preview">
 {% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ quote }}"><input type="hidden" name="limit" value="{{ batch_limit }}">
 {{ form.non_field_errors }}<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p>
+{% include 'community_dictionary/word_picture_extra_allowance.html' %}
 <button name="action" value="generate">{% translate "Generate missing word pictures" %}</button>
 </form></section>
 {% else %}
@@ -40,7 +42,7 @@
 {% endif %}
 <p><a class="button secondary" href="{% url 'community_dictionary:word-images' dictionary.pk %}?refresh=1#word-image-progress">{% translate "Refresh progress" %}</a></p>
 {% if active %}<form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="resume">{% translate "Resume queued pictures" %}</button></form>{% endif %}
-<p class="help">{% translate "Failed attempts are not retried automatically. Open an individual word picture to retry after checking its settings, credit or daily limit. Resuming runs only unstarted queued work." %}</p>
+<p class="help">{% translate "Failed words without a usable picture are included in the preview above. Review the cost and approve a fresh attempt to retry them. Resuming runs only unstarted queued work." %}</p>
 <ul>{% for job in jobs %}<li><a href="{% url 'community_dictionary:word-picture' dictionary.pk job.entry_id %}" dir="auto">{{ job.entry.word }}</a>: {% translate job.get_status_display %}{% if job.status == 'failed' and job.analysis.error %}<p class="help">{{ job.analysis.error }}</p>{% endif %}</li>{% endfor %}</ul></section>
 <script src="{% static 'community_dictionary/word_images.js' %}" defer></script>
 {% endblock %}
