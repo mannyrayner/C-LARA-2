@@ -1,6 +1,5 @@
 """Costed, incremental backfill and optimistic per-lemma picture controls."""
 from django import forms
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.db import transaction
@@ -16,15 +15,6 @@ from .permissions import get_dictionary, is_owner, require_editor
 from .services import Conflict, event, submit_once
 from .storage import prepare_upload, write_upload
 from .views import context
-
-
-class BatchForm(forms.Form):
-    limit = forms.IntegerField(min_value=1, max_value=50, initial=5,
-        label=gettext_lazy('Number of missing word pictures to try'))
-    ai_consent = forms.BooleanField(required=False, label=gettext_lazy(
-        'I approve sending these accepted words and translations to OpenAI, at the estimated cost shown. Publish the pictures automatically.'))
-    extra_allowance = forms.BooleanField(required=False, label=gettext_lazy(
-        'Allow these selected word pictures above the normal daily image limit, for this batch only.'))
 
 
 class PictureForm(forms.Form):
@@ -46,91 +36,8 @@ class PictureForm(forms.Form):
 @login_required
 @require_http_methods(['GET', 'POST'])
 def backfill(request, pk):
-    dictionary = get_dictionary(request.user, pk)
-    require_editor(request.user, dictionary)
-    action = request.POST.get('action') if request.method == 'POST' else request.GET.get('action')
-    preview_requested = action == 'preview'
-    data = request.POST if request.method == 'POST' else request.GET if preview_requested else None
-    form = BatchForm(data)
-    values, setup_error = None, ''
-    try:
-        if not pictures.enabled(dictionary):
-            raise Conflict(_('Enable AI picture generation in Settings for a supported language.'))
-        values = pictures.quote(request.user, dictionary)
-    except Conflict as exc:
-        setup_error = str(exc)
-    if request.method == 'POST' and request.POST.get('action') == 'resume':
-        def resume(paths):
-            waiting = list(LemmaImage.objects.filter(entry__dictionary=dictionary, requested_by=request.user, status='waiting'))
-            for row in waiting:
-                transaction.on_commit(lambda pk=row.pk, rev=row.revision: pictures.queue(pk, rev))
-            messages.info(request, _('Queued word-picture requests have been resubmitted.') if waiting
-                          else _('There are no unstarted word-picture requests to resume.'))
-            return reverse('community_dictionary:word-images', args=[pk]) + '?refresh=1#word-image-progress'
-        try:
-            return redirect(submit_once(request, dictionary, 'lemma-image-resume', resume))
-        except Conflict as exc:
-            form.add_error(None, str(exc))
-    if request.method == 'POST' and request.POST.get('action') == 'generate' and form.is_valid():
-        try:
-            if setup_error:
-                raise Conflict(setup_error)
-            if not form.cleaned_data['ai_consent']:
-                raise Conflict(_('Confirm AI processing and automatic publication before starting.'))
-            approved = signing.loads(request.POST.get('quote', ''), salt='lemma-pictures', max_age=3600)
-            if (approved['user'] != request.user.pk or approved['dictionary'] != pk or approved['quote'] != values):
-                raise Conflict(_('Settings or prices changed. Preview the batch again.'))
-            def create(paths):
-                fresh = get_dictionary(request.user, pk)
-                require_editor(request.user, fresh)
-                if not pictures.enabled(fresh) or pictures.quote(request.user, fresh) != approved['quote']:
-                    raise Conflict(_('Settings or prices changed. Preview the batch again.'))
-                entries = list(pictures.missing(fresh)[:len(approved['ids'])])
-                if not entries or [e.pk for e in entries] != approved['ids']:
-                    raise Conflict(_('The missing words changed. Preview the batch again.'))
-                if [pictures.basis(e) for e in entries] != approved['basis']:
-                    raise Conflict(_('The words or meanings changed. Preview the batch again.'))
-                if [getattr(getattr(e, 'lemma_image', None), 'revision', 0) for e in entries] != approved['revisions']:
-                    raise Conflict(_('A word-picture attempt changed. Preview the batch again.'))
-                pictures.approve_capacity(fresh, request.user, len(entries), form.cleaned_data['extra_allowance'])
-                for entry in entries:
-                    pictures.request(entry, request.user, replace=True,
-                        extra_allowance=form.cleaned_data['extra_allowance'])
-                event(fresh, request.user, 'lemma_image_backfill', detail=f'Approved {len(entries)} missing word pictures')
-                messages.success(request, _('Your word-picture batch has started. See Progress below.'))
-                return reverse('community_dictionary:word-images', args=[pk]) + '?refresh=1#word-image-progress'
-            return redirect(submit_once(request, dictionary, 'lemma-image-backfill', create))
-        except (signing.BadSignature, KeyError, TypeError):
-            form.add_error(None, _('This estimate expired. Preview the batch again.'))
-        except Conflict as exc:
-            form.add_error(None, str(exc))
-    limit = 5
-    if form.is_bound:
-        form.is_valid()
-        if 'limit' in form.cleaned_data:
-            limit = form.cleaned_data['limit']
-    candidates = list(pictures.missing(dictionary)[:limit])
-    preview_ready = bool(form.is_bound and action in {'preview', 'generate'}
-                         and 'limit' in form.cleaned_data and candidates and not setup_error)
-    signed = signing.dumps({'user': request.user.pk, 'dictionary': pk,
-        'ids': [e.pk for e in candidates], 'basis': [pictures.basis(e) for e in candidates],
-        'revisions': [getattr(getattr(e, 'lemma_image', None), 'revision', 0) for e in candidates],
-        'quote': values}, salt='lemma-pictures') if values else ''
-    jobs = LemmaImage.objects.filter(entry__dictionary=dictionary).select_related('entry').order_by('-updated_at')
-    from django.db.models import Count
-    counts = list(jobs.values('status').annotate(total=Count('pk')).order_by('status'))
-    labels = dict(LemmaImage._meta.get_field('status').choices)
-    for group in counts:
-        group['label'] = _(labels[group['status']])
-    return render(request, 'community_dictionary/word_images.html', context(request, dictionary,
-        form=form, candidates=candidates, missing_count=pictures.missing(dictionary).count(),
-        preview_ready=preview_ready, preview_requested=preview_requested, batch_limit=limit,
-        progress_refreshed=request.GET.get('refresh') == '1', checked_at=timezone.now(),
-        quote=signed, estimate=pictures.estimate(values)*len(candidates) if values else '',
-        setup_error=setup_error, jobs=jobs[:50], counts=counts,
-        daily_counts=pictures.daily_usage(dictionary, request.user),
-        can_extra_allowance=is_owner(request.user, dictionary),
-        active=jobs.filter(status__in=['waiting', *pictures.ACTIVE]).exists()))
+    from .lemma_picture_overview import overview
+    return overview(request, pk)
 
 
 @login_required
@@ -178,6 +85,9 @@ def word_picture(request, pk, entry_id):
                 if current and current.status == 'waiting':
                     transaction.on_commit(lambda: pictures.queue(current.pk, current.revision))
             elif action in {'clue', 'illustration', 'none', 'remove', 'upload', 'select'}:
+                from . import lemma_picture_costs as costs
+                if current:
+                    costs.cancel_unstarted(current.study)
                 from . import public_browsing as public
                 from .models import Contribution
                 if current is None:

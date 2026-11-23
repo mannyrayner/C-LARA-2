@@ -50,7 +50,9 @@ def can_save(study, dictionary):
 
 
 def get_study(request, dictionary, study_id, lock=False):
-    query = ImageStudy.objects.select_for_update() if lock else ImageStudy.objects.all()
+    query = ImageStudy.objects.exclude(usage__has_key='lemma_picture')
+    if lock:
+        query = query.select_for_update()
     study = get_object_or_404(query, pk=study_id, dictionary=dictionary, user=request.user,
         expires_at__gt=timezone.now())
     if not source_visible(study):
@@ -124,7 +126,7 @@ def start(request, pk, entry_id=None):
                 raise Conflict('The dictionary style is unavailable. Approve a shared style first.')
             if not personal and credits_enabled() and get_user_balance_usd(request.user) < allowance:
                 raise Conflict(f'Allow at least US${allowance} in C-LARA credit for an image preview, or use your own OpenAI key.')
-            recent = ImageStudy.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
+            recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
             limit = settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT
             if recent.filter(user=request.user).count() >= limit or recent.filter(dictionary=current).count() >= limit:
                 raise Conflict('The daily image-generation limit has been reached. Please try tomorrow.')
@@ -154,7 +156,7 @@ def start(request, pk, entry_id=None):
             return redirect(url)
     recent = ImageStudy.objects.filter(dictionary=dictionary, user=request.user, entry=entry,
         kind='entry' if entry else 'style',
-        expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:5]
+        expires_at__gt=timezone.now()).exclude(usage__has_key='lemma_picture').exclude(status='discarded').order_by('-created_at')[:5]
     return render(request, 'community_dictionary/image_start.html', context(request, dictionary,
         entry=entry, style=style, style_sample=style_sample, form=form, recent=recent,
         setup_error=setup_error, model=config[0] if config else settings.COMMUNITY_DICTIONARY_IMAGE_MODEL,

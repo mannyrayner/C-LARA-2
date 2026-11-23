@@ -115,7 +115,7 @@ def admit_image(study):
     model, _key, personal, allowance = images.configuration(study.user)
     if not personal and credits_enabled() and get_user_balance_usd(study.user) < allowance:
         raise Conflict(_('Your balance is too low to generate this picture.'))
-    recent = ImageStudy.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
+    recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
     limit = settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT
     if recent.filter(user=study.user).count() >= limit or recent.filter(dictionary=study.dictionary).count() >= limit:
         raise Conflict(_('The daily image-generation limit has been reached. Please try tomorrow.'))
