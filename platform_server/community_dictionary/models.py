@@ -21,6 +21,7 @@ class Dictionary(models.Model):
     photo_ai_enabled = models.BooleanField(default=True)
     tts_enabled = models.BooleanField(default=True)
     image_generation_enabled = models.BooleanField(default=False)
+    automatic_word_images = models.BooleanField(default=True)
     image_generation_revision = models.PositiveIntegerField(default=0)
     image_style = models.ForeignKey('Contribution', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     text_direction = models.CharField(max_length=4, choices=[('auto', 'Automatic'), ('ltr', 'Left to right'), ('rtl', 'Right to left')], default='auto')
@@ -529,6 +530,29 @@ class ImageStudy(models.Model):
     mime_type = models.CharField(max_length=80, blank=True)
     file_size = models.PositiveIntegerField(default=0)
     saved_contribution = models.ForeignKey(Contribution, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+
+class LemmaImage(models.Model):
+    """One illustration per dictionary lemma/sense; forms share this selection.
+
+    An attempt is claimed before provider I/O. The study retains accounting for
+    superseded attempts; revision prevents old workers overwriting a new choice.
+    """
+    entry = models.OneToOneField(Entry, on_delete=models.CASCADE, related_name='lemma_image')
+    image = models.ForeignKey(Contribution, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    status = models.CharField(max_length=16, default='waiting', choices=[
+        ('waiting', 'Queued'), ('analysing', 'Planning'), ('generating', 'Generating'),
+        ('ready', 'Ready'), ('none', 'No simple picture'), ('failed', 'Failed'), ('removed', 'Hidden')])
+    suitability = models.CharField(max_length=16, default='illustration', choices=[
+        ('clue', 'Picture clue'), ('illustration', 'Illustration only'), ('none', 'No simple picture')])
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    automatic = models.BooleanField(default=False)
+    revision = models.PositiveIntegerField(default=1)
+    snapshot = models.JSONField(default=dict)
+    quote = models.JSONField(default=dict)
+    analysis = models.JSONField(default=dict)
+    study = models.ForeignKey(ImageStudy, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    updated_at = models.DateTimeField(default=timezone.now)
 
 
 class ContributionDependency(models.Model):

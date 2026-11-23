@@ -72,14 +72,14 @@ class PracticeTests(TestCase):
         self.dictionary.language = 'Icelandic'; self.dictionary.save()
         self.assertEqual(self.dataset(mode='text-audio')['cards'], [])
 
-    def test_linked_picture_used_without_copying_and_archived_source_excluded(self):
+    def test_sentence_or_other_word_picture_is_context_not_a_word_clue(self):
         sofa = self.word('soffa')
         picture = sofa.contributions.get(kind='image')
         cat = Entry.objects.create(dictionary=self.dictionary, created_by=self.owner, word='katt')
         ImageWordLink.objects.create(image=picture, word_entry=cat, created_by=self.owner)
         cards = self.dataset()['cards']
-        self.assertEqual(len(cards), 2)
-        self.assertEqual(cards[0]['image'], cards[1]['image'])
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0]['text'], 'soffa')
         sofa.archived = True; sofa.save()
         self.assertEqual(self.dataset()['cards'], [])
 

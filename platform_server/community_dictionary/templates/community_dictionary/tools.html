@@ -3,6 +3,7 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Tools" %}</h1>
 <p>{% translate "Work on many entries at once. Choose an operation to see its options before starting." %}</p>
+<section class="panel"><h2>{% translate "Word pictures" %}</h2><p>{% translate "Add missing lemma pictures, shared by forms in sentences and suitable picture games. Preview a small batch and its estimated cost first." %}</p><a class="button secondary" href="{% url 'community_dictionary:word-images' dictionary.pk %}">{% translate "Add missing word pictures" %}</a></section>
 <section class="panel"><h2>{% translate "Add missing sentences" %}</h2>
 <p>{% translate "Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions." %}</p>
 <a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">{% translate "Add missing sentences" %}</a>

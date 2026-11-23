@@ -94,8 +94,10 @@ def recordings(entry, dictionary):
 
 
 def word_row(entry, dictionary):
+    from .lemma_images import picture
+    entry.dictionary = dictionary
     audio = recordings(entry, dictionary)
-    return {'entry': entry, 'audio': audio[0] if audio else None}
+    return {'entry': entry, 'audio': audio[0] if audio else None, 'lemma_picture': picture(entry)}
 
 
 def valid_links(dictionary):

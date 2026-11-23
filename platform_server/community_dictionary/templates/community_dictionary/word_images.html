@@ -1,0 +1,20 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n static %}
+{% block title %}{% translate "Word pictures" %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Word pictures" %}</h1>
+<p>{% translate "Add one picture per dictionary form. Forms in sentences share it. Existing pictures and deliberate No simple picture choices are kept. Picture games use only suitable dictionary-form clues." %}</p>
+<p>{% blocktranslate %}Word pages without a picture decision: {{ missing_count }}{% endblocktranslate %}</p>
+{% if setup_error %}<p class="help">{{ setup_error }}</p>{% endif %}
+<section class="panel"><h2>{% translate "Preview a batch" %}</h2>
+<form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ quote }}">{{ form.non_field_errors }}{{ form.limit.errors }}<p>{{ form.limit.label_tag }} {{ form.limit }}</p><button class="secondary" name="action" value="preview">{% translate "Preview this many" %}</button>
+{% if candidates and not setup_error %}<ul>{% for entry in candidates %}<li dir="auto">{{ entry.word }} — {{ entry.meaning }}</li>{% endfor %}</ul>
+<p>{% blocktranslate %}Estimated allowance for this batch: US${{ estimate }}. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account.{% endblocktranslate %}</p>
+<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p><button name="action" value="generate">{% translate "Generate missing word pictures" %}</button>{% endif %}
+</form></section>
+<section class="panel"><h2>{% translate "Progress" %}</h2>
+<ul>{% for group in counts %}<li>{{ group.label }}: {{ group.total }}</li>{% endfor %}</ul>
+<p><a href="">{% translate "Refresh progress" %}</a></p>
+{% if active %}<p role="status">{% translate "Pictures are being prepared in the background. You can leave this page and return later." %}</p><form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button class="secondary" name="action" value="resume">{% translate "Resume queued pictures" %}</button></form>{% endif %}
+<p class="help">{% translate "Failed attempts are not retried automatically. Open an individual word picture to retry after checking its settings, credit or daily limit. Resuming runs only unstarted queued work." %}</p>
+<ul>{% for job in jobs %}<li><a href="{% url 'community_dictionary:word-picture' dictionary.pk job.entry_id %}" dir="auto">{{ job.entry.word }}</a>: {% translate job.get_status_display %}</li>{% empty %}<li>{% translate "No word-picture attempts yet." %}</li>{% endfor %}</ul></section>
+{% endblock %}

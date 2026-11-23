@@ -84,6 +84,8 @@ def media_for(entry, dictionary):
 
 
 def row(entry, dictionary):
+    from .lemma_images import picture as lemma_picture
+    entry.dictionary = dictionary
     media = media_for(entry, dictionary)
     images = [c for c in media if c.kind == 'image']
     image = next((c for c in images if c.pk == entry.selected_image_id), images[0] if images else None)
@@ -93,6 +95,7 @@ def row(entry, dictionary):
     return {'id': entry.pk, 'word': entry.public_word, 'meaning': entry.public_meaning,
             'automatic_unreviewed':entry.public_automatic and not entry.public_checked,
             'category': entry.public_category, 'kind': entry.entry_type,
+            'lemma_picture': lemma_picture(entry, public_view=True) if entry.entry_type == 'word' else {},
             'title': entry.public_word or (gettext('Picture') if image else gettext('Recording')),
             'image': media_row(image) if image else None,
             'audio': media_row(recordings[0]) if recordings else None,

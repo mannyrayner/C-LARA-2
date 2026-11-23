@@ -12,9 +12,12 @@ from . import audio_views, photo_views, views, lexicon_views, collection_views, 
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views, picture_practice_views
 from . import writing_views, guided_views, form_jobs, homograph_experiments, audio_review, audio_review_pages, refresh_views
 from . import improve_views
+from . import lemma_image_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/tools/word-images/', lemma_image_views.backfill, name='word-images'),
+    path('<int:pk>/words/<int:entry_id>/picture/', lemma_image_views.word_picture, name='word-picture'),
     path('<int:pk>/entries/<int:entry_id>/check-improve/', improve_views.start, name='improve-start'),
     path('<int:pk>/entry-checks/<uuid:study_id>/', improve_views.detail, name='improve-detail'),
     path('<int:pk>/entry-checks/<uuid:study_id>/action/', improve_views.action, name='improve-action'),

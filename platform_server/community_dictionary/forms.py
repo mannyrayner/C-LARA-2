@@ -14,13 +14,16 @@ class DictionaryForm(forms.ModelForm):
         label=_('Level of AI-generated language'), help_text=_(
             'Guides new picture descriptions. Keep precise words for what the picture shows; simplify the surrounding grammar. Existing entries are kept.'))
     sentence_capture_enabled = forms.BooleanField(required=False, label=_('Enable Picture descriptions (OpenAI)'), help_text=_('Members can describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Picture, description and up to 200 words/meanings are sent to OpenAI. Each request requires confirmation and incurs API costs.'))
-    image_generation_enabled = forms.BooleanField(required=False, label=_('Enable AI picture generation (OpenAI)'), help_text=_('Owners and editors can approve a shared style and generate pictures from descriptions. Each request needs permission to send its text to OpenAI and incurs API costs.'))
+    image_generation_enabled = forms.BooleanField(required=False, label=_('Enable AI picture generation (OpenAI)'), help_text=_('Owners and editors can generate pictures from descriptions. Automatic word pictures, when enabled below, use accepted words, translations and example sentences. API costs apply.'))
+    automatic_word_images = forms.BooleanField(required=False, initial=True,
+        label=_('Automatically illustrate new word pages'), help_text=_(
+            'For AI-supported languages, send each new accepted lemma, translation and up to three example sentences to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above.'))
     photo_ai_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable Learn from a photo (OpenAI)'), help_text=_('Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.'))
     tts_enabled = forms.BooleanField(required=False, initial=True, label=_('Enable saved spoken audio'), help_text=_('Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.'))
 
     class Meta:
         model = Dictionary
-        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
+        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'automatic_word_images', 'sentence_capture_enabled']
         labels = {'name': _('Name'), 'language': _('Language we are collecting'),
                   'explanation_language': _('Language for explanations (optional)'),
                   'text_direction': _('Text direction')}
@@ -76,7 +79,7 @@ class DictionaryForm(forms.ModelForm):
 class DictionarySettingsForm(DictionaryForm):
     creation_defaults = False
     class Meta(DictionaryForm.Meta):
-        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
+        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'automatic_word_images', 'sentence_capture_enabled']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

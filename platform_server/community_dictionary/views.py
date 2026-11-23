@@ -560,7 +560,7 @@ def dictionary_settings(request, pk):
                 from .capture import discard
                 from .models import PictureCapture
                 discard(PictureCapture.objects.filter(dictionary=dictionary).exclude(status='discarded'))
-            if 'image_generation_enabled' in form.changed_data:
+            if {'image_generation_enabled', 'automatic_word_images'} & set(form.changed_data):
                 dictionary.image_generation_revision += 1
                 from .image_generation import discard_studies
                 from .models import ImageStudy
@@ -748,14 +748,20 @@ def export_dictionary(request, pk):
     require_owner(request.user, dictionary)
     sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']), Request.objects.filter(entry__dictionary=dictionary), ImageWordLink.objects.filter(image__entry__dictionary=dictionary, word_entry__dictionary=dictionary), dictionary.events.all(), dictionary.membership_decisions.all()]
     from .models import SentenceWord, AttentionReport, LanguageCheck
+    from .models import LemmaImage
     from .capture import sentence_links
     sets += [sentence_links(dictionary), AttentionReport.objects.filter(entry__dictionary=dictionary, note__entry__dictionary=dictionary),
              LanguageCheck.objects.filter(entry__dictionary=dictionary, text__entry__dictionary=dictionary)]
+    # Export durable display/clue decisions, without private attempts, prompts,
+    # quotes, usage or example-sentence copies.
+    from .lemma_images import current as current_lemma_picture
+    sets += [[row for row in LemmaImage.objects.filter(entry__dictionary=dictionary,
+        status__in=['ready', 'none', 'removed']).select_related('entry__dictionary') if current_lemma_picture(row)]]
     objects = [obj for queryset in sets for obj in queryset]
     media_items = list(Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']).exclude(file_path=''))
     user_ids = {dictionary.owner_id}
     for obj in objects:
-        for field in ['user_id', 'author_id', 'created_by_id', 'actor_id', 'controlled_by_id', 'proposed_by_id', 'approved_by_id']:
+        for field in ['user_id', 'author_id', 'created_by_id', 'actor_id', 'controlled_by_id', 'proposed_by_id', 'approved_by_id', 'requested_by_id']:
             value = getattr(obj, field, None)
             if value:
                 user_ids.add(value)
@@ -783,6 +789,10 @@ def export_dictionary(request, pk):
                     fields['collection_source'] = None
                     if fields.get('image_style') not in exported_parts:
                         fields['image_style'] = None
+                elif row['model'] == 'community_dictionary.lemmaimage':
+                    fields.update(study=None, quote={}, analysis={})
+                    if fields.get('image') is not None and fields['image'] not in exported_parts:
+                        fields.update(image=None, status='removed')
             archive.writestr('records.json', json.dumps(records, ensure_ascii=False, indent=2))
             from .models import ContributionDependency
             links = list(ContributionDependency.objects.filter(derived_id__in=exported_parts).values('source_id','derived_id'))

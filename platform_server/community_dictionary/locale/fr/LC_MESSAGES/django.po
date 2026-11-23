@@ -8121,3 +8121,271 @@ msgstr ""
 "Une fois accepté, cet enregistrement remplace les anciennes versions "
 "générées par l’IA pour cette entrée. Les enregistrements humains sont "
 "conservés."
+
+#: community_dictionary/lemma_images
+msgid "Word picture"
+msgstr "Image du mot"
+
+#: community_dictionary/lemma_images
+msgid "Word pictures"
+msgstr "Images des mots"
+
+#: community_dictionary/lemma_images
+msgid "Word illustration"
+msgstr "Illustration du mot"
+
+#: community_dictionary/lemma_images
+msgid "No simple picture"
+msgstr "Pas d’image simple"
+
+#: community_dictionary/lemma_images
+msgid "Automatically illustrate new word pages"
+msgstr "Illustrer automatiquement les nouvelles pages de mots"
+
+#: community_dictionary/lemma_images
+msgid "Available as a picture clue"
+msgstr "Disponible comme indice illustré"
+
+#: community_dictionary/lemma_images
+msgid "Illustration only — excluded from picture clues"
+msgstr "Illustration uniquement — exclue des indices illustrés"
+
+#: community_dictionary/lemma_images
+msgid "Back to word page"
+msgstr "Retour à la page du mot"
+
+#: community_dictionary/lemma_images
+msgid "Generate a word picture"
+msgstr "Générer une image du mot"
+
+#: community_dictionary/lemma_images
+msgid "Generate or regenerate"
+msgstr "Générer ou régénérer"
+
+#: community_dictionary/lemma_images
+msgid "Retry word picture"
+msgstr "Réessayer l’image du mot"
+
+#: community_dictionary/lemma_images
+msgid "Resume queued picture"
+msgstr "Reprendre l’image en attente"
+
+#: community_dictionary/lemma_images
+msgid "Resume queued pictures"
+msgstr "Reprendre les images en attente"
+
+#: community_dictionary/lemma_images
+msgid "Choose how to use this picture"
+msgstr "Choisir comment utiliser cette image"
+
+#: community_dictionary/lemma_images
+msgid "Use as a picture clue"
+msgstr "Utiliser comme indice illustré"
+
+#: community_dictionary/lemma_images
+msgid "Use as illustration only"
+msgstr "Utiliser uniquement comme illustration"
+
+#: community_dictionary/lemma_images
+msgid "Use No simple picture symbol"
+msgstr "Utiliser le symbole Pas d’image simple"
+
+#: community_dictionary/lemma_images
+msgid "Hide word picture"
+msgstr "Masquer l’image du mot"
+
+#: community_dictionary/lemma_images
+msgid "Upload a replacement"
+msgstr "Importer une autre image"
+
+#: community_dictionary/lemma_images
+msgid "Replacement picture"
+msgstr "Image de remplacement"
+
+#: community_dictionary/lemma_images
+msgid "Use replacement picture"
+msgstr "Utiliser l’image de remplacement"
+
+#: community_dictionary/lemma_images
+msgid "Choose an existing picture"
+msgstr "Choisir une image existante"
+
+#: community_dictionary/lemma_images
+msgid "Existing word picture"
+msgstr "Image existante du mot"
+
+#: community_dictionary/lemma_images
+msgid "Use selected picture"
+msgstr "Utiliser l’image choisie"
+
+#: community_dictionary/lemma_images
+msgid "Preview a batch"
+msgstr "Prévisualiser un lot"
+
+#: community_dictionary/lemma_images
+msgid "Preview this many"
+msgstr "Prévisualiser ce nombre"
+
+#: community_dictionary/lemma_images
+msgid "Generate missing word pictures"
+msgstr "Générer les images de mots manquantes"
+
+#: community_dictionary/lemma_images
+msgid "Add missing word pictures"
+msgstr "Ajouter les images de mots manquantes"
+
+#: community_dictionary/lemma_images
+msgid "Number of missing word pictures to try"
+msgstr "Nombre d’images de mots manquantes à essayer"
+
+#: community_dictionary/lemma_images
+msgid "No word-picture attempts yet."
+msgstr "Aucune tentative d’image de mot pour le moment."
+
+#: community_dictionary/lemma_images
+msgid "Queued"
+msgstr "En attente"
+
+#: community_dictionary/lemma_images
+msgid "Planning"
+msgstr "Préparation"
+
+#: community_dictionary/lemma_images
+msgid "Generating"
+msgstr "Génération en cours"
+
+#: community_dictionary/lemma_images
+msgid "Ready"
+msgstr "Prêt"
+
+#: community_dictionary/lemma_images
+msgid "I have permission to share this replacement picture."
+msgstr "J’ai l’autorisation de partager cette image de remplacement."
+
+#: community_dictionary/lemma_images
+msgid "This picture is shared by the dictionary form and its forms in sentences. Picture games use dictionary forms only."
+msgstr "Cette image est partagée par la forme du dictionnaire et ses formes dans les phrases. Les jeux illustrés utilisent uniquement les formes du dictionnaire."
+
+#: community_dictionary/lemma_images
+msgid "Word picture queued. Refresh to check progress."
+msgstr "L’image du mot est en attente. Actualisez pour voir la progression."
+
+#: community_dictionary/lemma_images
+msgid "Preparing word picture. Refresh to check progress."
+msgstr "Préparation de l’image du mot. Actualisez pour voir la progression."
+
+#: community_dictionary/lemma_images
+msgid "Word picture could not be completed. Open Word picture to check settings and try again."
+msgstr "L’image du mot n’a pas pu être terminée. Ouvrez Image du mot pour vérifier les réglages et réessayer."
+
+#: community_dictionary/lemma_images
+msgid "The word or meaning changed. Open Word picture to update its illustration."
+msgstr "Le mot ou son sens a changé. Ouvrez Image du mot pour mettre à jour son illustration."
+
+#: community_dictionary/lemma_images
+msgid "Pictures are being prepared in the background. You can leave this page and return later."
+msgstr "Les images sont préparées en arrière-plan. Vous pouvez quitter cette page et revenir plus tard."
+
+#: community_dictionary/lemma_images
+msgid "Enable AI picture generation in Settings for a supported language."
+msgstr "Activez la génération d’images par IA dans les réglages pour une langue prise en charge."
+
+#: community_dictionary/lemma_images
+msgid "Upload or choose a picture first."
+msgstr "Importez ou choisissez d’abord une image."
+
+#: community_dictionary/lemma_images
+msgid "Choose a replacement picture and confirm permission to share it."
+msgstr "Choisissez une image de remplacement et confirmez l’autorisation de la partager."
+
+#: community_dictionary/lemma_images
+msgid "Choose an accepted picture for this word."
+msgstr "Choisissez une image acceptée pour ce mot."
+
+#: community_dictionary/lemma_images
+msgid "Choose a word-picture action."
+msgstr "Choisissez une action pour l’image du mot."
+
+#: community_dictionary/lemma_images
+msgid "Confirm AI processing before generating a picture."
+msgstr "Confirmez le traitement par IA avant de générer une image."
+
+#: community_dictionary/lemma_images
+msgid "Confirm AI processing and automatic publication before starting."
+msgstr "Confirmez le traitement par IA et la publication automatique avant de commencer."
+
+#: community_dictionary/lemma_images
+msgid "The word picture changed. Reload before making another change."
+msgstr "L’image du mot a changé. Rechargez la page avant de la modifier."
+
+#: community_dictionary/lemma_images
+msgid "The missing words changed. Preview the batch again."
+msgstr "Les mots manquants ont changé. Prévisualisez de nouveau le lot."
+
+#: community_dictionary/lemma_images
+msgid "The words or meanings changed. Preview the batch again."
+msgstr "Les mots ou leurs sens ont changé. Prévisualisez de nouveau le lot."
+
+#: community_dictionary/lemma_images
+msgid "Settings or prices changed. Preview the batch again."
+msgstr "Les réglages ou les tarifs ont changé. Prévisualisez de nouveau le lot."
+
+#: community_dictionary/lemma_images
+msgid "This estimate expired. Preview the batch again."
+msgstr "Cette estimation a expiré. Prévisualisez de nouveau le lot."
+
+#: community_dictionary/lemma_images
+msgid "This estimate expired. Reload before generating."
+msgstr "Cette estimation a expiré. Rechargez la page avant de générer."
+
+#: community_dictionary/lemma_images
+msgid "The word, settings or prices changed. Reload before generating."
+msgstr "Le mot, les réglages ou les tarifs ont changé. Rechargez la page avant de générer."
+
+#: community_dictionary/lemma_images
+msgid "I approve sending this word, translation and up to three example sentences to OpenAI at the estimated cost shown, and publishing its picture automatically."
+msgstr "J’autorise l’envoi de ce mot, de sa traduction et de trois phrases d’exemple au maximum à OpenAI, au coût estimé indiqué, ainsi que la publication automatique de son image."
+
+#: community_dictionary/lemma_images
+msgid "I approve sending these accepted words, translations and up to three example sentences per word to OpenAI, at the estimated cost shown. Publish the pictures automatically."
+msgstr "J’autorise l’envoi de ces mots acceptés, de leurs traductions et de trois phrases d’exemple au maximum par mot à OpenAI, au coût estimé indiqué. Publier les images automatiquement."
+
+#: community_dictionary/lemma_images
+msgid "Owners and editors can generate pictures from descriptions. Automatic word pictures, when enabled below, use accepted words, translations and example sentences. API costs apply."
+msgstr "Les propriétaires et éditeurs peuvent générer des images à partir de descriptions. Si elles sont activées ci-dessous, les images de mots automatiques utilisent les mots, traductions et exemples acceptés. Des frais d’API s’appliquent."
+
+#: community_dictionary/lemma_images
+msgid "For AI-supported languages, send each new accepted lemma, translation and up to three example sentences to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above."
+msgstr "Pour les langues prises en charge par l’IA, envoyer chaque nouveau lemme accepté, sa traduction et trois exemples au maximum à OpenAI. Publier automatiquement une image partagée du mot, facturée au propriétaire du dictionnaire. Certains mots utilisent le symbole Pas d’image simple. Nécessite la génération d’images par IA ci-dessus."
+
+#: community_dictionary/lemma_images
+msgid "Add one picture per dictionary form. Forms in sentences share it. Existing pictures and deliberate No simple picture choices are kept. Picture games use only suitable dictionary-form clues."
+msgstr "Ajouter une image par forme du dictionnaire, partagée avec ses formes dans les phrases. Les images existantes et les choix Pas d’image simple sont conservés. Les jeux illustrés utilisent uniquement des indices adaptés aux formes du dictionnaire."
+
+#: community_dictionary/lemma_images
+msgid "Add missing lemma pictures, shared by forms in sentences and suitable picture games. Preview a small batch and its estimated cost first."
+msgstr "Ajouter les images de lemmes manquantes, partagées par les formes dans les phrases et les jeux illustrés adaptés. Prévisualiser d’abord un petit lot et son coût estimé."
+
+#: community_dictionary/lemma_images
+msgid "Generation runs in the background. A failed or interrupted paid request is never retried automatically. After an uncertain interruption, wait ten minutes before explicitly starting another attempt."
+msgstr "La génération s’exécute en arrière-plan. Une requête payante échouée ou interrompue n’est jamais répétée automatiquement. Après une interruption incertaine, attendez dix minutes avant de lancer une autre tentative."
+
+#: community_dictionary/lemma_images
+msgid "Failed attempts are not retried automatically. Open an individual word picture to retry after checking its settings, credit or daily limit. Resuming runs only unstarted queued work."
+msgstr "Les tentatives échouées ne sont pas répétées automatiquement. Ouvrez l’image du mot pour réessayer après avoir vérifié les réglages, le crédit ou la limite quotidienne. La reprise ne lance que les tâches en attente non commencées."
+
+#: community_dictionary/lemma_images
+msgid "Picture activities use dictionary forms and pictures suitable as word clues. Illustrations marked as unsuitable for clues and No simple picture symbols are excluded."
+msgstr "Les activités illustrées utilisent les formes du dictionnaire et des images adaptées comme indices. Les illustrations marquées comme inadaptées et les symboles Pas d’image simple sont exclus."
+
+#: community_dictionary/lemma_images
+msgid "Word pages without a picture decision: %(missing_count)s"
+msgstr "Pages de mots sans choix d’image : %(missing_count)s"
+
+#: community_dictionary/lemma_images
+msgid "Estimated allowance for one AI attempt: US$%(allowance)s. The actual charge may differ. Automatic generation uses the dictionary owner's account; this requested attempt uses your account."
+msgstr "Budget estimé pour une tentative IA : %(allowance)s USD. Le montant réel peut différer. La génération automatique utilise le compte du propriétaire ; cette tentative utilise votre compte."
+
+#: community_dictionary/lemma_images
+msgid "Estimated allowance for this batch: US$%(estimate)s. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account."
+msgstr "Budget estimé pour ce lot : %(estimate)s USD. Les frais réels peuvent différer ; les mots sans illustration utile nécessitent seulement la préparation. Ce lot utilise votre compte."

@@ -1,0 +1,22 @@
+{% extends 'community_dictionary/base.html' %}{% load i18n %}
+{% block title %}{% translate "Word picture" %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>{% translate "Word picture" %}: <span dir="auto">{{ entry.word }}</span></h1>
+<p dir="auto">{{ entry.meaning }}</p>
+{% include 'community_dictionary/lemma_picture.html' with manage_picture=True %}
+{% if picture_error %}<p role="status">{{ picture_error }}</p>{% endif %}
+<p>{% translate "This picture is shared by the dictionary form and its forms in sentences. Picture games use dictionary forms only." %}</p>
+{% if lemma_picture.suitability == 'clue' %}<p class="badge">{% translate "Available as a picture clue" %}</p>{% elif lemma_picture.suitability == 'illustration' and lemma_picture.id %}<p class="badge">{% translate "Illustration only — excluded from picture clues" %}</p>{% endif %}
+{% if setup_error %}<p class="help">{{ setup_error }}</p>{% else %}<p>{% blocktranslate %}Estimated allowance for one AI attempt: US${{ allowance }}. The actual charge may differ. Automatic generation uses the dictionary owner's account; this requested attempt uses your account.{% endblocktranslate %}</p>{% endif %}
+<form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="quote" value="{{ generation_quote }}">{{ form.revision }}{{ form.non_field_errors }}{{ form.revision.errors }}
+<section class="panel"><h2>{% translate "Generate a word picture" %}</h2>
+{% if not setup_error %}<p>{{ form.ai_consent }} {{ form.ai_consent.label_tag }}</p><button name="action" value="generate">{% if lemma_picture.status == 'failed' %}{% translate "Retry word picture" %}{% else %}{% translate "Generate or regenerate" %}{% endif %}</button>{% endif %}
+{% if lemma_picture.status == 'waiting' %}<button class="secondary" name="action" value="resume">{% translate "Resume queued picture" %}</button>{% endif %}
+<p class="help">{% translate "Generation runs in the background. A failed or interrupted paid request is never retried automatically. After an uncertain interruption, wait ten minutes before explicitly starting another attempt." %}</p></section>
+<section class="panel"><h2>{% translate "Choose how to use this picture" %}</h2>
+{% if lemma_picture.id %}<button class="secondary" name="action" value="clue">{% translate "Use as a picture clue" %}</button> <button class="secondary" name="action" value="illustration">{% translate "Use as illustration only" %}</button>{% endif %}
+<button class="secondary" name="action" value="none">{% translate "Use No simple picture symbol" %}</button> <button class="secondary" name="action" value="remove">{% translate "Hide word picture" %}</button></section>
+<section class="panel"><h2>{% translate "Upload a replacement" %}</h2>{{ form.photo.errors }}<p>{{ form.photo.label_tag }} {{ form.photo }}</p><p>{{ form.upload_consent }} {{ form.upload_consent.label_tag }}</p><button class="secondary" name="action" value="upload">{% translate "Use replacement picture" %}</button></section>
+{% if own_pictures %}<details class="panel"><summary>{% translate "Choose an existing picture" %}</summary><select name="image_id" aria-label="{% translate 'Existing word picture' %}">{% for picture in own_pictures %}<option value="{{ picture.pk }}">{{ picture.label|default:picture.pk }}</option>{% endfor %}</select><button class="secondary" name="action" value="select">{% translate "Use selected picture" %}</button></details>{% endif %}
+</form><p><a href="{% url 'community_dictionary:word' dictionary.pk entry.pk %}">{% translate "Back to word page" %}</a></p>
+{% endblock %}

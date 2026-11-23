@@ -8001,3 +8001,271 @@ msgid ""
 msgstr ""
 "Po prijatí táto nahrávka nahradí predchádzajúce verzie tejto položky "
 "vytvorené pomocou AI. Ľudské nahrávky zostanú zachované."
+
+#: community_dictionary/lemma_images
+msgid "Word picture"
+msgstr "Obrázok slova"
+
+#: community_dictionary/lemma_images
+msgid "Word pictures"
+msgstr "Obrázky slov"
+
+#: community_dictionary/lemma_images
+msgid "Word illustration"
+msgstr "Ilustrácia slova"
+
+#: community_dictionary/lemma_images
+msgid "No simple picture"
+msgstr "Bez jednoduchého obrázka"
+
+#: community_dictionary/lemma_images
+msgid "Automatically illustrate new word pages"
+msgstr "Automaticky ilustrovať nové stránky slov"
+
+#: community_dictionary/lemma_images
+msgid "Available as a picture clue"
+msgstr "Možno použiť ako obrázkovú nápovedu"
+
+#: community_dictionary/lemma_images
+msgid "Illustration only — excluded from picture clues"
+msgstr "Iba ilustrácia — nepoužíva sa ako obrázková nápoveda"
+
+#: community_dictionary/lemma_images
+msgid "Back to word page"
+msgstr "Späť na stránku slova"
+
+#: community_dictionary/lemma_images
+msgid "Generate a word picture"
+msgstr "Vygenerovať obrázok slova"
+
+#: community_dictionary/lemma_images
+msgid "Generate or regenerate"
+msgstr "Vygenerovať alebo vygenerovať znova"
+
+#: community_dictionary/lemma_images
+msgid "Retry word picture"
+msgstr "Znova skúsiť obrázok slova"
+
+#: community_dictionary/lemma_images
+msgid "Resume queued picture"
+msgstr "Pokračovať s obrázkom vo fronte"
+
+#: community_dictionary/lemma_images
+msgid "Resume queued pictures"
+msgstr "Pokračovať s obrázkami vo fronte"
+
+#: community_dictionary/lemma_images
+msgid "Choose how to use this picture"
+msgstr "Vybrať spôsob použitia obrázka"
+
+#: community_dictionary/lemma_images
+msgid "Use as a picture clue"
+msgstr "Použiť ako obrázkovú nápovedu"
+
+#: community_dictionary/lemma_images
+msgid "Use as illustration only"
+msgstr "Použiť iba ako ilustráciu"
+
+#: community_dictionary/lemma_images
+msgid "Use No simple picture symbol"
+msgstr "Použiť symbol Bez jednoduchého obrázka"
+
+#: community_dictionary/lemma_images
+msgid "Hide word picture"
+msgstr "Skryť obrázok slova"
+
+#: community_dictionary/lemma_images
+msgid "Upload a replacement"
+msgstr "Nahrať náhradný obrázok"
+
+#: community_dictionary/lemma_images
+msgid "Replacement picture"
+msgstr "Náhradný obrázok"
+
+#: community_dictionary/lemma_images
+msgid "Use replacement picture"
+msgstr "Použiť náhradný obrázok"
+
+#: community_dictionary/lemma_images
+msgid "Choose an existing picture"
+msgstr "Vybrať existujúci obrázok"
+
+#: community_dictionary/lemma_images
+msgid "Existing word picture"
+msgstr "Existujúci obrázok slova"
+
+#: community_dictionary/lemma_images
+msgid "Use selected picture"
+msgstr "Použiť vybraný obrázok"
+
+#: community_dictionary/lemma_images
+msgid "Preview a batch"
+msgstr "Zobraziť náhľad dávky"
+
+#: community_dictionary/lemma_images
+msgid "Preview this many"
+msgstr "Zobraziť tento počet"
+
+#: community_dictionary/lemma_images
+msgid "Generate missing word pictures"
+msgstr "Vygenerovať chýbajúce obrázky slov"
+
+#: community_dictionary/lemma_images
+msgid "Add missing word pictures"
+msgstr "Doplniť chýbajúce obrázky slov"
+
+#: community_dictionary/lemma_images
+msgid "Number of missing word pictures to try"
+msgstr "Počet chýbajúcich obrázkov slov na vyskúšanie"
+
+#: community_dictionary/lemma_images
+msgid "No word-picture attempts yet."
+msgstr "Zatiaľ nebol vytvorený žiadny obrázok slova."
+
+#: community_dictionary/lemma_images
+msgid "Queued"
+msgstr "Vo fronte"
+
+#: community_dictionary/lemma_images
+msgid "Planning"
+msgstr "Plánovanie"
+
+#: community_dictionary/lemma_images
+msgid "Generating"
+msgstr "Generovanie"
+
+#: community_dictionary/lemma_images
+msgid "Ready"
+msgstr "Hotové"
+
+#: community_dictionary/lemma_images
+msgid "I have permission to share this replacement picture."
+msgstr "Mám povolenie zdieľať tento náhradný obrázok."
+
+#: community_dictionary/lemma_images
+msgid "This picture is shared by the dictionary form and its forms in sentences. Picture games use dictionary forms only."
+msgstr "Tento obrázok sa používa pre základný tvar aj jeho tvary vo vetách. Obrázkové hry používajú iba základné tvary."
+
+#: community_dictionary/lemma_images
+msgid "Word picture queued. Refresh to check progress."
+msgstr "Obrázok slova je vo fronte. Obnovte stránku a skontrolujte priebeh."
+
+#: community_dictionary/lemma_images
+msgid "Preparing word picture. Refresh to check progress."
+msgstr "Pripravuje sa obrázok slova. Obnovte stránku a skontrolujte priebeh."
+
+#: community_dictionary/lemma_images
+msgid "Word picture could not be completed. Open Word picture to check settings and try again."
+msgstr "Obrázok slova sa nepodarilo dokončiť. Otvorte Obrázok slova, skontrolujte nastavenia a skúste to znova."
+
+#: community_dictionary/lemma_images
+msgid "The word or meaning changed. Open Word picture to update its illustration."
+msgstr "Slovo alebo význam sa zmenili. Otvorte Obrázok slova a aktualizujte ilustráciu."
+
+#: community_dictionary/lemma_images
+msgid "Pictures are being prepared in the background. You can leave this page and return later."
+msgstr "Obrázky sa pripravujú na pozadí. Túto stránku môžete opustiť a vrátiť sa neskôr."
+
+#: community_dictionary/lemma_images
+msgid "Enable AI picture generation in Settings for a supported language."
+msgstr "V nastaveniach zapnite generovanie obrázkov pomocou AI pre podporovaný jazyk."
+
+#: community_dictionary/lemma_images
+msgid "Upload or choose a picture first."
+msgstr "Najprv nahrajte alebo vyberte obrázok."
+
+#: community_dictionary/lemma_images
+msgid "Choose a replacement picture and confirm permission to share it."
+msgstr "Vyberte náhradný obrázok a potvrďte povolenie na jeho zdieľanie."
+
+#: community_dictionary/lemma_images
+msgid "Choose an accepted picture for this word."
+msgstr "Vyberte schválený obrázok pre toto slovo."
+
+#: community_dictionary/lemma_images
+msgid "Choose a word-picture action."
+msgstr "Vyberte akciu pre obrázok slova."
+
+#: community_dictionary/lemma_images
+msgid "Confirm AI processing before generating a picture."
+msgstr "Pred generovaním obrázka potvrďte spracovanie pomocou AI."
+
+#: community_dictionary/lemma_images
+msgid "Confirm AI processing and automatic publication before starting."
+msgstr "Pred začatím potvrďte spracovanie pomocou AI a automatické zverejnenie."
+
+#: community_dictionary/lemma_images
+msgid "The word picture changed. Reload before making another change."
+msgstr "Obrázok slova sa zmenil. Pred ďalšou zmenou obnovte stránku."
+
+#: community_dictionary/lemma_images
+msgid "The missing words changed. Preview the batch again."
+msgstr "Chýbajúce slová sa zmenili. Znova zobrazte náhľad dávky."
+
+#: community_dictionary/lemma_images
+msgid "The words or meanings changed. Preview the batch again."
+msgstr "Slová alebo významy sa zmenili. Znova zobrazte náhľad dávky."
+
+#: community_dictionary/lemma_images
+msgid "Settings or prices changed. Preview the batch again."
+msgstr "Nastavenia alebo ceny sa zmenili. Znova zobrazte náhľad dávky."
+
+#: community_dictionary/lemma_images
+msgid "This estimate expired. Preview the batch again."
+msgstr "Tento odhad vypršal. Znova zobrazte náhľad dávky."
+
+#: community_dictionary/lemma_images
+msgid "This estimate expired. Reload before generating."
+msgstr "Tento odhad vypršal. Pred generovaním obnovte stránku."
+
+#: community_dictionary/lemma_images
+msgid "The word, settings or prices changed. Reload before generating."
+msgstr "Slovo, nastavenia alebo ceny sa zmenili. Pred generovaním obnovte stránku."
+
+#: community_dictionary/lemma_images
+msgid "I approve sending this word, translation and up to three example sentences to OpenAI at the estimated cost shown, and publishing its picture automatically."
+msgstr "Súhlasím s odoslaním tohto slova, prekladu a najviac troch príkladových viet spoločnosti OpenAI za uvedenú odhadovanú cenu a s automatickým zverejnením obrázka."
+
+#: community_dictionary/lemma_images
+msgid "I approve sending these accepted words, translations and up to three example sentences per word to OpenAI, at the estimated cost shown. Publish the pictures automatically."
+msgstr "Súhlasím s odoslaním týchto schválených slov, prekladov a najviac troch príkladových viet pre každé slovo spoločnosti OpenAI za uvedenú odhadovanú cenu. Obrázky sa zverejnia automaticky."
+
+#: community_dictionary/lemma_images
+msgid "Owners and editors can generate pictures from descriptions. Automatic word pictures, when enabled below, use accepted words, translations and example sentences. API costs apply."
+msgstr "Vlastníci a redaktori môžu generovať obrázky z opisov. Ak sú nižšie zapnuté automatické obrázky slov, používajú schválené slová, preklady a príkladové vety. Účtujú sa poplatky za API."
+
+#: community_dictionary/lemma_images
+msgid "For AI-supported languages, send each new accepted lemma, translation and up to three example sentences to OpenAI. Publish one shared word picture automatically, charged to the dictionary owner. Some words use a No simple picture symbol. Requires AI picture generation above."
+msgstr "Pre jazyky podporované AI odošle každý nový schválený základný tvar, preklad a najviac tri príkladové vety spoločnosti OpenAI. Automaticky zverejní jeden spoločný obrázok slova na účet vlastníka slovníka. Niektoré slová používajú symbol Bez jednoduchého obrázka. Vyžaduje zapnutie generovania obrázkov pomocou AI vyššie."
+
+#: community_dictionary/lemma_images
+msgid "Add one picture per dictionary form. Forms in sentences share it. Existing pictures and deliberate No simple picture choices are kept. Picture games use only suitable dictionary-form clues."
+msgstr "Pridá jeden obrázok pre každý základný tvar, spoločný aj pre jeho tvary vo vetách. Existujúce obrázky a zámerné voľby Bez jednoduchého obrázka sa zachovajú. Obrázkové hry používajú iba vhodné nápovedy pre základné tvary."
+
+#: community_dictionary/lemma_images
+msgid "Add missing lemma pictures, shared by forms in sentences and suitable picture games. Preview a small batch and its estimated cost first."
+msgstr "Doplňte chýbajúce obrázky základných tvarov, spoločné pre tvary vo vetách aj vhodné obrázkové hry. Najprv zobrazte náhľad malej dávky a odhad ceny."
+
+#: community_dictionary/lemma_images
+msgid "Generation runs in the background. A failed or interrupted paid request is never retried automatically. After an uncertain interruption, wait ten minutes before explicitly starting another attempt."
+msgstr "Generovanie prebieha na pozadí. Neúspešná alebo prerušená platená požiadavka sa nikdy neopakuje automaticky. Po prerušení s neistým výsledkom počkajte desať minút, kým výslovne spustíte ďalší pokus."
+
+#: community_dictionary/lemma_images
+msgid "Failed attempts are not retried automatically. Open an individual word picture to retry after checking its settings, credit or daily limit. Resuming runs only unstarted queued work."
+msgstr "Neúspešné pokusy sa neopakujú automaticky. Otvorte obrázok konkrétneho slova a po kontrole nastavení, kreditu alebo denného limitu skúste znova. Pokračovanie spustí iba nezačaté úlohy vo fronte."
+
+#: community_dictionary/lemma_images
+msgid "Picture activities use dictionary forms and pictures suitable as word clues. Illustrations marked as unsuitable for clues and No simple picture symbols are excluded."
+msgstr "Obrázkové aktivity používajú základné tvary a obrázky vhodné ako nápovedy. Ilustrácie označené ako nevhodné nápovedy a symboly Bez jednoduchého obrázka sa nepoužívajú."
+
+#: community_dictionary/lemma_images
+msgid "Word pages without a picture decision: %(missing_count)s"
+msgstr "Stránky slov bez rozhodnutia o obrázku: %(missing_count)s"
+
+#: community_dictionary/lemma_images
+msgid "Estimated allowance for one AI attempt: US$%(allowance)s. The actual charge may differ. Automatic generation uses the dictionary owner's account; this requested attempt uses your account."
+msgstr "Odhadovaná suma na jeden pokus AI: %(allowance)s USD. Skutočná suma sa môže líšiť. Automatické generovanie používa účet vlastníka slovníka; tento vyžiadaný pokus používa váš účet."
+
+#: community_dictionary/lemma_images
+msgid "Estimated allowance for this batch: US$%(estimate)s. Actual charges may differ; words with no useful illustration need only the planning request. This batch uses your account."
+msgstr "Odhadovaná suma pre túto dávku: %(estimate)s USD. Skutočné poplatky sa môžu líšiť; slová bez užitočnej ilustrácie vyžadujú iba plánovaciu požiadavku. Táto dávka používa váš účet."

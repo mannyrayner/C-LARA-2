@@ -84,11 +84,11 @@ class PublicPracticeTests(TestCase):
         WithdrawalHold.objects.create(participation=state, contribution=self.image)
         self.assertEqual(self.dataset()['cards'], [])
 
-    def test_linked_picture_obeys_source_visibility_and_revocation(self):
+    def test_linked_picture_is_not_a_word_clue_and_revocation_still_applies(self):
         other = self.make_entry('soffa', 'sofa')
         ImageWordLink.objects.create(image=self.image, word_entry=other, created_by=self.owner)
         before = self.dataset()
-        self.assertEqual(len(before['cards']), 2)
+        self.assertEqual(len(before['cards']), 1)
         Contribution.objects.filter(pk=self.image.pk).update(status='withdrawn')
         self.assertFalse(self.dataset(validate=before['revision'])['valid'])
         self.assertEqual(self.dataset()['cards'], [])

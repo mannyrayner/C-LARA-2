@@ -3,6 +3,7 @@
 <article class="word-row" data-word-row data-entry-id="{{ row.entry.pk }}" data-audio-id="{{ row.audio.pk|default:'' }}">
   {% if row.form %}<p class="help">{% translate "Dictionary form" %}</p>{% endif %}
   <h3 dir="{{ dictionary.text_direction }}"{% if hide_word_heading %} class="sr-only"{% endif %}>{{ row.entry.word }}</h3>
+  {% include 'community_dictionary/lemma_picture.html' with lemma_picture=row.lemma_picture %}
   <div class="word-actions">
     {% if row.audio %}
     <button type="button" class="secondary" data-word-listen aria-label="{% blocktranslate with word=row.entry.word %}Listen to {{ word }}{% endblocktranslate %}" aria-pressed="false" hidden>{% translate "Listen" %}</button>

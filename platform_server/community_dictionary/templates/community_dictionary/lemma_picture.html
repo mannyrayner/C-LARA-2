@@ -1,0 +1,20 @@
+{% load i18n %}
+{% if lemma_picture.id %}
+<figure class="lemma-picture">
+<a href="{% if public %}{% url 'community_dictionary:public-entry' dictionary.pk lemma_picture.entry_id %}{% else %}{% url 'community_dictionary:entry' dictionary.pk lemma_picture.entry_id %}{% endif %}?picture={{ lemma_picture.id }}">
+<img loading="lazy" width="{% if on_word_page or word_page or manage_picture %}220{% else %}112{% endif %}" height="{% if on_word_page or word_page or manage_picture %}220{% else %}112{% endif %}" style="object-fit:contain;max-width:100%;height:auto" src="{% if public %}{% url 'community_dictionary:public-media' dictionary.pk lemma_picture.id %}{% else %}{% url 'community_dictionary:media' dictionary.pk lemma_picture.id %}{% endif %}" alt="{% translate 'Word illustration' %}">
+</a>
+{% if lemma_picture.generated %}<figcaption class="help">{% translate "AI-generated picture" %}</figcaption>{% endif %}
+</figure>
+{% elif lemma_picture.status == 'none' %}
+<figure class="lemma-picture">
+<svg width="96" height="76" viewBox="0 0 96 76" role="img" aria-label="{% translate 'No simple picture' %}"><rect x="2" y="2" width="92" height="72" rx="14" fill="currentColor" opacity=".08"/><path d="M28 48c-18-1-18-26-2-28 7-15 28-14 35-1 19-4 24 23 7 28H28Z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="29" cy="57" r="4" fill="currentColor"/><circle cx="21" cy="65" r="2" fill="currentColor"/></svg>
+<figcaption>{% translate "No simple picture" %}</figcaption>
+</figure>
+{% endif %}
+{% if not public %}
+{% if lemma_picture.status == 'waiting' %}<p class="help" role="status">{% translate "Word picture queued. Refresh to check progress." %}</p>
+{% elif lemma_picture.status == 'analysing' or lemma_picture.status == 'generating' %}<p class="help" role="status">{% translate "Preparing word picture. Refresh to check progress." %}</p>
+{% elif lemma_picture.status == 'failed' %}<p class="help">{% translate "Word picture could not be completed. Open Word picture to check settings and try again." %}</p>
+{% elif lemma_picture.status == 'stale' %}<p class="help">{% translate "The word or meaning changed. Open Word picture to update its illustration." %}</p>{% endif %}
+{% endif %}
