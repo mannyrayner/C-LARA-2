@@ -43,11 +43,13 @@ def vocabulary_only(entry):
     if loaded:
         entry = loaded.entry(entry)
         return (entry.entry_type == 'word' and
-            not any(p.kind == 'image' and p.status == 'accepted' for p in loaded.by_entry[entry.pk]) and
+            not any(p.kind == 'image' and p.status == 'accepted' and p.provenance.get('role') != 'lemma_image'
+                    for p in loaded.by_entry[entry.pk]) and
             (entry.current_text and (entry.current_text.provenance.get('origin') == 'picture-description' or
              entry.current_text.provenance.get('sentence_vocabulary')) or entry.pk in loaded.word_link_entries))
     return (entry.entry_type == 'word' and
-            not entry.contributions.filter(kind='image', status='accepted').exists() and
+            not entry.contributions.filter(kind='image', status='accepted').exclude(pk__in=
+                entry.contributions.filter(provenance__role='lemma_image').values('pk')).exists() and
             (entry.current_text and (entry.current_text.provenance.get('origin') == 'picture-description' or
              entry.current_text.provenance.get('sentence_vocabulary')) or
              sentence_links(entry.dictionary).filter(word_entry=entry).exists()))

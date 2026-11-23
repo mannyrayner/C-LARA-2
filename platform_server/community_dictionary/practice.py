@@ -15,6 +15,7 @@ from django.utils.translation import gettext_noop as N_
 from core.picture_games import _build_crossword_item, _generate_word_scramble_items, _exercise_near_duplicate
 from .lexicon import outdated_tts, valid_links
 from .models import Contribution, Entry
+from .lemma_images import clue_picture
 
 
 MODES = (
@@ -31,7 +32,7 @@ def media_url(dictionary, contribution):
 
 def catalogue(dictionary, category=''):
     entries = list(Entry.objects.filter(dictionary=dictionary, archived=False)
-        .select_related('current_text', 'current_meaning', 'current_category')
+        .select_related('current_text', 'current_meaning', 'current_category', 'lemma_image')
         .prefetch_related(Prefetch('contributions', queryset=Contribution.objects.filter(
             status='accepted', kind__in=['image', 'audio']).exclude(file_path=''), to_attr='practice_media'))
         .order_by('pk'))
@@ -58,10 +59,11 @@ def catalogue(dictionary, category=''):
             continue
         pictures = sorted(images[entry.pk], key=lambda c: (c.pk != entry.selected_image_id, c.entry_id != entry.pk, -c.pk))
         audio = [c for c in entry.practice_media if c.kind == 'audio' and not outdated_tts(c, entry, dictionary)]
-        picture, recording = next(iter(pictures), None), next(iter(audio), None)
+        entry.dictionary = dictionary
+        picture, recording = clue_picture(entry, pictures), next(iter(audio), None)
         rows.append({'id': entry.pk, 'text': values['word'], 'meaning': values['meaning'],
             'category': values['category'],
-            'picture_ids': sorted({c.pk for c in pictures}),
+            'picture_ids': [picture.pk] if picture else [],
             'image': media_url(dictionary, picture) if picture else '',
             'audio': media_url(dictionary, recording) if recording else '',
             'image_generated': bool(picture and picture.provenance.get('origin') == 'generated'),

@@ -43,6 +43,10 @@ def speech(*args,report=None,**kwargs):
     PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
 class PictureCaptureTests(TestCase):
     def setUp(self):
+        # Other suites reuse these publication fixtures. Keep the independent
+        # automatic lemma-image worker mocked alongside their audio providers.
+        lemma_queue = patch('community_dictionary.lemma_images.queue')
+        lemma_queue.start(); self.addCleanup(lemma_queue.stop)
         from types import SimpleNamespace
         checker = patch('community_dictionary.port_language.check', return_value=SimpleNamespace(
             status='completed', output_text='{"verdict":"match"}',

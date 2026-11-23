@@ -7,10 +7,11 @@ from django.urls import reverse
 
 from . import public_browsing as public, practice_views
 from .public_views import visitor_page, context
+from .lemma_images import clue_picture
 
 
 def catalogue(dictionary, category=''):
-    entries = list(public.entries(dictionary).order_by('pk'))
+    entries = list(public.entries(dictionary).select_related('lemma_image').order_by('pk'))
     media = {e.pk: public.media_for(e, dictionary) for e in entries}
     images = {e.pk: [p for p in media[e.pk] if p.kind == 'image'] for e in entries}
     by_image = {p.pk: p for parts in images.values() for p in parts}
@@ -26,14 +27,15 @@ def catalogue(dictionary, category=''):
         if category and entry.public_category != category:
             continue
         pictures = sorted(images[entry.pk], key=lambda p: (p.pk != entry.selected_image_id, p.entry_id != entry.pk, -p.pk))
-        picture = next(iter(pictures), None)
+        entry.dictionary = dictionary
+        picture = clue_picture(entry, pictures)
         audio = next((p for p in media[entry.pk] if p.kind == 'audio'), None)
         if not entry.public_word and not picture and not audio:
             continue
         def media_url(part):
             return reverse('community_dictionary:public-media', args=[dictionary.pk, part.pk]) if part else ''
         rows.append({'id': entry.pk, 'text': entry.public_word, 'meaning': entry.public_meaning,
-            'category': entry.public_category, 'picture_ids': sorted({p.pk for p in pictures}),
+            'category': entry.public_category, 'picture_ids': [picture.pk] if picture else [],
             'image': media_url(picture), 'audio': media_url(audio),
             'image_generated': bool(picture and picture.provenance.get('origin') == 'generated'),
             'audio_synthetic': bool(audio and audio.provenance.get('origin') == 'synthetic'),

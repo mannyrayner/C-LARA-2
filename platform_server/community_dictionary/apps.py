@@ -8,5 +8,6 @@ class CommunityDictionaryConfig(AppConfig):
 
     def ready(self):
         from . import checks  # noqa: F401
+        from . import lemma_image_signals  # noqa: F401
         from .deployment_health import capture_release
         capture_release()

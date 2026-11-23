@@ -59,17 +59,17 @@ class PracticeChoiceTests(TestCase):
             if card['id'] == a.pk:
                 self.assertNotIn(b.pk, [o['id'] for o in card['options']])
 
-    def test_extra_word_link_excluded_even_when_both_have_their_own_photos(self):
+    def test_context_link_preserves_distinct_dedicated_picture_choices(self):
         sofa = self.word('soffa')
         cat = self.word('katt')
         self.word('elefant')
         original = self.deck()
         ImageWordLink.objects.create(image=sofa.contributions.get(kind='image'), word_entry=cat, created_by=self.owner)
-        self.assertFalse(self.client.get(self.url('practice-data'), {'validate':original['revision']}).json()['valid'])
+        self.assertTrue(self.client.get(self.url('practice-data'), {'validate':original['revision']}).json()['valid'])
         for mode, _ in practice.MODES:
             for card in self.deck(mode=mode)['cards']:
                 if card['id'] in [sofa.pk, cat.pk]:
-                    self.assertEqual({o['id'] for o in card['options']} & {sofa.pk,cat.pk}, {card['id']})
+                    self.assertEqual({o['id'] for o in card['options']} & {sofa.pk,cat.pk}, {sofa.pk, cat.pk})
 
     def test_small_dictionary_has_two_options_or_a_clear_recall_suggestion(self):
         self.word('katt')
