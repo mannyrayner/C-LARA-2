@@ -43,6 +43,9 @@ def visitor_page(view):
 
 
 def context(request, dictionary=None, **extra):
+    if getattr(getattr(request, 'resolver_match', None), 'url_name', None) in {'public-word', 'public-entry'}:
+        from .game_navigation import context as game_context
+        extra.update(game_context(request, dictionary, public=True))
     can_join_view = bool(dictionary and request.user.is_authenticated and
                         dictionaries_for(request.user).filter(pk=dictionary.pk).exists())
     return {'public_browsing': True, 'dictionary': dictionary,

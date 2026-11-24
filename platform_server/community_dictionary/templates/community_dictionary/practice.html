@@ -2,7 +2,8 @@
 {% block title %}{% blocktranslate with value1=dictionary.name %}Practise · {{ value1 }}{% endblocktranslate %}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{% static 'community_dictionary/practice.css' %}?v=2">
-<script src="{% static 'community_dictionary/practice.js' %}?v=4" defer></script>
+<script src="{% static 'community_dictionary/practice_session.js' %}?v=1" defer></script>
+<script src="{% static 'community_dictionary/practice.js' %}?v=5" defer></script>
 <div class="practice-intro"><div class="page-heading"><h1>{% translate "Practise" %}</h1><span>{{ dictionary.name }}</span></div>
 <p class="lead">{% translate "Learn with the pictures, voices and words you have collected together." %}</p></div>
 {% if describe_pictures %}<section class="panel"><h2>{% translate "Describe a picture" %}</h2>
@@ -34,7 +35,7 @@
       </section>
     </div>
     <p class="help">{% translate "Only accepted material is used. Each activity needs both of its chosen kinds of content. Letter games need at least two different picture words with 2–12 letters; spaces, hyphens and apostrophes are left out, and accents are kept. Words that do not fit the grid are still available in flashcards." %}</p>
-    <p class="help">{% translate "No AI calls or charges. Your answers stay in this page; leaving starts a fresh practice session." %}</p>
+    <p class="help">{% translate "No AI calls or charges. Game progress stays in this browser tab for up to two hours while you visit word and sentence pages. Close the tab or choose another activity to clear it." %}</p>
     <p class="help">{% translate "Picture activities use dictionary forms and pictures suitable as word clues. Illustrations marked as unsuitable for clues and No simple picture symbols are excluded." %}</p>
   </div>
   <section id="practice-game" class="panel" hidden aria-label="{% translate "Practice activity" %}">

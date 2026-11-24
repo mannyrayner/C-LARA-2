@@ -8605,3 +8605,12 @@ msgstr "Vyberte obrázky slov na generovanie, opätovné generovanie alebo odstr
 #: community_dictionary/templates/community_dictionary/word_images.html
 msgid "Partial total. Attempts with incomplete cost information: %(count)s."
 msgstr "Čiastočný súčet. Pokusy s neúplnými údajmi o cene: %(count)s."
+
+msgid "Back to game"
+msgstr "Späť k hre"
+
+msgid "No AI calls or charges. Game progress stays in this browser tab for up to two hours while you visit word and sentence pages. Close the tab or choose another activity to clear it."
+msgstr "Bez volaní AI a bez poplatkov. Počas prezerania stránok slov a viet sa priebeh hry uchová v tejto karte prehliadača najviac dve hodiny. Zatvorením karty alebo výberom inej aktivity sa vymaže."
+
+msgid "This game is no longer available in this tab. Choose an activity to start again."
+msgstr "Táto hra už v tejto karte nie je dostupná. Vyberte si aktivitu a začnite znova."

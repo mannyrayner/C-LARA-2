@@ -1,6 +1,7 @@
 """Member-only, non-persistent learning games."""
 import random
 import secrets
+import re
 
 from django.utils.translation import gettext
 from django.contrib.auth.decorators import login_required
@@ -47,6 +48,10 @@ def game_response(request, rows, revision):
     if request.GET.get('validate'):
         return JsonResponse({'valid': request.GET['validate'] == revision})
     game = request.GET.get('game', 'flashcards')
+    seed = request.GET.get('seed', '') or secrets.token_hex(16)
+    if not re.fullmatch(r'[0-9a-f]{32}', seed):
+        return JsonResponse({'error': gettext('Choose a game.')}, status=400)
+    rng = random.Random(seed)
     if game == 'flashcards':
         mode = request.GET.get('mode', 'image-text')
         if mode not in dict(practice.MODES):
@@ -55,20 +60,20 @@ def game_response(request, rows, revision):
         if style not in {'choice', 'recall'}:
             return JsonResponse({'error': gettext('Choose multiple choice or reveal the answer.')}, status=400)
         if style == 'choice':
-            cards = practice.choice_cards(rows, mode)
+            cards = practice.choice_cards(rows, mode, rng=rng)
             if not cards:
                 return JsonResponse({'error': gettext('There are not enough distinct answers for multiple choice in this category. Choose another category or use Reveal the answer.')}, status=400)
         else:
             cards = practice.eligible(rows, mode)
-            random.SystemRandom().shuffle(cards)
+            rng.shuffle(cards)
         content = {'cards': cards[:10], 'mode': mode, 'style': style}
     elif game in {'crossword', 'scramble'}:
-        content = practice.puzzle(rows, game, secrets.token_hex(8))
+        content = practice.puzzle(rows, game, seed)
         if content is None:
             return JsonResponse({'error': gettext('We need at least two different picture words that fit together. Try another category or add some shorter words.')}, status=400)
     else:
         return JsonResponse({'error': gettext('Choose a game.')}, status=400)
-    return JsonResponse({'game': game, 'revision': revision, **content})
+    return JsonResponse({'game': game, 'revision': revision, 'seed': seed, **content})
 
 
 @login_required

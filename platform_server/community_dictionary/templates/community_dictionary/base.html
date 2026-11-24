@@ -2,7 +2,7 @@
 <html lang="{{ community_ui_language|default:'en' }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}{% translate "Community dictionaries" %}{% endblock %} · C-LARA</title>
 {% block extra_head %}{% endblock %}
-<link rel="stylesheet" href="{% static 'community_dictionary/app.css' %}?v=21">
+<link rel="stylesheet" href="{% static 'community_dictionary/app.css' %}?v=22">
 <script src="{% url 'community_dictionary:javascript-catalog' %}?language={{ community_ui_language }}" defer></script>
 {% if not public_browsing %}<script src="{% static 'community_dictionary/recorder.js' %}?v=3" defer></script>
 <script src="{% static 'community_dictionary/app.js' %}?v=16" defer></script>{% endif %}
@@ -39,6 +39,8 @@
 <main id="main">{% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
 {% if not content_first_browse %}{% include 'community_dictionary/dictionary_visibility.html' %}{% endif %}
 {% include 'community_dictionary/allowance_offer.html' %}
+{% if game_return %}<p class="game-return"><a class="button" href="{{ game_return.url }}" data-game-return data-token="{{ game_return.token }}" data-category="{{ game_return.category }}" data-word-prefix="{{ game_return.word_prefix }}" data-entry-prefix="{{ game_return.entry_prefix }}">{% translate "Back to game" %}</a></p>
+<script src="{% static 'community_dictionary/game_navigation.js' %}?v=1" defer></script>{% endif %}
 {% block content %}{% endblock %}</main>
 {% if not public_browsing %}<dialog data-leave-dialog aria-labelledby="leave-title" aria-describedby="leave-description">
   <h2 id="leave-title">{% translate "Save before leaving?" %}</h2>

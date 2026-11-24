@@ -1,4 +1,4 @@
-/* Page-local practice. No content, recordings or scores enter browser storage. */
+/* Practice content is fetched fresh; only temporary progress is kept in this tab. */
 (() => {
   'use strict';
   const gettext = window.gettext || (message => message);
@@ -11,6 +11,9 @@
   const status = document.getElementById('practice-status');
   const title = document.getElementById('game-title');
   const progress = document.getElementById('game-progress');
+  const sessions = window.CommunityPracticeSession;
+  const scope = root.dataset.url + ':' + document.body.dataset.user;
+  let sessionToken = '', visitingWord = false;
   let data = null, queue = [], total = 0, learned = 0, current = 0, revealed = false;
   let solved = new Map(), startCell = null, busy = false, epoch = 0, enlarged = false;
   let mcWrong = new Set(), mcOutcome = '', mcFirst = 0;
@@ -26,6 +29,7 @@
   };
   function stopAudio() { body.querySelectorAll('audio').forEach(a => { a.pause(); a.removeAttribute('src'); a.load(); }); }
   function clear(message='') {
+    sessions.forget(sessionToken); sessionToken=''; visitingWord=false;
     epoch++; stopAudio(); data=null; queue=[]; solved.clear(); startCell=null; busy=false;
     body.replaceChildren(); game.hidden=true; choices.hidden=false; status.textContent=message;
     document.body.classList.remove('practice-active');
@@ -83,7 +87,82 @@
     const details=el('details'); details.append(el('summary',gettext('Translation')),el('p',row.meaning)); parent.append(details);
   }
   function wordLink(row, parent) {
-    const a=el('a',row.text ? gettext('Visit word page') : gettext('Visit entry')); a.href=row.word_url || row.entry_url; parent.append(a);
+    const a=el('a',row.text ? gettext('Visit word page') : gettext('Visit entry'));
+    const url=new URL(row.word_url || row.entry_url, location.origin);
+    url.searchParams.set('return_game', sessionToken);
+    url.searchParams.set('game_category', root.dataset.category);
+    a.href=url.href;
+    const leave=event=>{
+      remember();
+      if(event.type==='click'&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey&&!event.button)visitingWord=true;
+    };
+    a.addEventListener('click',leave); a.addEventListener('auxclick',leave); parent.append(a);
+  }
+  function remember() {
+    if (!data || !sessionToken) return;
+    sessions.save(sessionToken,scope,root.dataset.category,{
+      seed:data.seed, revision:data.revision, kind:data.game, mode:data.mode, style:data.style,
+      queue:queue.map(row=>row.id),total,learned,current,revealed,
+      solved:[...solved],paths:data.game==='scramble'?data.clues.map(clue=>clue.path):[],
+      mcWrong:[...mcWrong],mcOutcome,mcFirst,enlarged,scroll:window.scrollY,
+    });
+  }
+  const expired = () => gettext('This game is no longer available in this tab. Choose an activity to start again.');
+  function showGame() {
+    choices.hidden=true;game.hidden=false;status.textContent='';
+    document.body.classList.add('practice-active');
+    title.textContent=data.game==='flashcards'?gettext('Flashcards'):data.game==='crossword'?gettext('Picture crossword'):gettext('Word scramble');
+    if(data.game==='flashcards')renderFlashcard();else renderPuzzle();
+  }
+  async function resume(token) {
+    const saved=sessions.load(token,scope,root.dataset.category);
+    if(!saved){clear(expired());return;}
+    busy=true;const expected=epoch;
+    try {
+      if(!['flashcards','crossword','scramble'].includes(saved.kind) || !/^[0-9a-f]{32}$/.test(saved.seed))throw new Error(expired());
+      const result=await fetchData({game:saved.kind,mode:saved.mode || 'image-text',style:saved.style || 'recall',seed:saved.seed});
+      if(expected!==epoch)return;
+      if(result.revision!==saved.revision)throw new Error(gettext('The dictionary changed. Choose an activity to practise with the current shared content.'));
+      const integer=(n,max)=>Number.isInteger(n)&&n>=0&&n<=max;
+      if(!integer(saved.total,10)||!integer(saved.learned,10)||!integer(saved.mcFirst,10)||
+          typeof saved.revealed!=='boolean'||typeof saved.enlarged!=='boolean'||
+          !['','correct','shown'].includes(saved.mcOutcome))throw new Error(expired());
+      let restoredQueue=[],restoredSolved=new Map();
+      if(result.game==='flashcards') {
+        if(!Array.isArray(saved.queue)||saved.queue.length>10||!Array.isArray(saved.mcWrong)||saved.mcWrong.length>4)throw new Error(expired());
+        const cards=new Map(result.cards.map(row=>[row.id,row]));
+        restoredQueue=saved.queue.map(id=>{if(!cards.has(id))throw new Error(expired());return cards.get(id);});
+        const options=restoredQueue[0]?.options || [];
+        if(saved.mcWrong.some(id=>!options.some(option=>option.id===id)))throw new Error(expired());
+      }else{
+        if(!integer(saved.current,result.clues.length-1)||!Array.isArray(saved.solved)||saved.solved.length>result.clues.length)throw new Error(expired());
+        for(const item of saved.solved){
+          if(!Array.isArray(item)||!integer(item[0],result.clues.length-1)||!['correct','shown'].includes(item[1]))throw new Error(expired());
+          restoredSolved.set(item[0],item[1]);
+        }
+        if(result.game==='scramble'){
+          if(!Array.isArray(saved.paths)||saved.paths.length!==result.clues.length)throw new Error(expired());
+          saved.paths.forEach((path,index)=>{
+            const clue=result.clues[index];
+            if(!Array.isArray(path)||path.length!==[...clue.answer].length||path.some(p=>
+              !integer(p.row,result.grid.length-1)||!integer(p.col,result.grid[p.row].length-1)))throw new Error(expired());
+            const letters=path.map(p=>result.grid[p.row][p.col]).join('');
+            if(letters!==clue.answer&&[...letters].reverse().join('')!==clue.answer)throw new Error(expired());
+            clue.path=path;
+          });
+        }
+      }
+      data=result;sessionToken=token;queue=restoredQueue;solved=restoredSolved;
+      ({total,learned,current,revealed,mcOutcome,mcFirst,enlarged}=saved);
+      mcWrong=new Set(saved.mcWrong || []);startCell=null;
+      if(result.game==='flashcards'){
+        document.getElementById('flashcard-mode').value=result.mode;
+        document.getElementById('flashcard-style').value=result.style;
+      }
+      showGame();title.focus();
+      if(Number.isFinite(saved.scroll))window.scrollTo(0,Math.max(0,saved.scroll));
+    }catch(e){if(expected===epoch){sessions.forget(token);clear(e.message || expired());}}
+    finally{if(expected===epoch)busy=false;}
   }
   function renderFlashcard() {
     if (data.style==='choice') { renderChoices(); return; }
@@ -258,10 +337,9 @@
       if(expected!==epoch)return;
       if(kind==='flashcards' && !result.cards.length){clear(gettext('No cards have both kinds of content yet. Choose another direction or add the missing pictures, words or recordings.'));return;}
       data=result;current=0;revealed=false;learned=0;solved=new Map();mcWrong=new Set();mcOutcome='';mcFirst=0;
-      choices.hidden=true;game.hidden=false;status.textContent='';enlarged=false;
-      document.body.classList.add('practice-active');
-      title.textContent=kind==='flashcards'?gettext('Flashcards'):kind==='crossword'?gettext('Picture crossword'):gettext('Word scramble');
-      if(kind==='flashcards'){queue=[...data.cards];total=queue.length;renderFlashcard();}else renderPuzzle();
+      sessionToken=sessions.token();enlarged=false;
+      if(kind==='flashcards'){queue=[...data.cards];total=queue.length;}
+      showGame();
       title.focus();
     }catch(e){if(expected===epoch)clear(e.message || gettext('Unable to connect. Please try again.'));}
     finally{if(expected===epoch)busy=false;}
@@ -276,6 +354,11 @@
     if(document.hidden){body.querySelectorAll('audio').forEach(a=>a.pause());game.hidden=true;}
     else guarded(()=>{game.hidden=false;});
   });
-  window.addEventListener('pagehide',()=>clear());
-  window.addEventListener('pageshow',e=>{if(e.persisted)clear(gettext('Choose an activity to use the latest shared content.'));});
+  window.addEventListener('pagehide',()=>{
+    epoch++;busy=false;stopAudio();game.hidden=true;
+    if(!visitingWord){sessions.forget(sessionToken);data=null;}
+  });
+  window.addEventListener('pageshow',e=>{if(e.persisted){visitingWord=false;if(data)guarded(()=>{game.hidden=false;});else clear();}});
+  const returnToken=new URL(location.href).searchParams.get('resume');
+  if(returnToken)resume(returnToken);
 })();

@@ -911,3 +911,6 @@ msgstr ""
 
 msgid "Stop recording before listening to a hint."
 msgstr "Arrêtez l’enregistrement avant d’écouter un indice."
+
+msgid "This game is no longer available in this tab. Choose an activity to start again."
+msgstr "Ce jeu n’est plus disponible dans cet onglet. Choisissez une activité pour recommencer."
