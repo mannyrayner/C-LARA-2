@@ -58,7 +58,7 @@ or a simple default style when no shared style is set. No image request is made
 for No simple picture. Prompts prohibit written answers and labels.
 
 The existing configured photo/text model, image model, image allowance, daily
-limits, personal-key and credit accounting are reused. Estimated allowance is
+limits, personal-key and credit accounting are reused. The credit admission allowance is
 the image allowance plus a bounded text estimate. It is not a fixed charge or
 provider spending cap. Returned usage is accounted even when later image
 validation or publication fails; the provider invoice remains authoritative.
@@ -71,7 +71,7 @@ picture, Resource limit reached, Failed, Queued, Planning, Generating or Hidden.
 Illustration-only pictures carry their exercise-clue warning. Existing uploaded
 pictures and deliberate choices are shown as well as missing pictures.
 
-Select cards, use **Select all shown** or **Clear selection**, then choose
+Select cards, use **Select all shown** or **Start a new selection**, then choose
 **Generate/regenerate selected**. Review the selected cost and approve one batch
 of 1–50 words. Existing pictures remain visible during regeneration and survive
 a failed replacement. **Show more words** expands the first page from 20 to 100
@@ -96,6 +96,24 @@ cancelled without a provider call; undo never silently restarts a paid attempt.
   five recent batches persist across visits for their requester.
 - **Cumulative word-picture cost** covers all word-image attempts in this
   dictionary, including previous regenerations and pictures later hidden.
+
+Once five usable completed pictures exist, the bulk forecast uses up to 100 recent
+successful pictures from this dictionary with the same image model, quality and
+size. Image tokens are repriced at current rates. Planning uses recent retained
+tokens with the same analysis model when available, otherwise a cautious text
+allowance. Earlier receipts without planning tokens still improve the image
+estimate. Until enough samples exist, the initial cautious allowance is labelled
+explicitly. The forecast assumes an image is needed for each selected word;
+No simple picture decisions cost less. Failed, incomplete and unstarted attempts
+do not train the forecast. Actual accounting and the conservative per-attempt
+credit admission check are unchanged. Completing another batch does not invalidate
+an approved preview or alter its original estimate.
+
+Selections persist after generation and across pages. A sticky toolbar shows the
+count out of 50, explains the limit before another checkbox is attempted, and
+offers **Start a new selection**. The completed-batch panel offers the same action
+while words from that batch remain selected. Clearing only deselects checkboxes;
+it keeps pictures, requests and billing history.
 
 New attempts retain cost parts in the existing private ImageStudy usage receipt,
 including personal-key planning costs. Unknown provider usage is labelled as a
