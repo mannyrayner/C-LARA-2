@@ -10,6 +10,14 @@
   });
   const root = document.getElementById('word-picture-overview');
   if (!root) return;
+  // The dictionary navigation is sticky too and can wrap on narrow screens.
+  const navigation = document.querySelector('.dictionary-nav');
+  if (navigation) {
+    const positionToolbar = () => root.style.setProperty('--picture-nav-offset', `${navigation.getBoundingClientRect().height}px`);
+    positionToolbar();
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(positionToolbar).observe(navigation);
+    else window.addEventListener('resize', positionToolbar);
+  }
   const key = root.dataset.storageKey;
   let saved = {};
   try { saved = JSON.parse(sessionStorage.getItem(key) || '{}'); } catch (_) {}

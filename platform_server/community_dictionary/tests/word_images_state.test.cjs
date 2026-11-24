@@ -9,19 +9,28 @@ function element(props = {}) {
     hasAttribute(){return false}, scrollIntoView(){this.scrolled=true},
     addEventListener(name, fn){this.listeners[name]=fn}, fire(name){this.listeners[name]?.({})}}, props);
 }
-function page(storage, ids, {server = false, supplied = {}, tokenPrefix = 'token'} = {}) {
+function page(storage, ids, {server = false, supplied = {}, tokenPrefix = 'token', navHeight = 54} = {}) {
   const boxes=ids.map(id=>element({value:tokenPrefix+id,dataset:{pictureId:String(id)}}));
   const one=Object.fromEntries(['selection-tokens','selection-message','selected-count','selected-estimate','confirm-generation','selection-changed','select-visible','clear-selection','picture-selection','completed-selection','selection-controls'].map(k=>[k,element()]));
   const next=element({hasAttribute(name){return name==='data-return-to-selection'}});
   const link=element(); const bulk=[element(),element()]; let scroll;
+  let observer, offset;
+  const navigation={getBoundingClientRect(){return {height:navHeight}}};
   const root={dataset:{storageKey:'fixture',unitMicro:'508750',serverSelection:server?'1':'0',limitMessage:'At most 50',completedEntries:'1 2'},
+    style:{setProperty(name,value){assert.equal(name,'--picture-nav-offset');offset=value}},
     querySelector(selector){return one[selector.slice(6,-1)]},
     querySelectorAll(selector){return selector==='[data-picture-id]'?boxes:selector==='[data-bulk-button]'?bulk:selector==='[data-clear-selection]'?[one['clear-selection'],next]:[link]}};
-  vm.runInNewContext(source,{document:{querySelectorAll(){return []},getElementById(id){return id==='word-picture-overview'?root:{textContent:JSON.stringify(supplied)}}},
+  vm.runInNewContext(source,{document:{querySelectorAll(){return []},querySelector(){return navigation},getElementById(id){return id==='word-picture-overview'?root:{textContent:JSON.stringify(supplied)}}},
+    ResizeObserver:class {constructor(fn){observer=fn}observe(element){assert.equal(element,navigation)}},
     sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},
     window:{scrollY:337,scrollTo:(x,y)=>{scroll=y}},requestAnimationFrame:fn=>fn(),location:{hash:'#word-image-progress'}});
-  return {boxes,one,bulk,link,next,get scroll(){return scroll}};
+  return {boxes,one,bulk,link,next,get scroll(){return scroll},get offset(){return offset},resizeNav(height){navHeight=height;observer()}};
 }
+test('sticky selection controls stay below the navigation when it wraps',()=>{
+  const p=page(new Map(),[1],{navHeight:54});
+  assert.equal(p.offset,'54px');
+  p.resizeNav(112);assert.equal(p.offset,'112px');
+});
 test('selection and estimate survive more words and progress refresh, with fresh signatures',()=>{
   const store=new Map();const first=page(store,[1,2]);
   first.one['select-visible'].fire('click');assert.equal(first.one['selected-estimate'].textContent,'1.02');
