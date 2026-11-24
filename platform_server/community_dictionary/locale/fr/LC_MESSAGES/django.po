@@ -8725,3 +8725,12 @@ msgstr "Sélectionnez les images de mots à générer, régénérer ou retirer, 
 #: community_dictionary/templates/community_dictionary/word_images.html
 msgid "Partial total. Attempts with incomplete cost information: %(count)s."
 msgstr "Total partiel. Tentatives avec informations de coût incomplètes : %(count)s."
+
+msgid "Back to game"
+msgstr "Retour au jeu"
+
+msgid "No AI calls or charges. Game progress stays in this browser tab for up to two hours while you visit word and sentence pages. Close the tab or choose another activity to clear it."
+msgstr "Aucun appel ni frais d’IA. Votre progression reste dans cet onglet pendant deux heures au maximum lorsque vous consultez des mots et des phrases. Fermez l’onglet ou choisissez une autre activité pour l’effacer."
+
+msgid "This game is no longer available in this tab. Choose an activity to start again."
+msgstr "Ce jeu n’est plus disponible dans cet onglet. Choisissez une activité pour recommencer."

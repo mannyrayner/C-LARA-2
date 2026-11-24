@@ -63,8 +63,11 @@ not all selected words interlock. Small categories may not provide a useful puzz
 The builders are heuristic; a repeated selection can yield the same layout.
 
 No content or progress is copied into a saved exercise, IndexedDB or localStorage.
-There are no paid calls or new database tables. Refreshing/leaving loses the
-session. Each interaction rechecks current membership and a digest of relevant
+The optional [Back to game](community-game-return.md) route keeps only a seed,
+entry IDs and progress in this tab's sessionStorage for at most two hours. No
+dictionary text or media is saved there. A return rebuilds the same activity
+from currently authorized content; choosing another activity clears the snapshot.
+There are no paid calls or new database tables. Each interaction rechecks current membership and a digest of relevant
 accepted content. The open page also rechecks every 30 seconds while visible and
 when returning from another app. A change or failed connection clears the game
 and asks the learner to start again. Media requests separately require active
