@@ -333,7 +333,8 @@ def run(pk, revision):
         if usage:
             from .capture import charge
             planning_cost = text_cost(row.quote, usage.input_tokens, usage.output_tokens).quantize(Decimal('.000001'))
-            costs.track(study, planning_cost=str(planning_cost))
+            costs.track(study, planning_cost=str(planning_cost), planning_usage={
+                'input_tokens': usage.input_tokens, 'output_tokens': usage.output_tokens})
             with transaction.atomic():
                 charge(study, 'lemma_picture_plan', planning_cost, row.quote['analysis_model'], 'lemma_picture_plan')
         result = parse(response)

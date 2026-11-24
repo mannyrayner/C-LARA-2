@@ -20,8 +20,10 @@ def money(value):
 
 
 def metadata(row, *, batch='', unit_estimate='0'):
+    from . import image_generation as images
     return {'version': 1, 'attempt': row.pk, 'revision': row.revision, 'entry': row.entry_id,
         'batch': str(batch), 'batch_created': timezone.now().isoformat(),
+        'size': images.SIZE, 'analysis_model': row.quote['analysis_model'],
         'unit_estimate': str(unit_estimate), 'started': False, 'finished': False,
         'status': 'waiting', 'planning_started': False, 'planning_cost': None,
         'image_started': False, 'image_cost': None, 'error_code': ''}
@@ -127,6 +129,37 @@ def cumulative(dictionary):
     return summaries(word_studies(dictionary))
 
 
+def forecast(dictionary, prices):
+    """Recent image usage is a forecast; the configured credit allowance is separate.
+
+    Reprice tokens at today's rates rather than averaging historical charges.
+    Do not put this changing sample into the stable worker permission quote.
+    """
+    from . import image_generation as images, lemma_images as pictures
+    from .port_costs import text_cost
+    samples, plans = [], []
+    for study in word_studies(dictionary).filter(model=prices['model'], quality=images.QUALITY,
+            usage__lemma_picture__finished=True, usage__lemma_picture__status='ready',
+            usage__lemma_picture__image_started=True).order_by('-created_at')[:100]:
+        meta = study.usage[KEY]
+        if (meta.get('image_cost') is None or meta.get('planning_cost') is None or
+                meta.get('size', '1024x1024') != images.SIZE):
+            continue
+        image_cost = images.usage_cost(study.usage)
+        if image_cost is not None:
+            samples.append(image_cost)
+            usage = meta.get('planning_usage')
+            if usage and meta.get('analysis_model') == prices['analysis_model']:
+                plans.append(text_cost(prices, usage['input_tokens'], usage['output_tokens']))
+    planning = text_cost(prices, 3000, 500)
+    if len(samples) < 5:
+        return {'unit': pictures.estimate(prices), 'samples': 0}
+    if len(plans) >= 5:
+        planning = sum(plans, Decimal('0')) / len(plans)
+    return {'unit': (sum(samples, Decimal('0')) / len(samples) + planning).quantize(
+        Decimal('.000001'), rounding=ROUND_HALF_UP), 'samples': len(samples)}
+
+
 def batch_summary(dictionary, user, batch_id=None):
     query = word_studies(dictionary).filter(user=user, usage__has_key=KEY).exclude(
         usage__lemma_picture__batch='')
@@ -145,6 +178,7 @@ def batch_summary(dictionary, user, batch_id=None):
         return None
     result = summaries(rows)
     return {**result, 'id': batch_id,
+        'entry_ids': [s.usage[KEY]['entry'] for s in rows],
         'estimate': money(sum((Decimal(s.usage[KEY]['unit_estimate']) for s in rows), Decimal('0'))),
         'created': rows[0].usage[KEY]['batch_created'],
         'complete': result['pending'] == 0, 'finished': len(rows)-result['pending']}

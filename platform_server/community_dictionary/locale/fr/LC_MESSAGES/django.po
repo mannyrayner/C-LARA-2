@@ -8734,3 +8734,32 @@ msgstr "Aucun appel ni frais d’IA. Votre progression reste dans cet onglet pen
 
 msgid "This game is no longer available in this tab. Choose an activity to start again."
 msgstr "Ce jeu n’est plus disponible dans cet onglet. Choisissez une activité pour recommencer."
+
+#. Word-picture estimates and persistent selections.
+msgid "50 pictures are already selected, including words on other pages. Start a new selection or deselect some words to add more."
+msgstr "50 images sont déjà sélectionnées, y compris sur d’autres pages. Commencez une nouvelle sélection ou désélectionnez des mots pour en ajouter."
+
+#. Word-picture estimates and persistent selections.
+#, python-format
+msgid "Estimate based on %(count)s recent completed pictures with the same model and quality, plus planning. Words needing no picture cost less. Actual costs may vary."
+msgstr "Estimation fondée sur %(count)s images récentes terminées avec le même modèle et la même qualité, plus la préparation. Les mots sans image coûtent moins cher. Le coût réel peut varier."
+
+#. Word-picture estimates and persistent selections.
+msgid "Initial estimate uses a cautious allowance until five completed pictures with usable costs are available."
+msgstr "L’estimation initiale utilise une provision prudente jusqu’à ce que cinq images terminées disposent de coûts exploitables."
+
+#. Word-picture estimates and persistent selections.
+msgid "Start a new selection"
+msgstr "Commencer une nouvelle sélection"
+
+#. Word-picture estimates and persistent selections.
+msgid "Words stay selected after generation, including on other pages. Start a new selection clears the checkboxes and keeps all pictures."
+msgstr "Les mots restent sélectionnés après la génération, y compris sur d’autres pages. Commencer une nouvelle sélection décoche les cases et conserve toutes les images."
+
+#. Word-picture estimates and persistent selections.
+msgid "Batch complete — choose your next words"
+msgstr "Lot terminé — choisissez les mots suivants"
+
+#. Word-picture estimates and persistent selections.
+msgid "The previous checkboxes are still selected. Clear them before choosing another batch; this keeps all generated pictures."
+msgstr "Les cases précédentes sont toujours cochées. Décochez-les avant de choisir un autre lot ; toutes les images générées seront conservées."

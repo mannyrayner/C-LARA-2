@@ -19,6 +19,7 @@
   const boxes = [...root.querySelectorAll('[data-picture-id]')];
   const hidden = root.querySelector('[data-selection-tokens]');
   const message = root.querySelector('[data-selection-message]');
+  const completedEntries = (root.dataset.completedEntries || '').trim().split(/\s+/);
   function persist(extra = {}) {
     try { sessionStorage.setItem(key, JSON.stringify({selected, ...extra})); } catch (_) {}
   }
@@ -30,6 +31,11 @@
     const count = Object.keys(selected).length;
     hidden.value = JSON.stringify(Object.values(selected));
     root.querySelector('[data-selected-count]').textContent = String(count);
+    message.textContent = count >= 50 ? root.dataset.limitMessage : '';
+    message.hidden = count < 50;
+    const completed = root.querySelector('[data-completed-selection]');
+    if (completed) completed.hidden = !completedEntries.some(id => Object.hasOwn(selected, id));
+    root.querySelectorAll('[data-clear-selection]').forEach(button => { button.disabled = count === 0; });
     const output = root.querySelector('[data-selected-estimate]');
     if (output) {
       const amount = count * Number(root.dataset.unitMicro) / 1000000;
@@ -45,11 +51,11 @@
   boxes.forEach(box => box.addEventListener('change', () => {
     if (box.checked) {
       if (Object.keys(selected).length >= 50 && !Object.hasOwn(selected, box.dataset.pictureId)) {
-        box.checked = false; message.textContent = root.dataset.limitMessage; return;
+        box.checked = false; message.textContent = root.dataset.limitMessage; message.hidden = false; return;
       }
       selected[box.dataset.pictureId] = box.value;
     } else delete selected[box.dataset.pictureId];
-    message.textContent = ''; update(true);
+    update(true);
   }));
   root.querySelector('[data-select-visible]').addEventListener('click', () => {
     const before = Object.keys(selected).sort().join(',');
@@ -60,7 +66,10 @@
     update(before !== Object.keys(selected).sort().join(','));
     if (boxes.some(box => !box.checked)) message.textContent = root.dataset.limitMessage;
   });
-  root.querySelector('[data-clear-selection]').addEventListener('click', () => { selected = {}; message.textContent = ''; update(true); });
+  root.querySelectorAll('[data-clear-selection]').forEach(button => button.addEventListener('click', () => {
+    selected = {}; update(true);
+    if (button.hasAttribute('data-return-to-selection')) root.querySelector('[data-selection-controls]').scrollIntoView({block:'start'});
+  }));
   root.querySelectorAll('[data-preserve-scroll]').forEach(link => link.addEventListener('click', () => persist({scroll:window.scrollY, restoreScroll:true})));
   root.querySelector('[data-picture-selection]').addEventListener('submit', () => persist());
   update();

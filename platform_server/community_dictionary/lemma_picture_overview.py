@@ -141,6 +141,8 @@ def overview(request, pk):
         prices = pictures.quote(request.user, dictionary)
     except Conflict as exc:
         setup_error = str(exc)
+    forecast = costs.forecast(dictionary, prices) if prices else {'unit': Decimal('0'), 'samples': 0}
+    unit = forecast['unit']
     def location(**extra):
         params = {k:request.POST.get(k) or request.GET.get(k) for k in ['shown','page','q','batch','undo']}
         params.update(extra)
@@ -166,6 +168,9 @@ def overview(request, pk):
             except (signing.BadSignature, ValueError, TypeError, KeyError):
                 raise Conflict(_('This estimate expired or the settings changed. Preview the selected cost again.'))
             chosen = selected_cards(request, dictionary, approved['entries'])
+            # Keep the estimate the user actually approved even if another batch
+            # finishes and improves the forecast between preview and confirmation.
+            unit = Decimal(approved.get('unit_estimate', pictures.estimate(prices)))
             if not form.cleaned_data['ai_consent']:
                 raise Conflict(_('Confirm AI processing and automatic publication before starting.'))
             def generate(paths):
@@ -182,7 +187,7 @@ def overview(request, pk):
                 for card in cards:
                     row = pictures.request(card['entry'], request.user, replace=True,
                         extra_allowance=form.cleaned_data['extra_allowance'])
-                    row.study = costs.create_study(row, batch=batch, unit_estimate=pictures.estimate(prices))
+                    row.study = costs.create_study(row, batch=batch, unit_estimate=unit)
                     row.save(update_fields=['study'])
                 event(fresh, request.user, 'lemma_image_backfill', detail=f'Approved {len(cards)} selected word pictures; batch {batch}')
                 messages.success(request, _('Your word-picture batch has started. See Progress below.'))
@@ -251,7 +256,8 @@ def overview(request, pk):
         form.add_error(None,str(exc))
     if chosen and prices:
         signed=signing.dumps({'user':request.user.pk,'dictionary':pk,'prices':prices,
-            'entries':[c['entry'].pk for c in chosen],'states':[c['state'] for c in chosen]},salt=BATCH_SALT)
+            'entries':[c['entry'].pk for c in chosen],'states':[c['state'] for c in chosen],
+            'unit_estimate':str(unit)},salt=BATCH_SALT)
     from django.core.paginator import Paginator
     try: shown=max(20,min(100,int(request.POST.get('shown') or request.GET.get('shown',20))))
     except ValueError: shown=20
@@ -267,7 +273,6 @@ def overview(request, pk):
     jobs=LemmaImage.objects.filter(entry__dictionary=dictionary)
     labels=dict(LemmaImage._meta.get_field('status').choices)
     counts=[{**v,'label':_(labels[v['status']])} for v in jobs.values('status').annotate(total=Count('pk')).order_by('status')]
-    unit=pictures.estimate(prices) if prices else Decimal('0')
     def browse(**extra):
         args={'q':q,'shown':shown,'page':page.number,'batch':batch['id'] if batch else '', 'undo':str(undo.token) if undo else ''}
         args.update(extra)
@@ -285,6 +290,7 @@ def overview(request, pk):
         preview_requested=action=='preview',candidates=[c['entry'] for c in chosen],
         selected_tokens=[c['token'] for c in chosen],selection_data={str(c['entry'].pk):c['token'] for c in chosen},server_selection=bool(chosen),
         estimate=costs.money(unit*len(chosen)),unit_micro=int(unit*1_000_000),
+        forecast_samples=forecast['samples'],
         setup_error=setup_error, daily_counts=pictures.daily_usage(dictionary,request.user),
         can_extra_allowance=is_owner(request.user,dictionary),batch=batch,cumulative=costs.cumulative(dictionary),
         undo=str(undo.token) if undo else '',page=page,shown=shown,q=q,

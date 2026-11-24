@@ -8614,3 +8614,32 @@ msgstr "Bez volaní AI a bez poplatkov. Počas prezerania stránok slov a viet s
 
 msgid "This game is no longer available in this tab. Choose an activity to start again."
 msgstr "Táto hra už v tejto karte nie je dostupná. Vyberte si aktivitu a začnite znova."
+
+#. Word-picture estimates and persistent selections.
+msgid "50 pictures are already selected, including words on other pages. Start a new selection or deselect some words to add more."
+msgstr "Už je vybraných 50 obrázkov vrátane slov na iných stránkach. Začnite nový výber alebo zrušte výber niektorých slov."
+
+#. Word-picture estimates and persistent selections.
+#, python-format
+msgid "Estimate based on %(count)s recent completed pictures with the same model and quality, plus planning. Words needing no picture cost less. Actual costs may vary."
+msgstr "Odhad vychádza z %(count)s nedávno dokončených obrázkov s rovnakým modelom a kvalitou plus plánovanie. Slová bez obrázka stoja menej. Skutočné náklady sa môžu líšiť."
+
+#. Word-picture estimates and persistent selections.
+msgid "Initial estimate uses a cautious allowance until five completed pictures with usable costs are available."
+msgstr "Počiatočný odhad používa opatrnú rezervu, kým nebude k dispozícii päť dokončených obrázkov so známymi nákladmi."
+
+#. Word-picture estimates and persistent selections.
+msgid "Start a new selection"
+msgstr "Začať nový výber"
+
+#. Word-picture estimates and persistent selections.
+msgid "Words stay selected after generation, including on other pages. Start a new selection clears the checkboxes and keeps all pictures."
+msgstr "Slová zostávajú vybrané aj po generovaní vrátane iných stránok. Nový výber zruší začiarknutie políčok a zachová všetky obrázky."
+
+#. Word-picture estimates and persistent selections.
+msgid "Batch complete — choose your next words"
+msgstr "Dávka dokončená — vyberte ďalšie slová"
+
+#. Word-picture estimates and persistent selections.
+msgid "The previous checkboxes are still selected. Clear them before choosing another batch; this keeps all generated pictures."
+msgstr "Predchádzajúce políčka sú stále začiarknuté. Pred výberom ďalšej dávky ich zrušte; všetky vygenerované obrázky sa zachovajú."

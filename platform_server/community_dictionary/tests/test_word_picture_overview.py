@@ -54,6 +54,71 @@ class WordPictureOverviewTests(TestCase):
         self.assertEqual(AIUsageCharge.objects.count(),charges)
         self.assertEqual(ImageStudy.objects.count(),2)
 
+    def test_forecast_uses_recent_matching_usage_and_preserves_credit_allowance(self):
+        prices=pictures.quote(self.owner,self.d)
+        conservative=pictures.estimate(prices)
+        for n in range(5):
+            row=self.attempt(self.word('cat'+str(n),'cat'));self.run_job(row)
+        prediction=costs.forecast(self.d,prices)
+        self.assertEqual(prediction['samples'],5)
+        self.assertEqual(prediction['unit'],Decimal('.031125'))
+        self.assertEqual(pictures.quote(self.owner,self.d),prices)
+        self.assertEqual(pictures.estimate(prices),conservative)
+        # Actual costs and old batch estimates are not rewritten to fit forecasts.
+        self.assertEqual(Decimal(costs.cumulative(self.d)['exact_amount']),Decimal('.155625'))
+        changed={**prices,'input':'20','output':'40'}
+        self.assertEqual(costs.forecast(self.d,changed)['unit'],Decimal('.034500'))
+        self.assertEqual(costs.forecast(self.d,{**prices,'model':'gpt-image-2'})['samples'],0)
+        page=self.client.get(self.url('word-images'))
+        self.assertContains(page,'5 recent completed pictures')
+        self.assertEqual(page.context['unit_micro'],31125)
+
+    def test_forecast_ignores_unknown_failed_unstarted_and_other_dictionary_costs(self):
+        rows=[]
+        for n in range(5):
+            row=self.attempt(self.word('cat'+str(n),'cat'));self.run_job(row);rows.append(row)
+        study=rows[0].study;costs.track(study,image_cost=None)
+        prices=pictures.quote(self.owner,self.d)
+        self.assertEqual(costs.forecast(self.d,prices)['samples'],0)
+        costs.track(study,image_cost='.0305')
+        bad=ImageStudy.objects.get(pk=study.pk)
+        bad.pk=None;bad._state.adding=True;bad.usage={**bad.usage,costs.KEY:{**bad.usage[costs.KEY],
+            'status':'failed','image_cost':'1000'}};bad.save()
+        waiting=self.attempt(self.word('dog','dog'))
+        # A successful legacy receipt without planning tokens still improves the image estimate.
+        meta=study.usage[costs.KEY];meta.pop('planning_usage',None)
+        ImageStudy.objects.filter(pk=study.pk).update(usage={**study.usage,costs.KEY:meta})
+        prediction=costs.forecast(self.d,prices)
+        self.assertEqual(prediction['samples'],5)
+        self.assertEqual(prediction['unit'],Decimal('.039250'))
+        self.assertNotEqual(waiting.status,'ready')
+        other=Dictionary.objects.create(owner=self.owner,name='Other',language='Swedish')
+        bad.dictionary=other;bad.usage={**bad.usage,costs.KEY:{**bad.usage[costs.KEY],'status':'ready'}};bad.save()
+        self.assertEqual(costs.forecast(self.d,prices),prediction)
+        ImageStudy.objects.filter(pk=study.pk).update(quality='low')
+        self.assertEqual(costs.forecast(self.d,prices)['samples'],0)
+        ImageStudy.objects.filter(pk=study.pk).update(quality=pictures.images.QUALITY)
+        costs.track(study,size='2048x1024')
+        self.assertEqual(costs.forecast(self.d,prices)['samples'],0)
+
+    def test_approved_estimate_is_frozen_while_other_batches_finish(self):
+        words=[self.word('cat'+str(n),'cat') for n in range(5)]
+        for word in words[:4]:
+            row=self.attempt(word);self.run_job(row)
+        last=self.attempt(words[4])
+        target=self.word('dog','dog')
+        preview=self.preview([target]);initial=preview.context['estimate']
+        self.run_job(last)
+        self.assertLess(costs.forecast(self.d,pictures.quote(self.owner,self.d))['unit'],Decimal(initial))
+        result=self.client.post(self.url('word-images'),{'action':'generate','quote':preview.context['quote'],
+            'ai_consent':'on','submission_id':str(uuid.uuid4())},follow=True)
+        self.assertEqual(result.context['batch']['estimate'],initial)
+        row=LemmaImage.objects.get(entry=target);self.run_job(row)
+        self.assertEqual(row.status,'ready')
+        result=self.client.get(self.url('word-images'))
+        self.assertContains(result,'Batch complete — choose your next words')
+        self.assertContains(result,'Start a new selection')
+
     def test_selected_generation_regenerates_existing_and_unattempted_words_with_durable_totals(self):
         old=self.attempt();self.run_job(old);old_image=old.image_id
         fresh=self.word('hund','dog')
@@ -222,10 +287,11 @@ class WordPictureOverviewTests(TestCase):
     def test_translated_overview_and_cost_labels(self):
         from django.urls import reverse
         self.word()
-        for language,label in [('fr','Coût cumulé'),('sk','Celková cena')]:
+        for language,label,control in [('fr','Coût cumulé','Commencer une nouvelle sélection'),('sk','Celková cena','Začať nový výber')]:
             self.client.post(reverse('community_dictionary:set-language'),{'language':language})
             page=self.client.get(self.url('word-images'))
             self.assertContains(page,label)
+            self.assertContains(page,control)
             self.assertContains(page,'data-picture-id')
 
     def test_removing_during_planning_keeps_returned_cost_and_prevents_image_call(self):
