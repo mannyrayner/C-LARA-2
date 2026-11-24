@@ -65,6 +65,27 @@ validation or publication fails; the provider invoice remains authoritative.
 
 ## Backfill and recovery
 
+**Generate all missing pictures**, prominently above the overview, previews every
+eligible lemma across the dictionary, independently of the visible page, search
+and manual checkboxes. Review the full count and total estimate, then confirm once
+to queue the whole approved set for background generation. The manual 50-picture
+selection limit does not apply to this action. Large previews show the first 100
+words while retaining the entire approved set and its cost.
+
+Existing pictures, all waiting/in-flight requests and deliberate No simple picture
+decisions are skipped. Previously removed pictures require the explicit inclusion
+option. Failed/resource-limited attempts are eligible for a new approved attempt.
+The preview warns if normal daily capacity is insufficient; an owner can approve
+the existing batch-only temporary allowance. Without capacity, the whole approval
+is refused rather than silently starting a partial job. Normal limits remain in
+force for other requests.
+
+The signed preview freezes the words, their state and the estimate. Added words
+are left for a later preview; changes to an approved word, picture, decision or
+active request require a fresh preview. Resubmitting the same confirmation is
+idempotent. Per-attempt costs, batch totals, cumulative totals and queued-work
+recovery use the existing receipts and workers. Previewing makes no provider call.
+
 Open **Tools → Manage word pictures**. The overview shows word/translation
 cards with the current private 256-pixel thumbnail or a state: Not yet attempted, No simple
 picture, Resource limit reached, Failed, Queued, Planning, Generating or Hidden.

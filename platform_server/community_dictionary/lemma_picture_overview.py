@@ -4,6 +4,7 @@ from decimal import Decimal
 import hashlib
 import json
 import uuid
+from itertools import islice
 from urllib.parse import urlencode
 
 from django import forms
@@ -31,6 +32,23 @@ class ApprovalForm(forms.Form):
         'I approve sending these accepted words and translations to OpenAI, at the estimated cost shown. Publish the pictures automatically.'))
     extra_allowance = forms.BooleanField(required=False, label=gettext_lazy(
         'Allow these selected word pictures above the normal daily image limit, for this batch only.'))
+
+
+def needs_picture(card, include_removed=False):
+    row = getattr(card['entry'], 'lemma_image', None)
+    return (not card['image'] and card['status'] != 'none' and
+        not (row and row.status == 'none') and
+        (include_removed or not (row and row.status == 'removed')) and
+        not (row and row.status in {'waiting', *pictures.ACTIVE}))
+
+
+def missing_cards(dictionary, user, include_removed=False):
+    """Scan accepted lemmas in bounded reads, independently of the overview filter."""
+    words = iter(entries(dictionary).order_by('pk').iterator(chunk_size=250))
+    result = []
+    while chunk := list(islice(words, 250)):
+        result.extend(c for c in card_rows(dictionary, user, chunk) if needs_picture(c, include_removed))
+    return result
 
 
 def entries(dictionary):
@@ -107,8 +125,13 @@ def read_selection(request, dictionary):
 
 
 def selected_cards(request, dictionary, values):
-    words = list(entries(dictionary).filter(pk__in=values).order_by('pk'))
-    cards=card_rows(dictionary,request.user,words)
+    # The all-missing action can exceed the manual selection limit and database
+    # parameter limits. Keep reads bounded while preserving signed entry order.
+    ids = sorted(int(pk) for pk in values)
+    cards = []
+    for start in range(0, len(ids), 250):
+        words = entries(dictionary).filter(pk__in=ids[start:start+250]).order_by('pk')
+        cards.extend(card_rows(dictionary, request.user, words))
     if len(cards)!=len(values):
         raise Conflict(_('Some selected words or meanings changed or are unavailable. Refresh the overview.'))
     return cards
@@ -133,6 +156,8 @@ def overview(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_editor(request.user, dictionary)
     action = request.POST.get('action') if request.method == 'POST' else request.GET.get('action')
+    all_missing = action in {'preview_missing', 'generate_missing'}
+    include_removed = request.POST.get('include_removed') == 'on'
     form = ApprovalForm(request.POST if request.method == 'POST' else {})
     setup_error, prices, chosen, signed = '', None, [], ''
     try:
@@ -157,17 +182,20 @@ def overview(request, pk):
                     _('There are no unstarted word-picture requests to resume.'))
                 return location(refresh=1)
             return redirect(submit_once(request, dictionary, 'lemma-image-resume', resume))
-        if request.method == 'POST' and action == 'generate' and form.is_valid():
+        if request.method == 'POST' and action in {'generate', 'generate_missing'} and form.is_valid():
             if setup_error:
                 raise Conflict(setup_error)
             try:
                 approved = signing.loads(request.POST.get('quote',''), salt=BATCH_SALT, max_age=3600)
                 if (approved['user'] != request.user.pk or approved['dictionary'] != pk or
-                        approved['prices'] != prices or not 1 <= len(approved['entries']) <= MAX_SELECTED):
+                        approved['prices'] != prices or not approved['entries'] or
+                        approved.get('scope', 'selected') != ('missing' if all_missing else 'selected') or
+                        (not all_missing and len(approved['entries']) > MAX_SELECTED)):
                     raise ValueError
             except (signing.BadSignature, ValueError, TypeError, KeyError):
                 raise Conflict(_('This estimate expired or the settings changed. Preview the selected cost again.'))
             chosen = selected_cards(request, dictionary, approved['entries'])
+            include_removed = approved.get('include_removed', False) if all_missing else False
             # Keep the estimate the user actually approved even if another batch
             # finishes and improves the forecast between preview and confirmation.
             unit = Decimal(approved.get('unit_estimate', pictures.estimate(prices)))
@@ -182,6 +210,8 @@ def overview(request, pk):
                     raise Conflict(_('The words or meanings changed, or a word-picture attempt changed. Preview the batch again.'))
                 if any(c['busy'] for c in cards):
                     raise Conflict(_('Some selected pictures are still being prepared. Wait or resume the queued work.'))
+                if all_missing and any(not needs_picture(c, include_removed) for c in cards):
+                    raise Conflict(_('Some words no longer need a picture. Preview all missing pictures again.'))
                 pictures.approve_capacity(fresh, request.user, len(cards), form.cleaned_data['extra_allowance'])
                 batch = str(uuid.UUID(request.POST['submission_id']))
                 for card in cards:
@@ -192,7 +222,8 @@ def overview(request, pk):
                 event(fresh, request.user, 'lemma_image_backfill', detail=f'Approved {len(cards)} selected word pictures; batch {batch}')
                 messages.success(request, _('Your word-picture batch has started. See Progress below.'))
                 return location(batch=batch, refresh=1)
-            return redirect(submit_once(request, dictionary, 'lemma-image-bulk', generate))
+            return redirect(submit_once(request, dictionary,
+                'lemma-image-all-missing' if all_missing else 'lemma-image-bulk', generate))
         if request.method == 'POST' and action == 'remove':
             values = read_selection(request, dictionary)
             def remove(paths):
@@ -244,7 +275,11 @@ def overview(request, pk):
                 messages.success(request,_('Pictures restored: %(count)s. Changed or withdrawn pictures were kept as they are.') % {'count':restored})
                 return location(undo='')
             return redirect(submit_once(request,dictionary,'lemma-picture-undo',restore))
-        if (request.method == 'POST' and action == 'preview') or (request.method == 'GET' and action == 'preview'):
+        if request.method == 'POST' and action == 'preview_missing':
+            if setup_error:
+                raise Conflict(setup_error)
+            chosen = missing_cards(dictionary, request.user, include_removed)
+        elif (request.method == 'POST' and action == 'preview') or (request.method == 'GET' and action == 'preview'):
             if request.method=='GET':
                 # Retain old bookmarked five-word preview links during the UI transition.
                 limit=max(1,min(50,int(request.GET.get('limit',5))))
@@ -257,7 +292,8 @@ def overview(request, pk):
     if chosen and prices:
         signed=signing.dumps({'user':request.user.pk,'dictionary':pk,'prices':prices,
             'entries':[c['entry'].pk for c in chosen],'states':[c['state'] for c in chosen],
-            'unit_estimate':str(unit)},salt=BATCH_SALT)
+            'unit_estimate':str(unit), 'scope':'missing' if all_missing else 'selected',
+            'include_removed':include_removed if all_missing else False},salt=BATCH_SALT,compress=True)
     from django.core.paginator import Paginator
     try: shown=max(20,min(100,int(request.POST.get('shown') or request.GET.get('shown',20))))
     except ValueError: shown=20
@@ -266,7 +302,8 @@ def overview(request, pk):
     if q:query=query.filter(Q(word__icontains=q)|Q(meaning__icontains=q))
     page=Paginator(query.order_by('pk'),shown).get_page(request.POST.get('page') or request.GET.get('page',1))
     cards=card_rows(dictionary,request.user,page.object_list)
-    selected_ids={c['entry'].pk for c in chosen}
+    manual_chosen = [] if all_missing else chosen
+    selected_ids={c['entry'].pk for c in manual_chosen}
     for card in cards:card['selected']=card['entry'].pk in selected_ids
     batch=costs.batch_summary(dictionary,request.user,request.GET.get('batch') or request.POST.get('batch'))
     undo=undo_receipt(request,dictionary,request.GET.get('undo') or request.POST.get('undo'))
@@ -285,13 +322,17 @@ def overview(request, pk):
             seen.add(meta['batch'])
             recent_batches.append({'url':browse(batch=meta['batch']), 'created':meta['batch_created'], 'total':costs.word_studies(dictionary).filter(user=request.user,usage__lemma_picture__batch=meta['batch']).count()})
         if len(recent_batches)==5:break
+    daily_counts = pictures.daily_usage(dictionary,request.user)
     return render(request,'community_dictionary/word_images.html',context(request,dictionary,recent_batches=recent_batches,
-        cards=cards,preview_cards=chosen,form=form,quote=signed,preview_ready=bool(chosen and prices and not setup_error),
-        preview_requested=action=='preview',candidates=[c['entry'] for c in chosen],
-        selected_tokens=[c['token'] for c in chosen],selection_data={str(c['entry'].pk):c['token'] for c in chosen},server_selection=bool(chosen),
+        cards=cards,preview_cards=chosen[:100] if all_missing else chosen,form=form,quote=signed,preview_ready=bool(chosen and prices and not setup_error),
+        preview_requested=action in {'preview','preview_missing'},candidates=[c['entry'] for c in chosen],
+        selected_tokens=[c['token'] for c in manual_chosen],selection_data={str(c['entry'].pk):c['token'] for c in manual_chosen},server_selection=bool(manual_chosen),
+        manual_selected_count=len(manual_chosen),selected_estimate=costs.money(unit*len(manual_chosen)),
+        all_missing=all_missing,include_removed=include_removed,preview_truncated=all_missing and len(chosen)>100,
+        allowance_needed=all_missing and len(chosen)>daily_counts['remaining'],
         estimate=costs.money(unit*len(chosen)),unit_micro=int(unit*1_000_000),
         forecast_samples=forecast['samples'],
-        setup_error=setup_error, daily_counts=pictures.daily_usage(dictionary,request.user),
+        setup_error=setup_error, daily_counts=daily_counts,
         can_extra_allowance=is_owner(request.user,dictionary),batch=batch,cumulative=costs.cumulative(dictionary),
         undo=str(undo.token) if undo else '',page=page,shown=shown,q=q,
         more_url=browse(shown=min(100,shown+20)) if shown<100 and page.number==1 and page.has_next() else '',

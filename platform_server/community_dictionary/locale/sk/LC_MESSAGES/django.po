@@ -8643,3 +8643,65 @@ msgstr "Dávka dokončená — vyberte ďalšie slová"
 #. Word-picture estimates and persistent selections.
 msgid "The previous checkboxes are still selected. Clear them before choosing another batch; this keeps all generated pictures."
 msgstr "Predchádzajúce políčka sú stále začiarknuté. Pred výberom ďalšej dávky ich zrušte; všetky vygenerované obrázky sa zachovajú."
+
+#. Dictionary-wide missing word pictures.
+msgid "Fill missing word pictures"
+msgstr "Doplniť chýbajúce obrázky slov"
+
+#. Dictionary-wide missing word pictures.
+msgid "Generate pictures for missing lemmas across the whole dictionary. Review the count and total cost before approving. Existing pictures, active requests and No simple picture decisions are skipped."
+msgstr "Vygenerujte obrázky pre chýbajúce lemy v celom slovníku. Pred potvrdením skontrolujte počet a celkovú cenu. Existujúce obrázky, prebiehajúce požiadavky a rozhodnutia Bez jednoduchého obrázka sa preskočia."
+
+#. Dictionary-wide missing word pictures.
+msgid "Include previously removed pictures"
+msgstr "Zahrnúť predtým odstránené obrázky"
+
+#. Dictionary-wide missing word pictures.
+msgid "Generate all missing pictures"
+msgstr "Vygenerovať všetky chýbajúce obrázky"
+
+#. Dictionary-wide missing word pictures.
+msgid "Approve all missing pictures"
+msgstr "Schváliť všetky chýbajúce obrázky"
+
+#. Dictionary-wide missing word pictures.
+#, python-format
+msgid "Missing pictures across the whole dictionary: %(count)s. This preview has not requested any pictures."
+msgstr "Chýbajúce obrázky v celom slovníku: %(count)s. Tento náhľad nevyžiadal žiadne obrázky."
+
+#. Dictionary-wide missing word pictures.
+msgid "Previously removed pictures are included in this preview."
+msgstr "Predtým odstránené obrázky sú zahrnuté v tomto náhľade."
+
+#. Dictionary-wide missing word pictures.
+msgid "Previously removed pictures are excluded from this preview."
+msgstr "Predtým odstránené obrázky nie sú zahrnuté v tomto náhľade."
+
+#. Dictionary-wide missing word pictures.
+msgid "This job exceeds the remaining daily image allowance. An owner can approve a one-off allowance for this job below."
+msgstr "Táto úloha prekračuje zostávajúci denný limit obrázkov. Vlastník môže nižšie schváliť jednorazové navýšenie pre túto úlohu."
+
+#. Dictionary-wide missing word pictures.
+msgid "Generation is unavailable while the daily image allowance is disabled."
+msgstr "Generovanie nie je dostupné, keď je denný limit obrázkov vypnutý."
+
+#. Dictionary-wide missing word pictures.
+#, python-format
+msgid "Showing the first 100 words. All %(count)s missing pictures are included in the estimate and approval."
+msgstr "Zobrazuje sa prvých 100 slov. Všetkých %(count)s chýbajúcich obrázkov je zahrnutých v odhade a schválení."
+
+#. Dictionary-wide missing word pictures.
+msgid "Starting word-picture generation…"
+msgstr "Spúšťa sa generovanie obrázkov slov…"
+
+#. Dictionary-wide missing word pictures.
+msgid "Preparing the approved requests. Generation will continue in the background; you can follow it in Progress."
+msgstr "Pripravujú sa schválené požiadavky. Generovanie bude pokračovať na pozadí; môžete ho sledovať v časti Priebeh."
+
+#. Dictionary-wide missing word pictures.
+msgid "No missing pictures to generate with these options."
+msgstr "S týmito možnosťami nie sú žiadne chýbajúce obrázky na generovanie."
+
+#. Dictionary-wide missing word pictures.
+msgid "Some words no longer need a picture. Preview all missing pictures again."
+msgstr "Niektoré slová už nepotrebujú obrázok. Znova zobrazte náhľad všetkých chýbajúcich obrázkov."

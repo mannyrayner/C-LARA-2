@@ -10,6 +10,12 @@
   });
   const root = document.getElementById('word-picture-overview');
   if (!root) return;
+  root.querySelectorAll('[data-all-missing-approval]').forEach(form => form.addEventListener('submit', () => {
+    const button = form.querySelector('[data-confirm-missing-generation]');
+    button.disabled = true;
+    button.textContent = form.dataset.startMessage;
+    form.querySelector('[data-generation-starting]').hidden = false;
+  }));
   // The dictionary navigation is sticky too and can wrap on narrow screens.
   const navigation = document.querySelector('.dictionary-nav');
   if (navigation) {

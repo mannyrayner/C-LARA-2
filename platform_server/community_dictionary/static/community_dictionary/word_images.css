@@ -6,6 +6,7 @@
 .picture-selection-controls .picture-toolbar {margin:0}.picture-selection-controls .help {margin:.4rem 0 0;font-size:.85rem}
 .picture-selection-warning,.picture-next-batch {padding:.7rem;background:#fff0ce;border:1px solid #b78023;border-radius:.4rem;color:#624000}
 .picture-selection-warning {margin:.5rem 0 0;font-weight:600}.picture-next-batch {margin:1rem 0}.picture-next-batch h3 {margin-top:0}
+.picture-fill-missing {border:2px solid #1f6989;background:#f0f9fc}.picture-fill-missing h2 {margin-bottom:.6rem}
 .word-picture-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9rem),1fr));gap:.8rem;margin:1rem 0}
 .word-picture-card {border:1px solid #ccd5df;border-radius:.65rem;padding:.65rem;min-width:0;background:white;overflow-wrap:anywhere}
 .word-picture-card:has(input:checked) {outline:3px solid #1f6989;background:#f0f9fc}.word-picture-select {display:flex;align-items:flex-start;gap:.5rem;cursor:pointer;min-height:3.5rem}

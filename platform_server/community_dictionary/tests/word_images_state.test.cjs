@@ -9,23 +9,36 @@ function element(props = {}) {
     hasAttribute(){return false}, scrollIntoView(){this.scrolled=true},
     addEventListener(name, fn){this.listeners[name]=fn}, fire(name){this.listeners[name]?.({})}}, props);
 }
-function page(storage, ids, {server = false, supplied = {}, tokenPrefix = 'token', navHeight = 54} = {}) {
+function page(storage, ids, {server = false, supplied = {}, tokenPrefix = 'token', navHeight = 54, allMissing = false} = {}) {
   const boxes=ids.map(id=>element({value:tokenPrefix+id,dataset:{pictureId:String(id)}}));
   const one=Object.fromEntries(['selection-tokens','selection-message','selected-count','selected-estimate','confirm-generation','selection-changed','select-visible','clear-selection','picture-selection','completed-selection','selection-controls'].map(k=>[k,element()]));
   const next=element({hasAttribute(name){return name==='data-return-to-selection'}});
+  const missingButton=element(),starting=element();
+  const missingForm=element({dataset:{startMessage:'Starting generation'},querySelector(selector){return selector==='[data-confirm-missing-generation]'?missingButton:starting}});
   const link=element(); const bulk=[element(),element()]; let scroll;
   let observer, offset;
   const navigation={getBoundingClientRect(){return {height:navHeight}}};
   const root={dataset:{storageKey:'fixture',unitMicro:'508750',serverSelection:server?'1':'0',limitMessage:'At most 50',completedEntries:'1 2'},
     style:{setProperty(name,value){assert.equal(name,'--picture-nav-offset');offset=value}},
-    querySelector(selector){return one[selector.slice(6,-1)]},
-    querySelectorAll(selector){return selector==='[data-picture-id]'?boxes:selector==='[data-bulk-button]'?bulk:selector==='[data-clear-selection]'?[one['clear-selection'],next]:[link]}};
+    querySelector(selector){return allMissing&&selector==='[data-confirm-generation]'?null:one[selector.slice(6,-1)]},
+    querySelectorAll(selector){return selector==='[data-all-missing-approval]'?(allMissing?[missingForm]:[]):selector==='[data-picture-id]'?boxes:selector==='[data-bulk-button]'?bulk:selector==='[data-clear-selection]'?[one['clear-selection'],next]:[link]}};
   vm.runInNewContext(source,{document:{querySelectorAll(){return []},querySelector(){return navigation},getElementById(id){return id==='word-picture-overview'?root:{textContent:JSON.stringify(supplied)}}},
     ResizeObserver:class {constructor(fn){observer=fn}observe(element){assert.equal(element,navigation)}},
     sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},
     window:{scrollY:337,scrollTo:(x,y)=>{scroll=y}},requestAnimationFrame:fn=>fn(),location:{hash:'#word-image-progress'}});
-  return {boxes,one,bulk,link,next,get scroll(){return scroll},get offset(){return offset},resizeNav(height){navHeight=height;observer()}};
+  return {boxes,one,bulk,link,next,missingForm,missingButton,starting,get scroll(){return scroll},get offset(){return offset},resizeNav(height){navHeight=height;observer()}};
 }
+test('all-missing approval stays separate from manual selection and shows submission feedback',()=>{
+  const store=new Map([['fixture',JSON.stringify({selected:{1:'old'}})]]);
+  const p=page(store,[1,2],{allMissing:true});
+  assert.equal(p.one['selected-count'].textContent,'1');
+  p.one['select-visible'].fire('click');
+  assert.equal(p.missingButton.disabled,false);
+  p.missingForm.fire('submit');
+  assert.equal(p.missingButton.disabled,true);
+  assert.equal(p.missingButton.textContent,'Starting generation');
+  assert.equal(p.starting.hidden,false);
+});
 test('sticky selection controls stay below the navigation when it wraps',()=>{
   const p=page(new Map(),[1],{navHeight:54});
   assert.equal(p.offset,'54px');

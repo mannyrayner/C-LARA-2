@@ -8763,3 +8763,65 @@ msgstr "Lot terminé — choisissez les mots suivants"
 #. Word-picture estimates and persistent selections.
 msgid "The previous checkboxes are still selected. Clear them before choosing another batch; this keeps all generated pictures."
 msgstr "Les cases précédentes sont toujours cochées. Décochez-les avant de choisir un autre lot ; toutes les images générées seront conservées."
+
+#. Dictionary-wide missing word pictures.
+msgid "Fill missing word pictures"
+msgstr "Compléter les images des mots"
+
+#. Dictionary-wide missing word pictures.
+msgid "Generate pictures for missing lemmas across the whole dictionary. Review the count and total cost before approving. Existing pictures, active requests and No simple picture decisions are skipped."
+msgstr "Générez les images manquantes des lemmes dans tout le dictionnaire. Vérifiez leur nombre et le coût total avant de confirmer. Les images existantes, les demandes en cours et les décisions « Pas d’image simple » sont conservées."
+
+#. Dictionary-wide missing word pictures.
+msgid "Include previously removed pictures"
+msgstr "Inclure les images précédemment supprimées"
+
+#. Dictionary-wide missing word pictures.
+msgid "Generate all missing pictures"
+msgstr "Générer toutes les images manquantes"
+
+#. Dictionary-wide missing word pictures.
+msgid "Approve all missing pictures"
+msgstr "Confirmer toutes les images manquantes"
+
+#. Dictionary-wide missing word pictures.
+#, python-format
+msgid "Missing pictures across the whole dictionary: %(count)s. This preview has not requested any pictures."
+msgstr "Images manquantes dans tout le dictionnaire : %(count)s. Cet aperçu n’a demandé aucune image."
+
+#. Dictionary-wide missing word pictures.
+msgid "Previously removed pictures are included in this preview."
+msgstr "Les images précédemment supprimées sont incluses dans cet aperçu."
+
+#. Dictionary-wide missing word pictures.
+msgid "Previously removed pictures are excluded from this preview."
+msgstr "Les images précédemment supprimées sont exclues de cet aperçu."
+
+#. Dictionary-wide missing word pictures.
+msgid "This job exceeds the remaining daily image allowance. An owner can approve a one-off allowance for this job below."
+msgstr "Cette tâche dépasse le quota quotidien restant. Un propriétaire peut approuver ci-dessous une autorisation exceptionnelle pour cette tâche."
+
+#. Dictionary-wide missing word pictures.
+msgid "Generation is unavailable while the daily image allowance is disabled."
+msgstr "La génération est indisponible lorsque le quota quotidien d’images est désactivé."
+
+#. Dictionary-wide missing word pictures.
+#, python-format
+msgid "Showing the first 100 words. All %(count)s missing pictures are included in the estimate and approval."
+msgstr "Affichage des 100 premiers mots. Les %(count)s images manquantes sont toutes incluses dans l’estimation et la confirmation."
+
+#. Dictionary-wide missing word pictures.
+msgid "Starting word-picture generation…"
+msgstr "Démarrage de la génération des images…"
+
+#. Dictionary-wide missing word pictures.
+msgid "Preparing the approved requests. Generation will continue in the background; you can follow it in Progress."
+msgstr "Préparation des demandes approuvées. La génération continuera en arrière-plan ; vous pouvez la suivre dans Progression."
+
+#. Dictionary-wide missing word pictures.
+msgid "No missing pictures to generate with these options."
+msgstr "Aucune image manquante à générer avec ces options."
+
+#. Dictionary-wide missing word pictures.
+msgid "Some words no longer need a picture. Preview all missing pictures again."
+msgstr "Certains mots n’ont plus besoin d’image. Actualisez l’aperçu de toutes les images manquantes."
