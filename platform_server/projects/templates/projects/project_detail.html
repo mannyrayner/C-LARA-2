@@ -224,7 +224,20 @@
   {% if collaborators %}
     <ul>
       {% for c in collaborators %}
-        <li>{{ c.user.username }} — {{ c.role|upper }}</li>
+        <li>
+          {{ c.user.username }} — {{ c.role|upper }}
+          <form method="post" action="{% url 'project-collaborators' object.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="username" value="{{ c.user.username }}" />
+            <label for="collab_role_{{ c.pk }}">Role for {{ c.user.username }}:</label>
+            <select id="collab_role_{{ c.pk }}" name="role">
+              {% for role_value, role_label in collaborator_role_choices %}
+                <option value="{{ role_value }}" {% if role_value == c.role %}selected{% endif %}>{{ role_label }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn secondary" type="submit">Update role for {{ c.user.username }}</button>
+          </form>
+        </li>
       {% endfor %}
     </ul>
   {% else %}
