@@ -8,7 +8,8 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from community_dictionary import evaluation as ev, lemma_images
-from community_dictionary.models import Contribution, EvaluationRating, EvaluationSession, LemmaImage
+from community_dictionary.models import (Contribution, EvaluationItem, EvaluationRating,
+    EvaluationSession, EvaluationSet, EvaluationUnit, LemmaImage)
 from community_dictionary.storage import prepare_upload, write_upload
 from . import test_evaluation as fixtures
 from .test_workflow import picture, recording
@@ -70,19 +71,67 @@ class WordPictureEvaluationTests(TestCase):
 
     def test_old_word_sets_keep_their_projection_and_dimensions(self):
         entry, image, decision = self.illustrated()
-        old = self.batch(scope='words')
-        item = old.items.get(entry=entry)
+        # A persisted pre-combination set, without calling today's set creator.
+        old = EvaluationSet.objects.create(dictionary=self.dictionary, created_by=self.owner,
+            name='Earlier word set', scope='words', sampling='all', seed='earlier',
+            language=self.dictionary.language, explanation_language=self.dictionary.explanation_language,
+            population_ids=[entry.pk], rubric=ev.RUBRIC)
+        snapshot = ev.graph(self.dictionary)[entry.pk]
+        item = EvaluationItem.objects.create(evaluation_set=old, entry=entry, position=1,
+            snapshot=snapshot, fingerprint=ev.digest(snapshot))
+        for dim in ('word_translation', 'word_audio'):
+            EvaluationUnit.objects.create(evaluation_set=old, item=item, dimension=dim, key=dim)
         self.assertNotEqual(item.snapshot['entry']['image']['id'], image.pk)
         decision.status = 'removed'; decision.save()
         self.assertTrue(ev.is_current(item, ev.graph_for_set(old)))
         self.assertEqual(set(old.units.values_list('dimension', flat=True)), {'word_translation', 'word_audio'})
         self.assertEqual(old.rubric, ev.RUBRIC)
 
+    def test_combined_word_pages_cover_all_material_and_keep_unpictured_words(self):
+        entry, image, _ = self.illustrated()
+        batch = self.batch(scope='words')
+        self.assertEqual(batch.rubric, ev.WORD_PAGE_RUBRIC)
+        pictured = batch.items.get(entry=entry)
+        unpictured = batch.items.get(entry=self.word)
+        self.assertEqual(pictured.snapshot['entry']['image']['id'], image.pk)
+        self.assertIsNotNone(pictured.snapshot['entry']['audio'])
+        self.assertEqual(set(pictured.units.values_list('dimension', flat=True)),
+            {'word_translation', 'word_audio', *ev.PICTURE_DIMENSIONS})
+        self.assertEqual(set(unpictured.units.filter(missing=True).values_list('dimension', flat=True)),
+            set(ev.PICTURE_DIMENSIONS))
+        self.start(batch)
+        response = self.client.get(self.item_url(batch, pictured))
+        self.assertContains(response, 'Word translation')
+        self.assertContains(response, 'Word audio')
+        self.assertContains(response, 'Cultural suitability')
+        self.assertEqual(response.content.decode().count('<img '), 1)
+        self.assertEqual(self.client.post(self.item_url(batch, pictured),
+            self.save_data(pictured)).status_code, 302)
+        self.assertEqual(EvaluationRating.objects.count(), 6)
+        self.close(batch)
+        rows = self.exported(batch)
+        self.assertEqual({r['dimension'] for r in rows}, {'word_translation', 'word_audio', *ev.PICTURE_DIMENSIONS})
+        self.assertTrue(all(r['score'] == '' for r in rows if r['missing_material'] == 'True'))
+
+    def test_combined_competence_and_picture_changes_are_checked(self):
+        entry, _, decision = self.illustrated()
+        batch = self.batch(scope='words')
+        self.skills(self.member, listening=0, explanation=0)
+        skills = ev.competence_snapshot(self.member, batch)
+        self.assertEqual(ev.eligible_dimensions(skills, batch.scope, batch.rubric), list(ev.PICTURE_DIMENSIONS))
+        self.skills(self.member, reading=1)
+        self.assertEqual(ev.eligible_dimensions(ev.competence_snapshot(self.member, batch),
+            batch.scope, batch.rubric), [])
+        item = batch.items.get(entry=entry)
+        decision.status = 'removed'; decision.save()
+        self.assertFalse(ev.is_current(item, ev.graph_for_set(batch)))
+
     def test_owner_creation_link_defaults_and_empty_population(self):
         address = fixtures.url('evaluation-home', self.dictionary.pk)
         response = self.owner_client.get(address + '?scope=word_pics')
         self.assertEqual(response.context['form'].initial['size'], 20)
         self.assertEqual(response.context['form'].initial['scope'], 'word_pics')
+        self.assertContains(response, 'Word pictures only')
         data = {'token': uuid.uuid4(), 'name': 'Picture pilot', 'scope': 'word_pics',
                 'sampling': 'random', 'size': 20}
         self.assertEqual(self.client.post(address, data).status_code, 404)
@@ -112,6 +161,11 @@ class WordPictureEvaluationTests(TestCase):
         self.assertContains(response, 'Intended meaning:')
         self.assertContains(response, 'dog')
         self.assertContains(response, 'Cultural suitability')
+        # Titles belong inside the panel; the judgement has its own associated label.
+        self.assertNotContains(response, '<legend>')
+        for row in response.context['rows']:
+            self.assertContains(response, f'<h2 id="evaluation-heading-{row["unit"].pk}">')
+            self.assertContains(response, f'<label for="{row["score"].id_for_label}">Your judgement</label>')
         self.assertEqual(html.count('<img '), 1)
         self.assertNotContains(response, 'fixture-image-model')
         self.assertNotContains(response, 'AI-generated')

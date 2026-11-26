@@ -27,6 +27,7 @@ from .services import Conflict
 
 RUBRIC = 'community-quality-v2'
 PICTURE_RUBRIC = 'community-word-pictures-v1'
+WORD_PAGE_RUBRIC = 'community-word-pages-v1'
 PICTURE_DIMENSIONS = ('word_picture', 'word_picture_style', 'word_picture_clue', 'word_picture_culture')
 DIMENSIONS = {
     'image': ('Sentence and image', 'Does the picture support the description? Several different descriptions can be valid.'),
@@ -95,6 +96,8 @@ def eligible_dimensions(competences, scope, rubric=None):
         selected.update(['translation', 'word_translation'])
     if scope == 'words':
         selected &= {'word_audio', 'word_translation'}
+        if rubric == WORD_PAGE_RUBRIC and read:
+            selected.update(PICTURE_DIMENSIONS)
     if scope == 'word_audio':
         selected &= {'word_audio'}
     return [key for key in DIMENSIONS if key in selected]
@@ -213,6 +216,8 @@ def graph_for_set(batch):
     # Old sets keep their original projection; adding coverage cannot rewrite their targets.
     if batch.rubric == PICTURE_RUBRIC:
         return word_picture_graph(batch.dictionary)
+    if batch.rubric == WORD_PAGE_RUBRIC:
+        return graph(batch.dictionary, include_word_pictures=True)
     return graph(batch.dictionary, include_forms=batch.rubric == RUBRIC and batch.scope == 'sentences')
 
 
@@ -250,6 +255,7 @@ def is_current(item, live):
 @transaction.atomic
 def create_set(user, dictionary, data):
     picture_set = data['scope'] == 'word_pics'
+    word_pages = data['scope'] == 'words'
     if picture_set:
         # Reuse word scope/storage with a separate rubric; no schema change and
         # no change to the snapshots or dimensions of existing evaluations.
@@ -265,7 +271,8 @@ def create_set(user, dictionary, data):
         raise Conflict('Visitor evaluation requires public browsing to be enabled.')
     if dictionary.evaluation_sets.filter(closed_at__isnull=True).count() >= 10:
         raise Conflict('Close an existing evaluation set before creating another (maximum ten open sets).')
-    live = word_picture_graph(dictionary) if picture_set else graph(dictionary, include_forms=data['scope'] == 'sentences')
+    live = word_picture_graph(dictionary) if picture_set else graph(dictionary,
+        include_forms=data['scope'] == 'sentences', include_word_pictures=word_pages)
     kind = 'sentence' if data['scope'] == 'sentences' else 'word'
     ids = sorted(pk for pk, snap in live.items() if snap['entry']['kind'] == kind)
     if not ids:
@@ -320,7 +327,8 @@ def create_set(user, dictionary, data):
     batch = EvaluationSet.objects.create(id=data['token'], dictionary=dictionary, created_by=user,
         name=data['name'], scope=data['scope'], sampling=data['sampling'], seed=seed, population_ids=ids,
         language=dictionary.language, explanation_language=dictionary.explanation_language,
-        allow_visitors=data['allow_visitors'], rubric=PICTURE_RUBRIC if picture_set else RUBRIC,
+        allow_visitors=data['allow_visitors'],
+        rubric=PICTURE_RUBRIC if picture_set else WORD_PAGE_RUBRIC if word_pages else RUBRIC,
         based_on=based_on, mwe_only=data.get('mwe_only', False))
     seen = set()
     for position, pk in enumerate(selected, 1):
@@ -329,8 +337,9 @@ def create_set(user, dictionary, data):
                                             snapshot=snapshot, fingerprint=digest(snapshot))
         row = snapshot['entry']
         candidates = []
-        if picture_set:
-            candidates = [(dim, digest([pk, dim, item.fingerprint]), None, False) for dim in PICTURE_DIMENSIONS]
+        if picture_set or word_pages:
+            candidates = [(dim, digest([pk, dim, item.fingerprint]), None, not row['image'])
+                          for dim in PICTURE_DIMENSIONS]
         if kind == 'sentence':
             for dim, missing in [('image', not row['image']), ('language', False),
                     ('sentence_audio', not row['audio']), ('translation', not row['meaning']),

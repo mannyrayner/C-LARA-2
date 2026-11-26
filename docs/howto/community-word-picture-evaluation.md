@@ -1,11 +1,18 @@
 # Review a sample of word pictures
 
 An owner or co-owner opens **Browse → Words → Review a sample of word pictures**.
-The evaluation form selects **Word pictures** and a random sample of 20 by
+The evaluation form selects **Word pictures only** and a random sample of 20 by
 default. Change the size or choose all eligible words, then create the set and
 share its link. This draws from the whole dictionary, independently of the browse
 page's search, category or pagination. Creating and completing a set makes no AI
 calls and changes no pictures or exercise settings.
+
+Choose **Standalone word pages** for a combined review of word translations,
+recordings and the same four picture aspects. This population includes accepted
+word pages without pictures: their picture targets are recorded as missing, not
+scored. Evaluators choose aspects according to their reading/listening competences.
+The dedicated word picture appears once above the judgements. **Word audio only**
+remains available for a pronunciation-only review.
 
 All evaluators see the same frozen sample. Each word has its currently displayed
 dedicated picture and intended meaning. The four independently selectable aspects
@@ -30,10 +37,14 @@ meanings or cultural contexts. Sessions can be resumed. No ratings are
 preselected, and peers' ratings are hidden. The owner closes collection before
 viewing summaries, agreement statistics, comments or CSV.
 
-The separate `community-word-pictures-v1` rubric uses existing word-scope JSON
+The separate `community-word-pictures-v1` and combined `community-word-pages-v1`
+rubrics use existing word-scope JSON
 storage; no schema migration is needed. Existing evaluations retain their
 original projection and dimensions. New ratings stop when the sampled text,
-meaning or picture changes; unrelated audio changes do not stop image review.
+meaning or picture changes; unrelated audio changes do not stop picture-only
+review. In a combined set, changes to any sampled word material stop new ratings
+for that page. Create a new set to include the combined questions; earlier
+translation/audio sets keep their original scope.
 Earlier ratings retain the original picture ID and fingerprint. Withdrawal
 withholds affected items, media and results. CSV adds image contribution ID,
 origin and model to the existing reproducible sample/anonymous-rater export.

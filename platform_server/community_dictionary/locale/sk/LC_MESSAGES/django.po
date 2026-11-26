@@ -8804,3 +8804,19 @@ msgstr ""
 "vhodnosť pre kartičky a kultúrnu vhodnosť. Môžete si vybrať aspekty a pri "
 "neistote zvoliť Neviem posúdiť. Vyžaduje sa dobrá znalosť čítania v jazyku "
 "slovníka."
+
+#. Combined word-page evaluation.
+msgid "Word pictures only"
+msgstr "Iba obrázky slov"
+
+#. Combined word-page evaluation.
+msgid "Your judgement"
+msgstr "Vaše hodnotenie"
+
+#. Combined word-page evaluation.
+msgid "Sentence sets cover sentences and their linked words. Standalone word pages cover translations, recordings and pictures, with missing material reported separately. Word pictures only samples words with existing visible pictures. Maximum 500 pages per set."
+msgstr "Súbory viet zahŕňajú vety a prepojené slová. Samostatné stránky slov zahŕňajú preklady, nahrávky a obrázky; chýbajúci materiál sa uvádza osobitne. Možnosť Iba obrázky slov vyberá slová s existujúcimi viditeľnými obrázkami. Najviac 500 strán na súbor."
+
+#. Combined word-page evaluation.
+msgid "Review word translations, recordings and pictures. You may choose which aspects to assess. Words without pictures remain in the sample, with missing pictures reported separately."
+msgstr "Hodnoťte preklady, nahrávky a obrázky slov. Môžete si vybrať, ktoré aspekty budete hodnotiť. Slová bez obrázkov zostávajú vo vzorke a chýbajúce obrázky sa uvádzajú osobitne."
