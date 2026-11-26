@@ -26,6 +26,8 @@ from .permissions import dictionaries_for, require_owner
 from .services import Conflict
 
 RUBRIC = 'community-quality-v2'
+PICTURE_RUBRIC = 'community-word-pictures-v1'
+PICTURE_DIMENSIONS = ('word_picture', 'word_picture_style', 'word_picture_clue', 'word_picture_culture')
 DIMENSIONS = {
     'image': ('Sentence and image', 'Does the picture support the description? Several different descriptions can be valid.'),
     'language': ('Sentence language', 'Is the sentence grammatical and reasonably natural? Accept legitimate regional varieties.'),
@@ -35,6 +37,10 @@ DIMENSIONS = {
     'word_translation': ('Word translation', 'Is the translation appropriate for this word or expression in the example sentence?'),
     'word_audio': ('Word audio', 'Listen: does it pronounce the displayed word or expression correctly in this language?'),
     'form_audio': (_('Inflected-form audio'), _('Listen: does it pronounce the displayed form correctly as used in this sentence? Judge the form, not the dictionary lemma. Accept legitimate regional varieties.')),
+    'word_picture': (_('Word-picture meaning'), _('Does the picture clearly represent the intended word and sense? Use the translation to identify the intended meaning.')),
+    'word_picture_style': (_('Picture clarity and style'), _('Is the picture clear and suitable for learners, including on a phone? Comment on distracting details or changes to the style.')),
+    'word_picture_clue': (_('Picture as a flashcard clue'), _('Would this make a fair clue for the displayed word? A useful illustration can still be too ambiguous for a flashcard.')),
+    'word_picture_culture': (_('Cultural suitability'), _('Are the objects, people, actions and setting suitable for your intended learners? Suggest local adaptations, or choose Cannot judge.')),
 }
 AI_ORIGINS = {'language-port', 'picture-description', 'sentence-vocabulary', 'synthetic', 'generated'}
 MAX_SAMPLE = 500
@@ -74,8 +80,10 @@ def competence_snapshot(user, dictionary):
             [('target', dictionary.language), ('explanation', dictionary.explanation_language)]}
 
 
-def eligible_dimensions(competences, scope):
+def eligible_dimensions(competences, scope, rubric=None):
     read = competences['target']['reading'] >= 2
+    if rubric == PICTURE_RUBRIC:
+        return list(PICTURE_DIMENSIONS) if read else []
     listen = competences['target']['listening'] >= 2
     translation = read and competences['explanation']['reading'] >= 2
     selected = set()
@@ -103,7 +111,7 @@ def signature(part):
             'previous_revision': part.previous_revision_id}
 
 
-def graph(dictionary, *, include_forms=False):
+def graph(dictionary, *, include_forms=False, include_word_pictures=False):
     """Bounded-query accepted projection, independent of public-browsing enablement."""
     parts = list(public.contributions(dictionary).exclude(kind='note').select_related(
         'entry__dictionary').order_by('-created_at', '-pk'))
@@ -112,6 +120,10 @@ def graph(dictionary, *, include_forms=False):
     for c in parts:
         by_entry[c.entry_id].append(c)
     checked = set(LanguageCheck.objects.filter(entry__dictionary=dictionary).values_list('text_id', 'meaning_id'))
+    if include_word_pictures:
+        from .lemma_images import basis
+        from .models import LemmaImage
+        decisions = {row.entry_id: row for row in LemmaImage.objects.filter(entry__dictionary=dictionary)}
     rows = {}
     for entry in Entry.objects.filter(dictionary=dictionary, archived=False).order_by('pk'):
         text = part_map.get(entry.current_text_id)
@@ -123,6 +135,18 @@ def graph(dictionary, *, include_forms=False):
         media = by_entry[entry.pk]
         images = [c for c in media if c.kind == 'image' and c.file_path]
         image = next((c for c in images if c.pk == entry.selected_image_id), images[0] if images else None)
+        if include_word_pictures and entry.entry_type == 'word':
+            # Follow the word page's dedicated lemma picture, not a sentence image
+            # or an older selected upload. Do not expose private generation state.
+            entry.dictionary = dictionary
+            decision = decisions.get(entry.pk)
+            if decision:
+                image = next((c for c in images if c.pk == decision.image_id), None) if (
+                    decision.snapshot == basis(entry) and decision.status not in {'none', 'removed'}
+                    and text.word == entry.word and (meaning.meaning if meaning else '') == entry.meaning) else None
+            else:
+                images.sort(key=lambda c: c.pk, reverse=True)
+                image = next((c for c in images if c.pk == entry.selected_image_id), images[0] if images else None)
         audios = [c for c in media if c.kind == 'audio' and c.file_path and
             (not include_forms or not c.provenance.get('sentence_form')) and (
             c.provenance.get('origin') != 'synthetic' or (
@@ -177,8 +201,18 @@ def graph(dictionary, *, include_forms=False):
             'explanation_language': dictionary.explanation_language} for entry_id, row in rows.items()}
 
 
+def word_picture_graph(dictionary):
+    # Sample all visible dedicated word pictures, including illustration-only
+    # decisions. Filtering to the model's proposed clues would bias the review.
+    return {pk: {**snap, 'entry': {**snap['entry'], 'audio': None}, 'words': []}
+            for pk, snap in graph(dictionary, include_word_pictures=True).items()
+            if snap['entry']['kind'] == 'word' and snap['entry']['image']}
+
+
 def graph_for_set(batch):
     # Old sets keep their original projection; adding coverage cannot rewrite their targets.
+    if batch.rubric == PICTURE_RUBRIC:
+        return word_picture_graph(batch.dictionary)
     return graph(batch.dictionary, include_forms=batch.rubric == RUBRIC and batch.scope == 'sentences')
 
 
@@ -215,6 +249,11 @@ def is_current(item, live):
 
 @transaction.atomic
 def create_set(user, dictionary, data):
+    picture_set = data['scope'] == 'word_pics'
+    if picture_set:
+        # Reuse word scope/storage with a separate rubric; no schema change and
+        # no change to the snapshots or dimensions of existing evaluations.
+        data = {**data, 'scope': 'words'}
     dictionary = Dictionary.objects.select_for_update().get(pk=dictionary.pk)
     require_owner(user, dictionary)
     previous = EvaluationSet.objects.filter(pk=data['token'], dictionary=dictionary, created_by=user).first()
@@ -226,10 +265,12 @@ def create_set(user, dictionary, data):
         raise Conflict('Visitor evaluation requires public browsing to be enabled.')
     if dictionary.evaluation_sets.filter(closed_at__isnull=True).count() >= 10:
         raise Conflict('Close an existing evaluation set before creating another (maximum ten open sets).')
-    live = graph(dictionary, include_forms=data['scope'] == 'sentences')
+    live = word_picture_graph(dictionary) if picture_set else graph(dictionary, include_forms=data['scope'] == 'sentences')
     kind = 'sentence' if data['scope'] == 'sentences' else 'word'
     ids = sorted(pk for pk, snap in live.items() if snap['entry']['kind'] == kind)
     if not ids:
+        if picture_set:
+            raise Conflict(_('There are no current accepted word pictures to evaluate yet.'))
         raise Conflict('There are no accepted pages of this kind to evaluate yet.')
     if 'selected_entry_ids' in data:
         # Internal caller: an owner-created, unapproved audio-regeneration quote.
@@ -279,7 +320,8 @@ def create_set(user, dictionary, data):
     batch = EvaluationSet.objects.create(id=data['token'], dictionary=dictionary, created_by=user,
         name=data['name'], scope=data['scope'], sampling=data['sampling'], seed=seed, population_ids=ids,
         language=dictionary.language, explanation_language=dictionary.explanation_language,
-        allow_visitors=data['allow_visitors'], rubric=RUBRIC, based_on=based_on, mwe_only=data.get('mwe_only', False))
+        allow_visitors=data['allow_visitors'], rubric=PICTURE_RUBRIC if picture_set else RUBRIC,
+        based_on=based_on, mwe_only=data.get('mwe_only', False))
     seen = set()
     for position, pk in enumerate(selected, 1):
         snapshot = live[pk]
@@ -287,12 +329,14 @@ def create_set(user, dictionary, data):
                                             snapshot=snapshot, fingerprint=digest(snapshot))
         row = snapshot['entry']
         candidates = []
+        if picture_set:
+            candidates = [(dim, digest([pk, dim, item.fingerprint]), None, False) for dim in PICTURE_DIMENSIONS]
         if kind == 'sentence':
             for dim, missing in [('image', not row['image']), ('language', False),
                     ('sentence_audio', not row['audio']), ('translation', not row['meaning']),
                     ('vocabulary', not snapshot['words'])]:
                 candidates.append((dim, digest([pk, dim, item.fingerprint]), None, missing))
-        words = list(enumerate(snapshot['words'])) if kind == 'sentence' else [(None, row)]
+        words = [] if picture_set else list(enumerate(snapshot['words'])) if kind == 'sentence' else [(None, row)]
         for index, word in words:
             for dim in (['word_audio'] if data['scope'] == 'word_audio' else ['word_translation', 'word_audio']):
                 # Sense is the word entry, not spelling. Each exact translation/audio is rated once.

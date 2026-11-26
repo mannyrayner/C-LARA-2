@@ -8825,3 +8825,105 @@ msgstr "Aucune image manquante à générer avec ces options."
 #. Dictionary-wide missing word pictures.
 msgid "Some words no longer need a picture. Preview all missing pictures again."
 msgstr "Certains mots n’ont plus besoin d’image. Actualisez l’aperçu de toutes les images manquantes."
+
+#. Word-picture evaluation.
+msgid "Word-picture meaning"
+msgstr "Sens de l’image du mot"
+
+#. Word-picture evaluation.
+msgid ""
+"Does the picture clearly represent the intended word and sense? Use the "
+"translation to identify the intended meaning."
+msgstr ""
+"L’image représente-t-elle clairement le mot et le sens visés ? Utilisez la "
+"traduction pour identifier le sens voulu."
+
+#. Word-picture evaluation.
+msgid "Picture clarity and style"
+msgstr "Clarté et style de l’image"
+
+#. Word-picture evaluation.
+msgid ""
+"Is the picture clear and suitable for learners, including on a phone? "
+"Comment on distracting details or changes to the style."
+msgstr ""
+"L’image est-elle claire et adaptée aux apprenants, y compris sur téléphone ?"
+" Signalez les détails gênants ou les changements de style souhaités."
+
+#. Word-picture evaluation.
+msgid "Picture as a flashcard clue"
+msgstr "Image comme indice de carte de révision"
+
+#. Word-picture evaluation.
+msgid ""
+"Would this make a fair clue for the displayed word? A useful illustration "
+"can still be too ambiguous for a flashcard."
+msgstr ""
+"Cette image serait-elle un indice suffisamment clair pour le mot affiché ? "
+"Une illustration utile peut néanmoins être trop ambiguë pour une carte de "
+"révision."
+
+#. Word-picture evaluation.
+msgid "Cultural suitability"
+msgstr "Adéquation culturelle"
+
+#. Word-picture evaluation.
+msgid ""
+"Are the objects, people, actions and setting suitable for your intended "
+"learners? Suggest local adaptations, or choose Cannot judge."
+msgstr ""
+"Les objets, les personnes, les actions et le cadre conviennent-ils aux "
+"apprenants visés ? Proposez des adaptations locales ou choisissez Impossible"
+" à évaluer."
+
+#. Word-picture evaluation.
+msgid "Word-picture evaluation"
+msgstr "Évaluation des images des mots"
+
+#. Word-picture evaluation.
+msgid "There are no current accepted word pictures to evaluate yet."
+msgstr ""
+"Aucune image de mot actuellement validée n’est encore disponible pour "
+"évaluation."
+
+#. Word-picture evaluation.
+msgid "Intended meaning:"
+msgstr "Sens visé :"
+
+#. Word-picture evaluation.
+msgid ""
+"Judge each aspect separately. A useful illustration may still be an "
+"ambiguous flashcard clue. Use comments to suggest replacements, style "
+"changes or local adaptations."
+msgstr ""
+"Évaluez chaque aspect séparément. Une illustration utile peut rester ambiguë"
+" comme indice de carte de révision. Utilisez les commentaires pour proposer "
+"des remplacements, des changements de style ou des adaptations locales."
+
+#. Word-picture evaluation.
+msgid ""
+"A word-picture set samples existing visible word illustrations, including "
+"pictures excluded from flashcards. Review meaning, clarity and style, "
+"flashcard suitability and cultural fit. No pictures are generated or "
+"changed."
+msgstr ""
+"Un ensemble d’images des mots sélectionne des illustrations existantes et "
+"visibles, y compris celles exclues des cartes de révision. Évaluez le sens, "
+"la clarté et le style, l’utilisation comme indice et l’adéquation "
+"culturelle. Aucune image n’est générée ni modifiée."
+
+#. Word-picture evaluation.
+msgid "Review a sample of word pictures"
+msgstr "Évaluer un échantillon d’images des mots"
+
+#. Word-picture evaluation.
+msgid ""
+"Review existing word pictures for meaning, clarity and style, flashcard "
+"suitability and cultural fit. You may choose which aspects to assess and use"
+" Cannot judge when uncertain. Confident reading of the dictionary language "
+"is required."
+msgstr ""
+"Évaluez les images existantes selon leur sens, leur clarté et leur style, "
+"leur utilisation comme indice et leur adéquation culturelle. Choisissez les "
+"aspects à évaluer et utilisez Impossible à évaluer en cas de doute. Il faut "
+"pouvoir lire avec assurance la langue du dictionnaire."

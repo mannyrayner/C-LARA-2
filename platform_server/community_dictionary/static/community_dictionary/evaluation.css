@@ -1,0 +1,50 @@
+/* Keep the material and the judgement usable together, including on phones. */
+.evaluation-form {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.evaluation-form fieldset {
+  min-inline-size: 0;
+  margin: 0;
+}
+.evaluation-form legend {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.evaluation-context {
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+.evaluation-context > div,
+.evaluation-material {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.evaluation-material {
+  margin-bottom: 1rem;
+}
+.evaluation-context .entry-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 14rem;
+  object-fit: contain;
+}
+.evaluation-material audio {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+}
+@media (max-width: 600px) {
+  .evaluation-context {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .evaluation-context .entry-image {
+    max-width: 14rem;
+    margin-inline: auto;
+  }
+}
