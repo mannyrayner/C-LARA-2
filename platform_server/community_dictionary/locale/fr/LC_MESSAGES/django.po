@@ -8927,3 +8927,19 @@ msgstr ""
 "leur utilisation comme indice et leur adéquation culturelle. Choisissez les "
 "aspects à évaluer et utilisez Impossible à évaluer en cas de doute. Il faut "
 "pouvoir lire avec assurance la langue du dictionnaire."
+
+#. Combined word-page evaluation.
+msgid "Word pictures only"
+msgstr "Images des mots uniquement"
+
+#. Combined word-page evaluation.
+msgid "Your judgement"
+msgstr "Votre évaluation"
+
+#. Combined word-page evaluation.
+msgid "Sentence sets cover sentences and their linked words. Standalone word pages cover translations, recordings and pictures, with missing material reported separately. Word pictures only samples words with existing visible pictures. Maximum 500 pages per set."
+msgstr "Les ensembles de phrases couvrent les phrases et les mots associés. Les pages de mots autonomes couvrent les traductions, les enregistrements et les images ; les éléments manquants sont signalés séparément. Images des mots uniquement sélectionne les mots ayant une image visible. Maximum : 500 pages par ensemble."
+
+#. Combined word-page evaluation.
+msgid "Review word translations, recordings and pictures. You may choose which aspects to assess. Words without pictures remain in the sample, with missing pictures reported separately."
+msgstr "Évaluez les traductions, les enregistrements et les images des mots. Choisissez les aspects à évaluer. Les mots sans image restent dans l’échantillon ; les images manquantes sont signalées séparément."

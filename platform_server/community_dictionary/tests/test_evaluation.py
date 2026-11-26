@@ -78,7 +78,7 @@ class EvaluationTests(TestCase):
         user = user or self.member
         skills = ev.competence_snapshot(user, batch)
         return EvaluationSession.objects.create(evaluation_set=batch, user=user, competences=skills,
-            dimensions=dims or ev.eligible_dimensions(skills, batch.scope), involvement='no')
+            dimensions=dims or ev.eligible_dimensions(skills, batch.scope, batch.rubric), involvement='no')
 
     def item_url(self, batch, item=None):
         return url('evaluation-item', self.dictionary.pk, batch.pk, (item or batch.items.first()).pk)
@@ -159,9 +159,10 @@ class EvaluationTests(TestCase):
         entry = self.make_entry('hund', '', kind='word', image=False, audio=False)
         batch = self.batch(scope='words')
         missing = batch.units.filter(item__entry=entry)
-        self.assertEqual(missing.count(), 2)
+        self.assertEqual(missing.count(), 6)
         self.assertTrue(all(u.missing for u in missing))
-        self.assertEqual(set(batch.units.values_list('dimension', flat=True)), {'word_audio', 'word_translation'})
+        self.assertEqual(set(batch.units.values_list('dimension', flat=True)),
+                         {'word_audio', 'word_translation', *ev.PICTURE_DIMENSIONS})
         self.start(batch)
         response = self.client.get(self.item_url(batch, batch.items.get(entry=entry)))
         self.assertContains(response, 'Missing material at sampling')
@@ -217,7 +218,7 @@ class EvaluationTests(TestCase):
         batch = self.batch(); self.start(batch)
         item = batch.items.first()
         html = self.client.get(self.item_url(batch)).content.decode()
-        panels = re.findall(r'<fieldset[^>]*data-evaluation-dimension="([^"]+)"[^>]*>(.*?)</fieldset>', html, re.S)
+        panels = re.findall(r'<section[^>]*data-evaluation-dimension="([^"]+)"[^>]*>(.*?)</section>', html, re.S)
         self.assertEqual(len(panels), 11)
         for dimension, panel in panels:
             if dimension == 'form_audio':
@@ -486,7 +487,7 @@ class EvaluationTests(TestCase):
         response = self.owner_client.get(url('evaluation-export', self.dictionary.pk, batch.pk))
         rows = list(csv.DictReader(io.StringIO(response.content.decode())))
         rows = [r for r in rows if r['entry_id'] == str(word.pk)]
-        self.assertEqual(len(rows), 2)
+        self.assertEqual(len(rows), 6)
         for row in rows:
             self.assertEqual(row['entry_type'], 'word')
             self.assertEqual(row['entry_text'], "'=EXAMPLE()")

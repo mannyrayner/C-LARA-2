@@ -50,7 +50,7 @@ class FormEvaluationTests(TestCase):
         batch = self.batch(); self.start(batch)
         item = batch.items.get()
         html = self.client.get(self.item_url(batch)).content.decode()
-        panels = dict(re.findall(r'<fieldset[^>]*data-evaluation-dimension="([^"]+)"[^>]*>(.*?)</fieldset>', html, re.S))
+        panels = dict(re.findall(r'<section[^>]*data-evaluation-dimension="([^"]+)"[^>]*>(.*?)</section>', html, re.S))
         form = panels['form_audio'].split('<select')[0]
         for text in ['Katten ligger på soffan.', 'Dictionary lemma:', 'katt', 'Form to listen to:', 'Katten', 'the cat']:
             self.assertIn(text, form)

@@ -84,7 +84,7 @@ def competences(request):
 class SetForm(forms.Form):
     token = forms.UUIDField(widget=forms.HiddenInput)
     name = forms.CharField(max_length=160, initial='Initial quality evaluation', label='Evaluation name')
-    scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages'), ('word_audio', 'Word audio only'), ('word_pics', gettext_lazy('Word pictures'))])
+    scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages'), ('word_audio', 'Word audio only'), ('word_pics', gettext_lazy('Word pictures only'))])
     mwe_only = forms.BooleanField(required=False,
         label=gettext_lazy('Only multi-word entries in English, French, Swedish, German, Italian or Icelandic'),
         help_text=gettext_lazy('For word pages or word audio only. Japanese uses explicit selection on the expression-audio page.'))
@@ -173,6 +173,7 @@ def detail(request, pk, set_id):
     return render(request, 'community_dictionary/evaluation_set.html', context(request, dictionary, member,
         batch=batch, session=existing, eligible=eligible, form=form, repeat_token=uuid.uuid4(),
         word_pictures=batch.rubric == ev.PICTURE_RUBRIC,
+        word_pages=batch.rubric == ev.WORD_PAGE_RUBRIC,
         forms_covered=batch.rubric == ev.RUBRIC and batch.scope == 'sentences',
         form_count=batch.units.filter(dimension='form_audio').count(),
         missing_form_count=batch.units.filter(dimension='form_audio', missing=True).count(),
@@ -289,14 +290,16 @@ def item(request, pk, set_id, item_id):
             'help': ev.DIMENSIONS[unit.dimension][1], 'word': word,
             'word_task': unit.dimension.startswith('word_') and unit.dimension not in ev.PICTURE_DIMENSIONS,
             'form_task': unit.dimension == 'form_audio',
-            'show_image': unit.dimension in {'image', 'translation', 'vocabulary', 'word_translation'},
+            'show_image': unit.dimension in {'image', 'translation', 'vocabulary', 'word_translation'}
+                and batch.rubric != ev.WORD_PAGE_RUBRIC,
             'picture_task': unit.dimension in ev.PICTURE_DIMENSIONS,
             'audio_task': unit.dimension in {'sentence_audio', 'word_audio', 'form_audio'},
             'score': form[f'score_{unit.pk}'] if not unit.missing else None,
             'comment': form[f'comment_{unit.pk}'] if not unit.missing else None})
     return render(request, 'community_dictionary/evaluation_item.html', context(request, dictionary, member,
         batch=batch, item=record, root=root, words=record.snapshot['words'], rows=rows, form=form,
-        total=batch.items.count(), session=attempt, word_pictures=batch.rubric == ev.PICTURE_RUBRIC))
+        total=batch.items.count(), session=attempt, word_pictures=batch.rubric == ev.PICTURE_RUBRIC,
+        word_pages=batch.rubric == ev.WORD_PAGE_RUBRIC))
 
 
 @page(['GET'])
