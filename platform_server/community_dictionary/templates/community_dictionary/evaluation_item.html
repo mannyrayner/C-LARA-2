@@ -1,10 +1,18 @@
 {% extends 'community_dictionary/base.html' %}
 {% load static i18n %}
 {% block title %}{% blocktranslate with position=item.position %}Evaluate page {{ position }}{% endblocktranslate %}{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'community_dictionary/evaluation.css' %}?v=1">{% endblock %}
 {% block content %}
 <p><a href="{% url 'community_dictionary:evaluation-session' dictionary.pk batch.pk %}">{% translate "Your session / stop for now" %}</a></p>
 <p class="eyebrow">{{ batch.name }} · {% blocktranslate with position=item.position total=total %}Page {{ position }} of {{ total }}{% endblocktranslate %}</p>
 <h1 dir="{{ dictionary.text_direction }}">{{ root.text }}</h1>
+{% if word_pictures %}
+<div class="panel evaluation-context">
+  <img class="entry-image" src="{% url 'community_dictionary:evaluation-media' dictionary.pk batch.pk item.pk root.image.id %}" alt="{% translate 'Picture for this judgement' %}">
+  <div><p>{% translate "Intended meaning:" %} <span dir="auto">{{ root.meaning }}</span></p>
+  <p>{% translate "Judge each aspect separately. A useful illustration may still be an ambiguous flashcard clue. Use comments to suggest replacements, style changes or local adaptations." %}</p></div>
+</div>
+{% endif %}
 <details class="panel">
   <summary>{% translate "How to judge" %}</summary>
   <p><strong>{% translate "Acceptable:" %}</strong> {% translate "suitable for this learning resource, including legitimate alternative descriptions and regional pronunciations." %}</p>
@@ -18,8 +26,8 @@
   {% for row in rows %}
   <fieldset class="panel" data-evaluation-dimension="{{ row.unit.dimension }}">
     <legend>{{ row.label }}{% if row.word_task or row.form_task %}: {{ row.word.text }}{% endif %}</legend>
-    <div class="evaluation-material">
-      <div{% if row.show_image %} class="entry-layout"{% endif %}>
+    {% if not row.picture_task %}<div class="evaluation-material">
+      <div{% if row.show_image %} class="evaluation-context"{% endif %}>
         {% if row.show_image %}
         <div>
           {% if root.image %}
@@ -59,7 +67,7 @@
         {% empty %}<li>{% translate "No linked vocabulary was available when sampled." %}</li>{% endfor %}
       </ul>
       {% endif %}
-    </div>
+    </div>{% endif %}
     <p>{{ row.help }}</p>
     {% if row.unit.missing %}
     <p class="notice">{% translate "Missing material at sampling — recorded separately, no score required." %}</p>

@@ -84,7 +84,7 @@ def competences(request):
 class SetForm(forms.Form):
     token = forms.UUIDField(widget=forms.HiddenInput)
     name = forms.CharField(max_length=160, initial='Initial quality evaluation', label='Evaluation name')
-    scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages'), ('word_audio', 'Word audio only')])
+    scope = forms.ChoiceField(choices=[('sentences', 'Sentence pages and their vocabulary'), ('words', 'Standalone word pages'), ('word_audio', 'Word audio only'), ('word_pics', gettext_lazy('Word pictures'))])
     mwe_only = forms.BooleanField(required=False,
         label=gettext_lazy('Only multi-word entries in English, French, Swedish, German, Italian or Icelandic'),
         help_text=gettext_lazy('For word pages or word audio only. Japanese uses explicit selection on the expression-audio page.'))
@@ -98,7 +98,10 @@ class SetForm(forms.Form):
 @page(['GET', 'POST'])
 def home(request, pk):
     dictionary, member = ev.access(request.user, pk)
-    form = SetForm(request.POST if request.method == 'POST' else None, initial={'token': uuid.uuid4()})
+    initial = {'token': uuid.uuid4()}
+    if request.GET.get('scope') == 'word_pics':
+        initial.update(scope='word_pics', size=20, name=gettext_lazy('Word-picture evaluation'))
+    form = SetForm(request.POST if request.method == 'POST' else None, initial=initial)
     if request.method == 'POST':
         require_owner(request.user, dictionary)
         if form.is_valid():
@@ -110,7 +113,7 @@ def home(request, pk):
     if not member:
         batches = batches.filter(allow_visitors=True)
     sessions = {s.evaluation_set_id: s for s in EvaluationSession.objects.filter(user=request.user, evaluation_set__dictionary=dictionary)}
-    rows = [{'batch': b, 'session': sessions.get(b.pk)} for b in batches[:100]]
+    rows = [{'batch': b, 'session': sessions.get(b.pk), 'word_pictures': b.rubric == ev.PICTURE_RUBRIC} for b in batches[:100]]
     from .tts import language_code
     preparing = (PortRun.objects.filter(port__source=dictionary, port__user=request.user,
         options__evaluation_study__rubric='word-audio-provider-study-v1')
@@ -150,7 +153,7 @@ def detail(request, pk, set_id):
     existing = EvaluationSession.objects.filter(evaluation_set=batch, user=request.user).first()
     competence = ev.competence_snapshot(request.user, batch)
     present = set(batch.units.values_list('dimension', flat=True))
-    eligible = [dim for dim in ev.eligible_dimensions(competence, batch.scope) if dim in present]
+    eligible = [dim for dim in ev.eligible_dimensions(competence, batch.scope, batch.rubric) if dim in present]
     form = SessionForm(request.POST if request.method == 'POST' else None, eligible=eligible)
     if request.method == 'POST':
         with transaction.atomic():
@@ -169,6 +172,7 @@ def detail(request, pk, set_id):
                 return redirect('community_dictionary:evaluation-session', pk=pk, set_id=batch.pk)
     return render(request, 'community_dictionary/evaluation_set.html', context(request, dictionary, member,
         batch=batch, session=existing, eligible=eligible, form=form, repeat_token=uuid.uuid4(),
+        word_pictures=batch.rubric == ev.PICTURE_RUBRIC,
         forms_covered=batch.rubric == ev.RUBRIC and batch.scope == 'sentences',
         form_count=batch.units.filter(dimension='form_audio').count(),
         missing_form_count=batch.units.filter(dimension='form_audio', missing=True).count(),
@@ -283,15 +287,16 @@ def item(request, pk, set_id, item_id):
         word = unit_word(unit, record.snapshot)
         rows.append({'unit': unit, 'label': ev.DIMENSIONS[unit.dimension][0],
             'help': ev.DIMENSIONS[unit.dimension][1], 'word': word,
-            'word_task': unit.dimension.startswith('word_'),
+            'word_task': unit.dimension.startswith('word_') and unit.dimension not in ev.PICTURE_DIMENSIONS,
             'form_task': unit.dimension == 'form_audio',
             'show_image': unit.dimension in {'image', 'translation', 'vocabulary', 'word_translation'},
+            'picture_task': unit.dimension in ev.PICTURE_DIMENSIONS,
             'audio_task': unit.dimension in {'sentence_audio', 'word_audio', 'form_audio'},
             'score': form[f'score_{unit.pk}'] if not unit.missing else None,
             'comment': form[f'comment_{unit.pk}'] if not unit.missing else None})
     return render(request, 'community_dictionary/evaluation_item.html', context(request, dictionary, member,
         batch=batch, item=record, root=root, words=record.snapshot['words'], rows=rows, form=form,
-        total=batch.items.count(), session=attempt))
+        total=batch.items.count(), session=attempt, word_pictures=batch.rubric == ev.PICTURE_RUBRIC))
 
 
 @page(['GET'])
@@ -361,7 +366,8 @@ def results(request, pk, set_id, download=False):
             'entry_type', 'entry_text', 'entry_translation', 'word_entry_id', 'word_text',
             'word_translation', 'word_form_in_sentence', 'extracted_vocabulary', 'explanation_listening',
             'audio_contribution_id', 'based_on_set_id', 'scope', 'mwe_only',
-            'audio_text', 'form_contribution_id', 'form_translation', 'form_link_id'])
+            'audio_text', 'form_contribution_id', 'form_translation', 'form_link_id',
+            'image_contribution_id', 'image_origin', 'image_model'])
         by_unit = {}
         for rating in data['ratings']:
             by_unit.setdefault(rating.unit_id, []).append(rating)
@@ -400,7 +406,9 @@ def results(request, pk, set_id, download=False):
                     (material.get('audio') or {}).get('id', '') if audio_task else '',
                     batch.based_on_id or '', batch.scope, batch.mwe_only,
                     material['text'] if audio_task else '',
-                    (form.get('text_part') or {}).get('id', ''), form.get('meaning', ''), form.get('link_id', '')]
+                    (form.get('text_part') or {}).get('id', ''), form.get('meaning', ''), form.get('link_id', ''),
+                    (entry.get('image') or {}).get('id', ''), (entry.get('image') or {}).get('origin', ''),
+                    (entry.get('image') or {}).get('model', '')]
                 writer.writerow([csv_cell(value) for value in values])
         response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="dictionary-evaluation-{batch.pk}.csv"'

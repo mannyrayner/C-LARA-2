@@ -8705,3 +8705,102 @@ msgstr "S týmito možnosťami nie sú žiadne chýbajúce obrázky na generovan
 #. Dictionary-wide missing word pictures.
 msgid "Some words no longer need a picture. Preview all missing pictures again."
 msgstr "Niektoré slová už nepotrebujú obrázok. Znova zobrazte náhľad všetkých chýbajúcich obrázkov."
+
+#. Word-picture evaluation.
+msgid "Word-picture meaning"
+msgstr "Význam obrázka slova"
+
+#. Word-picture evaluation.
+msgid ""
+"Does the picture clearly represent the intended word and sense? Use the "
+"translation to identify the intended meaning."
+msgstr ""
+"Zobrazuje obrázok jasne dané slovo a jeho zamýšľaný význam? Pri určení "
+"významu použite preklad."
+
+#. Word-picture evaluation.
+msgid "Picture clarity and style"
+msgstr "Zrozumiteľnosť a štýl obrázka"
+
+#. Word-picture evaluation.
+msgid ""
+"Is the picture clear and suitable for learners, including on a phone? "
+"Comment on distracting details or changes to the style."
+msgstr ""
+"Je obrázok zrozumiteľný a vhodný pre učiacich sa, aj na telefóne? Uveďte "
+"rušivé detaily alebo navrhnite zmeny štýlu."
+
+#. Word-picture evaluation.
+msgid "Picture as a flashcard clue"
+msgstr "Obrázok ako pomôcka na kartičke"
+
+#. Word-picture evaluation.
+msgid ""
+"Would this make a fair clue for the displayed word? A useful illustration "
+"can still be too ambiguous for a flashcard."
+msgstr ""
+"Bol by tento obrázok jednoznačnou pomôckou pre zobrazené slovo? Aj užitočná "
+"ilustrácia môže byť na kartičku príliš nejednoznačná."
+
+#. Word-picture evaluation.
+msgid "Cultural suitability"
+msgstr "Kultúrna vhodnosť"
+
+#. Word-picture evaluation.
+msgid ""
+"Are the objects, people, actions and setting suitable for your intended "
+"learners? Suggest local adaptations, or choose Cannot judge."
+msgstr ""
+"Sú predmety, ľudia, činnosti a prostredie vhodné pre vašich zamýšľaných "
+"používateľov? Navrhnite miestne úpravy alebo zvoľte Neviem posúdiť."
+
+#. Word-picture evaluation.
+msgid "Word-picture evaluation"
+msgstr "Hodnotenie obrázkov slov"
+
+#. Word-picture evaluation.
+msgid "There are no current accepted word pictures to evaluate yet."
+msgstr ""
+"Zatiaľ nie sú k dispozícii aktuálne schválené obrázky slov na hodnotenie."
+
+#. Word-picture evaluation.
+msgid "Intended meaning:"
+msgstr "Zamýšľaný význam:"
+
+#. Word-picture evaluation.
+msgid ""
+"Judge each aspect separately. A useful illustration may still be an "
+"ambiguous flashcard clue. Use comments to suggest replacements, style "
+"changes or local adaptations."
+msgstr ""
+"Posúďte každý aspekt samostatne. Aj užitočná ilustrácia môže byť "
+"nejednoznačnou pomôckou na kartičke. V komentároch môžete navrhnúť náhrady, "
+"zmeny štýlu alebo miestne úpravy."
+
+#. Word-picture evaluation.
+msgid ""
+"A word-picture set samples existing visible word illustrations, including "
+"pictures excluded from flashcards. Review meaning, clarity and style, "
+"flashcard suitability and cultural fit. No pictures are generated or "
+"changed."
+msgstr ""
+"Súbor na hodnotenie obrázkov slov vyberá existujúce viditeľné ilustrácie "
+"vrátane obrázkov vylúčených z kartičiek. Posúďte význam, zrozumiteľnosť a "
+"štýl, vhodnosť pre kartičky a kultúrnu vhodnosť. Žiadne obrázky sa "
+"nevytvárajú ani nemenia."
+
+#. Word-picture evaluation.
+msgid "Review a sample of word pictures"
+msgstr "Hodnotiť vzorku obrázkov slov"
+
+#. Word-picture evaluation.
+msgid ""
+"Review existing word pictures for meaning, clarity and style, flashcard "
+"suitability and cultural fit. You may choose which aspects to assess and use"
+" Cannot judge when uncertain. Confident reading of the dictionary language "
+"is required."
+msgstr ""
+"Posúďte význam, zrozumiteľnosť a štýl existujúcich obrázkov slov, ich "
+"vhodnosť pre kartičky a kultúrnu vhodnosť. Môžete si vybrať aspekty a pri "
+"neistote zvoliť Neviem posúdiť. Vyžaduje sa dobrá znalosť čítania v jazyku "
+"slovníka."
