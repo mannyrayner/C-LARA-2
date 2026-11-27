@@ -123,7 +123,8 @@ def admit_image(study):
         raise Conflict(_('Your balance is too low to generate this picture.'))
     recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
     info = study.result['guided']['words']
-    extra = images.approved_allowance(info.get('image_allowance'), study.dictionary, study.user, study.pk)
+    token = info.get('image_allowance')
+    extra = images.approved_allowance(token, study.dictionary, study.user, study.pk) if token else False
     images.approve_capacity(study.dictionary, study.user, extra)
     if recent.filter(user=study.user, status='processing',
             created_at__gte=timezone.now()-timedelta(seconds=images.TIMEOUT+60)).exists():
