@@ -52,6 +52,7 @@
 {% elif study.status == 'failed' %}
 {% if words_info %}
 <p class="notice">{% translate "This attempt could not finish. Your words are saved privately. No failed AI request is repeated automatically." %}</p>
+{% if words_info.allowance_error %}<p class="notice">{{ words_info.allowance_error }}</p>{% endif %}
 <p class="meaning" dir="auto">{{ words_info.text }}</p>
 {% if study.recording_path %}<audio controls src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'recording' %}"></audio>{% endif %}
 {% if study.file_path %}

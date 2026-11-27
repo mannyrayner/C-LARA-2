@@ -1,0 +1,4 @@
+{% load i18n %}
+<p class="help">{% blocktranslate with limit=image_counts.limit account=image_counts.account_used dictionary_used=image_counts.dictionary_used remaining=image_counts.remaining %}Normal AI image allowance: {{ limit }} per account and per dictionary in the last 24 hours. Your account: {{ account }} used; this dictionary: {{ dictionary_used }} used; {{ remaining }} remaining.{% endblocktranslate %}</p>
+<p class="help">{% translate "This separate allowance covers new AI pictures, style samples and word pictures. Raising Picture creation and practice allowance does not raise this image limit. Dictionary owners can explicitly approve extra images for the displayed request or word-picture batch; normal limits and cost confirmations remain in place." %}</p>
+{% if not image_counts.limit %}<p class="notice">{% translate "The server administrator has paused AI picture generation." %}</p>{% endif %}

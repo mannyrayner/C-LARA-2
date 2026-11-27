@@ -148,12 +148,7 @@ def missing(dictionary):
 
 
 def daily_usage(dictionary, user):
-    recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
-    limit = max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT))
-    account_used = recent.filter(user=user).count()
-    dictionary_used = recent.filter(dictionary=dictionary).count()
-    return {'limit': limit, 'account_used': account_used, 'dictionary_used': dictionary_used,
-        'remaining': max(0, limit-max(account_used, dictionary_used))}
+    return images.daily_usage(dictionary, user)
 
 
 def approve_capacity(dictionary, user, count, temporary_allowance=False):

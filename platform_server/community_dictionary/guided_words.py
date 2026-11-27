@@ -3,7 +3,6 @@ from datetime import timedelta
 from copy import deepcopy
 from decimal import Decimal
 import uuid
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.db import transaction
@@ -34,7 +33,8 @@ def context(user, dictionary):
         if dictionary.image_generation_enabled: values = quote_values(user, dictionary)
     except Conflict as exc: error = str(exc)
     return {'words_quote': signing.dumps(values, salt=SALT) if values else '',
-        'words_estimate': estimate(values) if values else None, 'words_setup_error': error}
+        'words_estimate': estimate(values) if values else None, 'words_setup_error': error,
+        'image_counts': images.daily_usage(dictionary, user)}
 
 
 def estimate(values):
@@ -66,6 +66,8 @@ def permitted(study, payment=False):
 
 def new_attempt(request, dictionary, paths, form, quote):
     data = form.cleaned_data
+    extra = data.get('extra_image_allowance', False)
+    images.approve_capacity(dictionary, request.user, extra)
     choices = dict(learning.preference(request, dictionary).get('choices', {}))
     styles = dict(choices.get('styles', {}))
     style_key = data['picture_style']
@@ -83,7 +85,7 @@ def new_attempt(request, dictionary, paths, form, quote):
     text = data.get('words', '')
     info = {'method': data['words_mode'], 'text': text, 'stage': 'transcribe' if audio else 'image',
         'style_name': data['style_name'], 'style_description': data['style_description'], 'quote': quote}
-    return PictureCapture.objects.create(dictionary=dictionary, user=request.user, status='draft',
+    study = PictureCapture.objects.create(dictionary=dictionary, user=request.user, status='draft',
         input_mode='guided', input_language=data['words_language'], language=dictionary.language,
         explanation_language=dictionary.explanation_language or 'English', description=text,
         recording_path=audio.get('file_path', ''), model=quote['guided']['model'],
@@ -94,6 +96,10 @@ def new_attempt(request, dictionary, paths, form, quote):
         participation_revision=Participation.objects.filter(dictionary=dictionary, user=request.user).values_list('revision', flat=True).first() or 0,
         result={'guided': {'version': quote['guided']['version'], 'level': learning.level(dictionary),
             'consent': {**quote['guided'], 'words_version': quote['version']}, 'words': info}})
+    if extra:
+        info['image_allowance'] = images.allowance_token(dictionary, request.user, study.pk)
+        study.save(update_fields=['result'])
+    return study
 
 
 def generate_from_transcript(pk, user, text):
@@ -116,9 +122,9 @@ def admit_image(study):
     if not personal and credits_enabled() and get_user_balance_usd(study.user) < allowance:
         raise Conflict(_('Your balance is too low to generate this picture.'))
     recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
-    limit = settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT
-    if recent.filter(user=study.user).count() >= limit or recent.filter(dictionary=study.dictionary).count() >= limit:
-        raise Conflict(_('The daily image-generation limit has been reached. Please try tomorrow.'))
+    info = study.result['guided']['words']
+    extra = images.approved_allowance(info.get('image_allowance'), study.dictionary, study.user, study.pk)
+    images.approve_capacity(study.dictionary, study.user, extra)
     if recent.filter(user=study.user, status='processing',
             created_at__gte=timezone.now()-timedelta(seconds=images.TIMEOUT+60)).exists():
         raise Conflict(_('Your previous image is still being generated. Open its recent attempt before starting another.'))
@@ -127,7 +133,8 @@ def admit_image(study):
         expires_at=study.expires_at, subject=info['text'], style_description=info['style_description'],
         membership_revision=study.membership_revision, participation_revision=study.participation_revision,
         policy_revision=study.dictionary.image_generation_revision, model=model, quality=images.QUALITY,
-        personal_key=personal, prompt=images.prompt_for(info['text'], info['style_description']))
+        personal_key=personal, prompt=images.prompt_for(info['text'], info['style_description']),
+        usage={'owner_allowance': {'approved_by': study.user_id, 'source_attempt': str(study.pk)}} if extra else {})
 
 
 def run(pk):
@@ -178,6 +185,11 @@ def run(pk):
         for path in paths: delete_file(path)
         guided.log.warning('Words-first preview %s stopped (%s)', pk, type(exc).__name__)
         PictureCapture.objects.filter(pk=pk, status__in=['waiting', 'processing']).update(status='failed')
+        if isinstance(exc, images.ImageAllowanceConflict):
+            with transaction.atomic():
+                current = capture.fetch(pk, True)
+                current.result['guided']['words']['allowance_error'] = str(exc)
+                current.save(update_fields=['result'])
 
 
 def image_provenance(study):

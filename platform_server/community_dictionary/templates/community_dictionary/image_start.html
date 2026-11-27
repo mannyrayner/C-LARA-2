@@ -16,7 +16,9 @@
 <p><strong>OpenAI · {{ model }} · high quality</strong><br>One square picture per request. Allow a few minutes.</p>
 <p>{% if personal %}Paid through your OpenAI account.{% elif charge_credits %}Paid from your C-LARA credit balance.{% else %}Paid by the server operator.{% endif %} Budget estimate: <strong>US${{ allowance }}</strong> per preview; actual cost varies.</p>
 <details><summary>What is sent and how costs work</summary><p>Only the picture description you type and the style description are sent, with instructions to make a clear illustration without labels. No photographs, recordings, dictionary history or sample image are sent. OpenAI’s retention rules apply.</p>
-<p>Standard rates used here: US$5 per million text input tokens and US$30 per million image output tokens. The budget estimate is a planning allowance, not a provider price guarantee or spending cap. Actual returned usage is recorded. Failed, interrupted or discarded requests may still cost money. Limit: {{ limit }} attempts per 24 hours per account and per dictionary, including style samples.</p></details>
+<p>Standard rates used here: US$5 per million text input tokens and US$30 per million image output tokens. The budget estimate is a planning allowance, not a provider price guarantee or spending cap. Actual returned usage is recorded. Failed, interrupted or discarded requests may still cost money.</p></details>
+{% include 'community_dictionary/image_allowance_summary.html' %}
+{% if can_extra_image_allowance %}<p class="help">Optional one-request owner approval below covers only this preview, at the estimate above. It leaves normal limits unchanged.</p>{% endif %}
 <form method="post" class="stack" data-image-generate>{% csrf_token %}
 <input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.as_p }}

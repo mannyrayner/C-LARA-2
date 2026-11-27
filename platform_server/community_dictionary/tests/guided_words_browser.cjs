@@ -48,6 +48,7 @@ async function check(html, restored) {
       assert.equal(form.elements.start_with.value, 'words');
       assert.equal(form.elements.words.value, 'Recovered words.');
       assert.equal(form.elements.words_permission.checked, false);
+      assert.equal(form.elements.extra_image_allowance.checked, false);
       assert.equal(form.elements.words_quote.value, quote);
     }
     form.elements.start_with.value = 'words';
@@ -55,6 +56,7 @@ async function check(html, restored) {
     form.elements.words_language.value = 'English';
     form.elements.words.value = 'A cat and a woman are watching a show.';
     form.elements.words_permission.checked = true;
+    form.elements.extra_image_allowance.checked = true;
     form.dispatchEvent(new w.Event('change', {bubbles: true}));
     assert.equal(form.querySelector('[data-guided-picture]').disabled, true);
     assert.equal(form.elements.permission.required, true, 'picture permission remains required on its own route');
@@ -66,6 +68,7 @@ async function check(html, restored) {
     const data = posts[0].body;
     assert.equal(data.get('start_with'), 'words');
     assert.equal(data.get('words'), form.elements.words.value);
+    assert.equal(data.get('extra_image_allowance'), 'on');
     assert.equal(data.has('permission'), false, 'picture-only permission must not be sent');
     assert.equal(data.has('photo'), false);
     await new Promise(resolve => setTimeout(resolve, 5));
@@ -88,6 +91,6 @@ async function check(html, restored) {
   await check(payload.initial);
   await check(payload.sticky);
   await check(payload.initial, {values: [['start_with', 'words'], ['words_mode', 'text'],
-    ['words', 'Recovered words.'], ['words_permission', true], ['words_quote', 'stale']], files: {}});
+    ['words', 'Recovered words.'], ['words_permission', true], ['extra_image_allowance', true], ['words_quote', 'stale']], files: {}});
   console.log('Generate-picture DOM submission passed: first use, sticky route, restored draft.');
 })().catch(error => {console.error(error); process.exitCode = 1;});

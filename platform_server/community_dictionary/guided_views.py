@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from . import capture, capture_limits, guided, guided_words, learning, tts, writing
 from .guided_word_forms import WordStartForm
 from .models import Dictionary, PictureCapture, Participation, VoicePreference
-from .permissions import get_dictionary
+from .permissions import get_dictionary, is_owner
 from .port_views import no_store
 from .services import Conflict, submit_once
 from .storage import path_for, prepare_upload, write_upload
@@ -200,6 +200,7 @@ def start(request, pk, image_id=None):
         return fail(request, (words_form.errors if words_route else form.errors or words_form.errors).as_text())
     return no_store(render(request, 'community_dictionary/guided_start.html', context(request, dictionary,
         **setup, **words_setup, form=form, words_form=words_form, image=source, needs_guided_consent=needs_consent,
+        can_extra_image_allowance=is_owner(request.user, dictionary),
         style_first_use=not choices.get('style_seen'),
         words_language_codes={name: tts.language_code(name) for name in [dictionary.language,
             dictionary.explanation_language or 'English']},

@@ -582,6 +582,7 @@ def dictionary_settings(request, pk):
     from .discovery import pending_for
     from django.urls import reverse
     from .guided_views import settings_context
+    from .image_generation import daily_usage as image_usage
     return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form,
         **settings_context(request, dictionary),
         discovery_form=DiscoveryForm(initial={'revision': dictionary.discovery_revision}),
@@ -590,6 +591,7 @@ def dictionary_settings(request, pk):
         public_url=request.build_absolute_uri(reverse('community_dictionary:public-dictionary', args=[pk])),
         rename_form=RenameForm(initial={'name':dictionary.name}),
         capture_usage=usage(dictionary,request.user),
+        image_counts=image_usage(dictionary,request.user),
         capture_allowance_form=AllowanceForm(initial={'daily_limit':dictionary.capture_daily_limit})))
 
 
