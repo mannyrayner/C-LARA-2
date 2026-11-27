@@ -15,7 +15,7 @@ from projects.billing import credits_enabled, get_user_balance_usd
 from . import image_generation as images
 from .image_forms import ImageGenerateForm, ImageSaveForm
 from .models import Contribution, Dictionary, Entry, ImageStudy, Participation
-from .permissions import get_dictionary, is_editor, require_editor
+from .permissions import get_dictionary, is_editor, is_owner, require_editor
 from .services import Conflict, accept, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
 from .views import context, fail, get_entry, private_media_response
@@ -105,7 +105,8 @@ def start(request, pk, entry_id=None):
             raise Conflict('Approve an image style before generating entry pictures.')
     except Conflict as exc:
         setup_error = str(exc)
-    form = ImageGenerateForm(request.POST or None, style_sample=style_sample, initial={
+    form = ImageGenerateForm(request.POST or None, style_sample=style_sample,
+        can_extra=is_owner(request.user, dictionary) and settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT > 0, initial={
         'style_id': dictionary.image_style_id or 0,
         'policy_revision': dictionary.image_generation_revision})
     if request.method == 'POST' and not setup_error and form.is_valid():
@@ -127,9 +128,8 @@ def start(request, pk, entry_id=None):
             if not personal and credits_enabled() and get_user_balance_usd(request.user) < allowance:
                 raise Conflict(f'Allow at least US${allowance} in C-LARA credit for an image preview, or use your own OpenAI key.')
             recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
-            limit = settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT
-            if recent.filter(user=request.user).count() >= limit or recent.filter(dictionary=current).count() >= limit:
-                raise Conflict('The daily image-generation limit has been reached. Please try tomorrow.')
+            extra = form.cleaned_data['extra_allowance']
+            images.approve_capacity(current, request.user, extra)
             if recent.filter(user=request.user, status='processing',
                     created_at__gte=timezone.now()-timedelta(seconds=images.TIMEOUT+60)).exists():
                 raise Conflict('Your previous image is still being generated. Open its recent attempt before starting another.')
@@ -141,7 +141,9 @@ def start(request, pk, entry_id=None):
                 participation_revision=participation_revision(request.user, current),
                 membership_revision=current.membership_revision, policy_revision=current.image_generation_revision,
                 model=model, quality=images.QUALITY, personal_key=personal,
-                prompt=images.prompt_for(form.cleaned_data['subject'], description))
+                prompt=images.prompt_for(form.cleaned_data['subject'], description),
+                usage={'owner_allowance': {'approved_by': request.user.pk,
+                    'approved_at': timezone.now().isoformat()}} if extra else {})
             event(current, request.user, 'image_generation', target, f'OpenAI consent; attempt {study.pk}')
             created.append(study)
             return study_url(study)
@@ -161,7 +163,8 @@ def start(request, pk, entry_id=None):
         entry=entry, style=style, style_sample=style_sample, form=form, recent=recent,
         setup_error=setup_error, model=config[0] if config else settings.COMMUNITY_DICTIONARY_IMAGE_MODEL,
         allowance=config[3] if config else '', personal=config[2] if config else False,
-        charge_credits=credits_enabled(), limit=settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT,
+        charge_credits=credits_enabled(), image_counts=images.daily_usage(dictionary, request.user),
+        can_extra_image_allowance=is_owner(request.user, dictionary) and settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT > 0,
         submission_id=request.POST.get('submission_id') or context(request)['submission_id']))
 
 

@@ -1,3 +1,4 @@
 {% load i18n %}
 <p class="help">{% blocktranslate with limit=daily_counts.limit account=daily_counts.account_used dictionary_used=daily_counts.dictionary_used remaining=daily_counts.remaining %}Normal image allowance per 24 hours: {{ limit }}. Started on your account: {{ account }}; in this dictionary: {{ dictionary_used }}. Remaining: {{ remaining }}.{% endblocktranslate %}</p>
 {% if daily_counts.limit == 0 %}<p class="notice" role="status">{% translate "AI image requests are paused by the server. A temporary allowance is unavailable." %}</p>{% endif %}
+<p class="help">{% translate "This is separate from Picture creation and practice allowance in Settings. The owner can approve an extra allowance for this word-picture batch at the displayed cost." %}</p>

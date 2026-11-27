@@ -28,6 +28,8 @@ class WordStartForm(forms.Form):
     words_permission = forms.BooleanField(required=False, label=_(
         'I agree to send my words, recording if used, and style description to OpenAI, generate a picture, and pay the estimated costs shown here.'))
     words_quote = forms.CharField(required=False, widget=forms.HiddenInput)
+    extra_image_allowance = forms.BooleanField(required=False, label=_(
+        'Allow this picture above the normal daily image limit, for this request only.'))
 
     def __init__(self, *args, dictionary, choices, existing=False, **kwargs):
         super().__init__(*args, **kwargs)
@@ -41,7 +43,7 @@ class WordStartForm(forms.Form):
             selected = self.data.get('start_with', 'picture')
             used = {'start_with'}
             if selected == 'words' and not existing:
-                used |= {'words_mode', 'words_language', 'picture_style', 'words_permission', 'words_quote'}
+                used |= {'words_mode', 'words_language', 'picture_style', 'words_permission', 'words_quote', 'extra_image_allowance'}
                 used.add('audio' if self.data.get('words_mode') == 'voice' else 'words')
                 if self.data.get('picture_style') == 'custom': used |= {'style_name', 'style_description'}
             self.data, self.files = self.data.copy(), self.files.copy()

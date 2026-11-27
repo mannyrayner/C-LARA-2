@@ -51,7 +51,30 @@ notification under the dictionary lock; the worker claims it once before sending
 Failures record a bounded status without addresses or credentials and do not
 retry automatically. There is no new schema or email configuration setting.
 
-## What the estimate means
+## New AI pictures have a separate allowance
+
+Settings also shows **AI image generation allowance**, with account and dictionary
+usage for the preceding 24 hours. This covers new scene illustrations, style samples
+and word pictures. The server's ordinary image limit defaults to 20; changing the
+creation/practice setting above does not change it. Both limits are shown when
+starting with words, so the available language-work allowance is not mistaken for
+available image capacity.
+
+Owners and co-owners can explicitly approve **this picture above the normal daily
+image limit, for this request only**, at the displayed cost. This is available for
+Start with words and ordinary picture/style previews, matching the existing explicit
+word-picture batch allowance. It leaves the normal limits unchanged and cannot
+override a server pause, credit checks, or the creation/practice allowance. Queued
+approval expires after 24 hours, is bound to its requester and private attempt,
+and is checked again before image generation. A recovered local draft never restores
+this approval automatically. No failed paid request is repeated automatically.
+
+Image quota is checked before saving a new words-first attempt, with a clear message
+when unavailable. If quota changes while a request waits, its private failure page
+identifies the image allowance rather than implying the language-work setting is
+exhausted. No database migration is needed for this clarification and scoped approval.
+
+## Language-work cost estimate
 
 The preview multiplies the proposed allowance by the existing short-description
 planning estimate: 16,000 input tokens and 4,096 output tokens at the configured

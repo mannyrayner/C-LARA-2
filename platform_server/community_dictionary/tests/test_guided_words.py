@@ -1,5 +1,6 @@
 """Words stay authoritative through paid image generation and publication."""
 import uuid
+import time
 import json
 import shutil
 import subprocess
@@ -9,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
-from community_dictionary import capture, guided, learning
+from community_dictionary import capture, guided, learning, image_generation as images
 from community_dictionary.models import ContributionPreference, Dictionary, Entry, ImageStudy, PictureCapture
 from community_dictionary.services import Conflict
 from community_dictionary.storage import path_for, prepare_upload
@@ -199,9 +200,82 @@ class GuidedWordsTests(TestCase):
         self.assertEqual(PictureCapture.objects.count(), 0)
         self.d.image_generation_enabled = True; self.d.save()
         with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=0):
-            study = self.start(); guided.run(study.pk); study.refresh_from_db()
-            self.assertEqual(study.status, 'failed')
+            self.assertContains(self.post_words(), 'paused AI picture generation')
+            self.assertEqual(PictureCapture.objects.count(), 0)
         self.images.assert_not_called()
+
+    def test_separate_limits_shown_and_normal_quota_failure_keeps_form_without_paid_draft(self):
+        self.d.capture_daily_limit = 100; self.d.save()
+        with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1):
+            self.preview()
+            page = self.post_words()
+            self.assertContains(page, 'normal AI image allowance is used up')
+            self.assertEqual(PictureCapture.objects.count(), 1)
+            self.assertEqual(self.images.call_count, 1)
+        self.client.force_login(self.owner)
+        page = self.client.get(self.url('settings'))
+        self.assertContains(page, 'AI image generation allowance')
+        self.assertContains(page, 'does not raise this image limit')
+        self.assertEqual(page.context['capture_usage']['limit'], 100)
+        self.assertEqual(page.context['image_counts']['limit'], 20)
+
+    @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
+    def test_owner_one_request_allowance_survives_queue_and_cannot_replay_or_leak(self):
+        self.client.force_login(self.owner)
+        self.preview()
+        study = self.preview(extra_image_allowance='on')
+        self.assertEqual(self.images.call_count, 2)
+        receipt = ImageStudy.objects.get(pk=study.result['guided']['words']['image_attempt'])
+        self.assertEqual(receipt.usage['owner_allowance']['approved_by'], self.owner.pk)
+        guided.run(study.pk)
+        self.assertEqual(self.images.call_count, 2)
+        self.assertContains(self.post_words(), 'normal AI image allowance is used up')
+        self.client.force_login(self.user)
+        page = self.post_words(extra_image_allowance='on')
+        self.assertContains(page, 'Only a dictionary owner')
+        self.assertEqual(self.images.call_count, 2)
+
+    def test_scoped_allowance_cannot_be_copied_expired_or_used_after_owner_change(self):
+        self.client.force_login(self.owner)
+        first = self.start(extra_image_allowance='on')
+        second = self.start(extra_image_allowance='on')
+        token = first.result['guided']['words']['image_allowance']
+        with self.assertRaises(Conflict):
+            images.approved_allowance(token, self.d, self.owner, second.pk)
+        with patch('django.core.signing.time.time', return_value=time.time()+86401):
+            with self.assertRaises(Conflict):
+                images.approved_allowance(token, self.d, self.owner, first.pk)
+        self.d.owner = self.user; self.d.save()
+        guided.run(first.pk); first.refresh_from_db()
+        self.assertEqual(first.status, 'failed')
+        self.images.assert_not_called()
+
+    def test_one_request_allowance_does_not_bypass_global_pause_or_activity_allowance(self):
+        self.client.force_login(self.owner)
+        with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=0):
+            self.assertContains(self.post_words(extra_image_allowance='on'), 'paused AI picture generation')
+        self.d.capture_daily_limit = 0; self.d.save()
+        self.start(extra_image_allowance='on')
+        self.images.assert_not_called()
+        self.assertFalse(ImageStudy.objects.exists())
+
+    @override_settings(CREDITS_ENABLED=True)
+    def test_extra_image_allowance_does_not_supply_credit(self):
+        self.client.force_login(self.owner)
+        study = self.start(extra_image_allowance='on')
+        guided.run(study.pk)
+        self.images.assert_not_called()
+        self.assertFalse(ImageStudy.objects.exists())
+
+    @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
+    def test_quota_consumed_while_queued_has_specific_private_failure(self):
+        first, second = self.start(), self.start()
+        guided.run(first.pk)
+        guided.run(second.pk); second.refresh_from_db()
+        self.assertEqual(second.status, 'failed')
+        self.assertEqual(self.images.call_count, 1)
+        self.assertContains(self.client.get(self.url('guided-detail', second.pk)),
+            'separate from Picture creation and practice allowance')
 
     def test_image_failure_keeps_words_and_no_get_or_continue_repeats_paid_call(self):
         self.images.return_value = (None, {'prompt_tokens': 10}, 'provider_or_image_error')
@@ -286,6 +360,7 @@ class GuidedWordsTests(TestCase):
         node = shutil.which('node')
         if not node or subprocess.run([node, '-e', "require('jsdom')"], capture_output=True).returncode:
             self.skipTest('Optional DOM submission check needs Node and jsdom; no production dependency is added.')
+        self.client.force_login(self.owner)
         initial = self.client.get(self.url('guided-start')).content.decode()
         self.preview()
         sticky = self.client.get(self.url('guided-start')).content.decode()
