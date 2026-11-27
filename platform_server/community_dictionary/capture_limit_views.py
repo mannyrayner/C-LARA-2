@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+from django.utils.translation import gettext_lazy as _
 
 from projects.billing import credits_enabled
 from projects.models import CreditAccount
@@ -18,7 +19,7 @@ from .views import context, fail
 
 
 class AllowanceForm(forms.Form):
-    daily_limit = forms.IntegerField(min_value=1, label='Requests per 24 hours')
+    daily_limit = forms.IntegerField(min_value=1, label=_('Entry or practice attempts per 24 hours'))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -27,7 +28,7 @@ class AllowanceForm(forms.Form):
         from django.core.validators import MaxValueValidator
         self.fields['daily_limit'].validators.append(MaxValueValidator(maximum))
         self.fields['daily_limit'].widget.attrs.update(max=maximum, inputmode='numeric')
-        self.fields['daily_limit'].help_text = f'Shared by all members of this dictionary. Choose 1–{maximum}.'
+        self.fields['daily_limit'].help_text = _('Shared by all members of this dictionary. Choose 1–%(maximum)s. New AI pictures have a separate allowance in Settings.') % {'maximum': maximum}
 
 
 class ConfirmForm(forms.Form):
@@ -63,7 +64,7 @@ def change(request, pk):
                 dictionary.save(update_fields=['capture_daily_limit'])
                 event(dictionary, request.user, 'capture_allowance_changed',
                       detail=f'Picture-description allowance {old} → {limit} per rolling 24h; estimate approved')
-            messages.success(request, f'Picture creation and practice allowance saved: {limit} per 24 hours.')
+            messages.success(request, _('Entry creation and practice allowance saved: %(limit)s per 24 hours.') % {'limit': limit})
             return redirect('community_dictionary:settings', pk=pk)
         if action != 'preview':
             return fail(request, 'Choose Preview cost before confirming an allowance.', 400)

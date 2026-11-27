@@ -294,7 +294,7 @@ class ImageGenerationTests(TestCase):
     @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
     def test_owner_can_explicitly_approve_one_extra_preview_and_keep_receipt(self):
         self.generate(style=True)
-        self.assertContains(self.generate(), 'separate from Picture creation and practice allowance')
+        self.assertContains(self.generate(), 'separate from the entry creation and practice allowance')
         self.assertEqual(self.generate(extra_allowance='on').status_code, 302)
         self.assertEqual(self.sdk.images.generate.call_count, 2)
         self.assertEqual(self.latest().usage['owner_allowance']['approved_by'], self.owner.pk)
