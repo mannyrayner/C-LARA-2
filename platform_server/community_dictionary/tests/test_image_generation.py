@@ -291,6 +291,24 @@ class ImageGenerationTests(TestCase):
         self.assertEqual(self.generate().status_code,200)
         self.assertEqual(self.sdk.images.generate.call_count,1)
 
+    @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
+    def test_owner_can_explicitly_approve_one_extra_preview_and_keep_receipt(self):
+        self.generate(style=True)
+        self.assertContains(self.generate(), 'separate from Picture creation and practice allowance')
+        self.assertEqual(self.generate(extra_allowance='on').status_code, 302)
+        self.assertEqual(self.sdk.images.generate.call_count, 2)
+        self.assertEqual(self.latest().usage['owner_allowance']['approved_by'], self.owner.pk)
+        self.assertEqual(images.daily_usage(self.dictionary, self.owner)['limit'], 1)
+        self.assertEqual(self.generate().status_code, 200)
+
+    def test_non_owner_or_server_pause_cannot_use_extra_preview_allowance(self):
+        self.client.force_login(self.editor)
+        self.assertEqual(self.generate(extra_allowance='on').status_code, 200)
+        self.client.force_login(self.owner)
+        with override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=0):
+            self.assertEqual(self.generate(extra_allowance='on').status_code, 200)
+        self.sdk.images.generate.assert_not_called()
+
     def test_csrf_required_and_get_does_not_mutate(self):
         client=Client(enforce_csrf_checks=True);client.force_login(self.owner)
         self.assertEqual(client.post(self.url('image-style'),{}).status_code,403)

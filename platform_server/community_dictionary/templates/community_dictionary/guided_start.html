@@ -44,6 +44,9 @@
 <p class="help">{% translate "Your words are kept exactly as you confirm them. Speech is transcribed for you to check first." %}</p>
 {% if words_estimate != None %}<p class="help">{% blocktranslate with amount=words_estimate|floatformat:2 %}Rough total estimate, including the picture, words and audio: US${{ amount }}. Actual usage varies.{% endblocktranslate %}</p>{% endif %}
 {{ words_form.words_quote }}<label class="check">{{ words_form.words_permission }} <span>{{ words_form.words_permission.label }}</span></label>{{ words_form.words_permission.errors }}{{ words_form.words_quote.errors }}
+{% include 'community_dictionary/image_allowance_summary.html' %}
+{% if can_extra_image_allowance and image_counts.limit %}<p>{{ words_form.extra_image_allowance }} {{ words_form.extra_image_allowance.label_tag }}</p>
+<p class="help">{% translate "Optional owner approval for this picture only, at the estimate above. It expires after 24 hours and does not increase picture-description or practice allowances." %}</p>{% endif %}
 <button data-words-submit type="submit">{% translate "Generate picture" %}</button>
 {% else %}<p>{% translate "The owner can enable AI picture generation in Settings." %}</p>{% endif %}
 </fieldset>{% endif %}

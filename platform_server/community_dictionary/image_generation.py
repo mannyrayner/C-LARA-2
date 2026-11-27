@@ -1,11 +1,15 @@
 """Private text-only image generation using C-LARA's existing OpenAI adapter."""
 from decimal import Decimal, InvalidOperation
+from datetime import timedelta
 import logging
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.db.models import Q
+from django.core import signing
+from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.ai_api import OpenAIClient
 from core.config import OpenAIConfig
@@ -23,6 +27,50 @@ PROMPT_VERSION = 'dictionary-illustration-1'
 # Direct Images API text inputs only. Official standard token rates, 3 Oct 2026.
 TEXT_RATE, OUTPUT_RATE = Decimal('5'), Decimal('30')
 TIMEOUT = 240
+ALLOWANCE_SALT = 'community-single-picture-allowance-1'
+
+
+class ImageAllowanceConflict(Conflict):
+    pass
+
+
+def daily_usage(dictionary, user):
+    recent = started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
+    limit = max(0, int(settings.COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT))
+    account_used = recent.filter(user=user).count()
+    dictionary_used = recent.filter(dictionary=dictionary).count()
+    return {'limit': limit, 'account_used': account_used, 'dictionary_used': dictionary_used,
+            'remaining': max(0, limit-max(account_used, dictionary_used))}
+
+
+def approve_capacity(dictionary, user, extra=False):
+    from .permissions import is_owner
+    counts = daily_usage(dictionary, user)
+    if not counts['limit']:
+        raise ImageAllowanceConflict(_('The server administrator has paused AI picture generation.'))
+    if extra and not is_owner(user, dictionary):
+        raise ImageAllowanceConflict(_('Only a dictionary owner can approve a one-request image allowance.'))
+    if not extra and not counts['remaining']:
+        raise ImageAllowanceConflict(_('The normal AI image allowance is used up. This is separate from Picture creation and practice allowance in Settings. A dictionary owner can approve this picture above the normal limit for this request only.'))
+    return counts
+
+
+def allowance_token(dictionary, user, attempt):
+    approve_capacity(dictionary, user, True)
+    return signing.dumps({'dictionary': dictionary.pk, 'user': user.pk, 'attempt': str(attempt)}, salt=ALLOWANCE_SALT)
+
+
+def approved_allowance(token, dictionary, user, attempt):
+    if not token:
+        return False
+    try:
+        value = signing.loads(token, salt=ALLOWANCE_SALT, max_age=24*60*60)
+        if value != {'dictionary': dictionary.pk, 'user': user.pk, 'attempt': str(attempt)}:
+            raise ValueError
+    except (signing.BadSignature, TypeError, ValueError):
+        raise ImageAllowanceConflict(_('The one-request image allowance expired or changed. Prepare a fresh preview.'))
+    approve_capacity(dictionary, user, True)
+    return True
 
 
 def started_studies():
@@ -92,7 +140,7 @@ def account(study, usage):
     """One accounting record per attempt, including failed image validation."""
     if study.accounted:
         return
-    retained = {k:v for k,v in study.usage.items() if k == 'lemma_picture'}
+    retained = {k:v for k,v in study.usage.items() if k in {'lemma_picture', 'owner_allowance'}}
     study.usage = {**usage, **retained}
     study.cost_usd = usage_cost(usage)
     ledger = None
