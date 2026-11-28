@@ -214,8 +214,10 @@ class GuidedWordsTests(TestCase):
             self.assertEqual(self.images.call_count, 1)
         self.client.force_login(self.owner)
         page = self.client.get(self.url('settings'))
-        self.assertContains(page, 'AI image generation allowance')
-        self.assertContains(page, 'does not raise this image limit')
+        self.assertContains(page, 'Daily AI allowances')
+        self.assertContains(page, '19 new AI pictures remaining at the normal allowance')
+        self.assertContains(page, '99 entry or practice attempts remaining in this dictionary')
+        self.assertContains(page, 'New AI pictures use the picture allowance above.')
         self.assertEqual(page.context['capture_usage']['limit'], 100)
         self.assertEqual(page.context['image_counts']['limit'], 20)
 
@@ -275,7 +277,7 @@ class GuidedWordsTests(TestCase):
         self.assertEqual(second.status, 'failed')
         self.assertEqual(self.images.call_count, 1)
         self.assertContains(self.client.get(self.url('guided-detail', second.pk)),
-            'separate from Picture creation and practice allowance')
+            'separate from the entry creation and practice allowance')
 
     def test_image_failure_keeps_words_and_no_get_or_continue_repeats_paid_call(self):
         self.images.return_value = (None, {'prompt_tokens': 10}, 'provider_or_image_error')

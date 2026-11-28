@@ -53,16 +53,22 @@
 {% if dictionary.hidden %}<button name="visibility" value="visible">{% translate "Make dictionary visible" %}</button>
 {% else %}<button class="secondary" name="visibility" value="hidden">{% translate "Hide dictionary" %}</button>{% endif %}
 </form></section>
-<section class="panel" id="picture-description-allowance"><h2>{% translate "Picture creation and practice allowance" %}</h2>
-<p>{% blocktranslate with used=capture_usage.used limit=capture_usage.limit remaining=capture_usage.remaining %}{{ used }} of {{ limit }} requests used in the last 24 hours · {{ remaining }} remaining.{% endblocktranslate %}</p>
+<section class="panel" id="ai-allowances"><h2>{% translate "Daily AI allowances" %}</h2>
+<p>{% translate "Creating an entry with AI uses the entry and practice allowance. Any new AI pictures, including word pictures, also use the picture allowance." %}</p>
+<div id="image-generation-allowance"><h3>{% translate "New AI pictures" %}</h3>
+{% include 'community_dictionary/image_allowance_summary.html' %}
+</div>
+<hr>
+<div id="picture-description-allowance"><h3>{% translate "Entry creation and practice" %}</h3>
+<p><strong>{% blocktranslate with remaining=capture_usage.remaining %}{{ remaining }} entry or practice attempts remaining in this dictionary{% endblocktranslate %}</strong></p>
+<p>{% blocktranslate with used=capture_usage.used limit=capture_usage.limit %}{{ used }} of {{ limit }} used in this dictionary in the last 24 hours, shared by all members.{% endblocktranslate %}</p>
+<p>{% translate "This allowance covers creating and improving entries, picture descriptions and language practice, including their translation, vocabulary and audio processing." %}</p>
 {% if capture_usage.ceiling %}
 <form method="post" action="{% url 'community_dictionary:capture-limit' dictionary.pk %}" class="stack">
 {% csrf_token %}{{ capture_allowance_form.as_p }}<button name="action" value="preview">{% translate "Preview daily cost" %}</button></form>
-<p class="help">{% translate "Review the estimate, then confirm. The allowance covers picture creation and language practice. Other AI tools have their own limits." %}</p>
-{% else %}<p>{% translate "The server administrator has paused new picture-description requests." %}</p>{% endif %}
-</section>
-<section class="panel" id="image-generation-allowance"><h2>{% translate "AI image generation allowance" %}</h2>
-{% include 'community_dictionary/image_allowance_summary.html' %}
+<p class="help">{% translate "Review the estimate, then confirm. Changing this number changes the entry and practice allowance. New AI pictures use the picture allowance above." %}</p>
+{% else %}<p>{% translate "The server administrator has paused new entry and practice attempts." %}</p>{% endif %}
+</div>
 </section>
 <section class="panel"><h2>{% translate "Word audio" %}</h2><p>{% translate "Choose OpenAI or a Google voice for future words and sentence forms. Sentence audio keeps its current provider." %}</p><a class="button secondary" href="{% url 'community_dictionary:word-audio-settings' dictionary.pk %}">{% translate "Word audio settings" %}</a></section>
 <section class="panel"><h2>{% translate "Dictionary settings" %}</h2>

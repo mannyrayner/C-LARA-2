@@ -51,7 +51,7 @@ def approve_capacity(dictionary, user, extra=False):
     if extra and not is_owner(user, dictionary):
         raise ImageAllowanceConflict(_('Only a dictionary owner can approve a one-request image allowance.'))
     if not extra and not counts['remaining']:
-        raise ImageAllowanceConflict(_('The normal AI image allowance is used up. This is separate from Picture creation and practice allowance in Settings. A dictionary owner can approve this picture above the normal limit for this request only.'))
+        raise ImageAllowanceConflict(_('The normal AI image allowance is used up. This is separate from the entry creation and practice allowance in Settings. A dictionary owner can approve this picture above the normal limit for this request only.'))
     return counts
 
 
