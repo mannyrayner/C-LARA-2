@@ -6,6 +6,34 @@ on:
   pull_request:
 
 jobs:
+  picture-concurrency-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: clara_concurrency_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: clara_concurrency_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: fixture-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt "psycopg[binary]"
+      - name: Real row-lock races with mocked picture providers
+        working-directory: platform_server
+        run: python manage.py test community_dictionary.tests.test_image_capacity --noinput
+
   staging-templates:
     runs-on: ubuntu-latest
     steps:

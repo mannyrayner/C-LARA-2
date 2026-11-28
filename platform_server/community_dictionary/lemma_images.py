@@ -12,9 +12,9 @@ from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from projects.billing import credits_enabled, get_user_balance_usd
 from . import image_generation as images, photo_ai, public_browsing as public
 from . import lemma_picture_costs as costs
+from . import image_capacity
 from .models import Contribution, ContributionDependency, Dictionary, Entry, ImageStudy, LemmaImage, Participation
 from .permissions import get_dictionary, is_owner, require_editor
 from .port_costs import text_cost
@@ -231,12 +231,31 @@ def automatic(entry_id):
 
 
 def queue(pk, revision):
+    owner_id = LemmaImage.objects.filter(pk=pk, revision=revision, status='waiting').values_list('requested_by_id', flat=True).first()
+    if owner_id is None:
+        return
     try:
         from django_q.tasks import async_task
-        async_task('community_dictionary.lemma_images.run', pk, revision,
+        async_task('community_dictionary.lemma_images.run_next', owner_id,
             q_options={'task_name': f'lemma-picture-{pk}-{revision}', 'timeout': 420, 'ack_failure': True})
     except Exception:
         log.warning('Could not enqueue lemma picture %s; resume remains available', pk)
+
+
+def queue_next(user_id):
+    row = image_capacity.next_word(user_id)
+    if row:
+        queue(row.pk, row.revision)
+
+
+def run_next(user_id):
+    # A concurrent wake-up may have claimed the same advisory choice first.
+    for _ in range(image_capacity.limit()+1):
+        row = image_capacity.next_word(user_id)
+        if row is None:
+            return
+        if run(row.pk, row.revision) is not False:
+            return
 
 
 def permitted(row):
@@ -295,7 +314,7 @@ def run(pk, revision):
             row = fetch(pk)
             if row.revision != revision or row.status != 'waiting':
                 costs.cancel_revision(pk, revision)
-                return
+                return False
             if row.study and row.study.usage.get(costs.KEY, {}).get('revision') == revision:
                 study = row.study
             key = permitted(row)
@@ -307,16 +326,17 @@ def run(pk, revision):
             if limit == 0 or (not extra and (recent.filter(user_id=owner_id).count() >= limit
                     or recent.filter(dictionary_id=d_id).count() >= limit)):
                 raise Conflict('Daily image limit reached.')
-            # Serialise attempts per payer, including ordinary image previews.
-            # Waiting rows can be resumed without repeating an uncertain call.
-            if recent.filter(user_id=owner_id, status='processing',
-                    created_at__gte=timezone.now()-timedelta(seconds=images.TIMEOUT+120)).exists():
+            try:
+                slot = image_capacity.reserve(row.requested_by, estimate(row.quote),
+                    personal=row.quote['personal'],
+                    group=image_capacity.group_for(d_id, study.usage if study else {}),
+                    credit_error='Insufficient credit for this word picture.')
+            except image_capacity.Busy:
                 owner_id = None
-                return
-            if (not row.quote['personal'] and credits_enabled() and
-                    get_user_balance_usd(row.requested_by) < estimate(row.quote)):
-                raise Conflict('Insufficient credit for this word picture.')
+                return False
             study = study or costs.create_study(row)
+            study.usage = {**study.usage, image_capacity.KEY: slot}
+            study.save(update_fields=['usage'])
             costs.track(study, started=True, status='analysing', planning_started=True)
             ImageStudy.objects.filter(pk=study.pk).update(created_at=timezone.now(), expires_at=timezone.now()+timedelta(days=1))
             row.study, row.status, row.updated_at = study, 'analysing', timezone.now()
@@ -408,6 +428,4 @@ def run(pk, revision):
             costs.track(study, status='failed', finished=True, error_code=code)
     finally:
         if owner_id:
-            next_row = LemmaImage.objects.filter(requested_by_id=owner_id, status='waiting').order_by('pk').first()
-            if next_row:
-                queue(next_row.pk, next_row.revision)
+            image_capacity.wake(owner_id)

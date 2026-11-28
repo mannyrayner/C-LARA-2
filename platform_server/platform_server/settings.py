@@ -141,6 +141,7 @@ COMMUNITY_DICTIONARY_MEDIA_ROOT = Path(os.environ.get(
 # Explicit, bounded image previews. Per-dictionary permission defaults off.
 COMMUNITY_DICTIONARY_IMAGE_MODEL = os.environ.get("CLARA_COMMUNITY_IMAGE_MODEL", "gpt-image-2.5-sunburst")
 COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT = int(os.environ.get("CLARA_COMMUNITY_IMAGE_DAILY_LIMIT", "20"))
+COMMUNITY_DICTIONARY_IMAGE_CONCURRENCY = int(os.environ.get("CLARA_COMMUNITY_IMAGE_CONCURRENCY", "2"))
 COMMUNITY_DICTIONARY_IMAGE_ALLOWANCE_USD = os.environ.get("CLARA_COMMUNITY_IMAGE_ALLOWANCE_USD", "0.50")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
