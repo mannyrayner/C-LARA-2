@@ -1,5 +1,6 @@
 import json
 import os
+from contextlib import closing
 from pathlib import Path
 import shutil
 import subprocess
@@ -223,7 +224,8 @@ class PicturePracticeTests(TestCase):
         self.assertEqual(self.asr.call_count, 1)
         page = self.client.get(self.url('picture-practice-detail', study.pk))
         self.assertContains(page, 'Let me check what I heard')
-        self.assertEqual(self.client.get(self.url('capture-media', study.pk, 'recording')).status_code, 200)
+        with closing(self.client.get(self.url('capture-media', study.pk, 'recording'))) as response:
+            self.assertEqual(response.status_code, 200)
         data = dict(mode='text', description='Il gatto è felice.', feedback_language='Italian', voice='marin',
             permission='on', quote=signing.dumps(practice.quote(self.user, self.d), salt=SALT), submission_id=str(uuid.uuid4()))
         for _ in range(2): self.assertEqual(self.act(study, 'check', **data).status_code, 302)
@@ -252,7 +254,8 @@ class PicturePracticeTests(TestCase):
         self.assertEqual(self.review.call_count, 1)
         self.assertEqual(CaptureSpeech.objects.get().status, 'ready')
         self.assertEqual((Entry.objects.count(), Contribution.objects.count()), self.before)
-        self.assertEqual(self.client.get(self.url('capture-media', study.pk, 'feedback')).status_code, 200)
+        with closing(self.client.get(self.url('capture-media', study.pk, 'feedback'))) as response:
+            self.assertEqual(response.status_code, 200)
         study.refresh_from_db()
         self.assertIn('practice_feedback', study.usage)
 
