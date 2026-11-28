@@ -127,7 +127,7 @@ def admit_image(study):
     extra = images.approved_allowance(token, study.dictionary, study.user, study.pk) if token else False
     images.approve_capacity(study.dictionary, study.user, extra)
     slot = image_capacity.reserve(study.user, allowance, personal=personal,
-        group='dictionary:'+str(study.dictionary_id))
+        group='dictionary:'+str(study.dictionary.pk))
     info = study.result['guided']['words']
     return ImageStudy.objects.create(dictionary=study.dictionary, user=study.user, kind='entry',
         expires_at=study.expires_at, subject=info['text'], style_description=info['style_description'],
