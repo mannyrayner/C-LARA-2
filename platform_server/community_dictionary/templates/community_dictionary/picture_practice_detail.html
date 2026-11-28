@@ -18,7 +18,7 @@
 {% if clip.status == 'ready' %}<p class="help">{% translate "Play the AI-generated spoken version. Replaying is free." %}</p><audio controls preload="none" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'feedback' %}"></audio>
 {% elif clip.status == 'waiting' or clip.status == 'running' %}<p role="status">{% translate "Generating the spoken version…" %}</p>
 {% elif clip %}<p class="notice">{% translate "Audio could not finish. It will not be retried automatically." %}</p>
-{% elif can_listen %}<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
+{% elif can_listen and not info.quote.feedback_audio %}<form method="post" action="{% url 'community_dictionary:picture-practice-action' dictionary.pk study.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><input type="hidden" name="permission" value="yes">
 <button name="action" value="listen" class="secondary">{% translate "Generate spoken version" %} · +~US${{ audio_estimate|floatformat:4 }}</button></form>{% endif %}
 {% endif %}
 {% if feedback.understood or feedback.corrections or feedback.suggestions %}<details><summary>{% translate "More feedback" %}</summary>
@@ -35,7 +35,8 @@
 <details class="entry-help"><summary>{% translate "Words and practice log" %}</summary>
 <details><summary>{% translate "Cost details" %}</summary>
 <ul>{% for row in cost_summary.items %}<li>{{ row.label }}: {% if row.cost != None %}~US${{ row.cost|floatformat:6 }}{% else %}{% translate "Unavailable or pending" %}{% endif %}</li>{% endfor %}</ul>
-<p class="help">{% translate "Includes recorded recognition, AI review and any generated speech for this attempt, including automatically prepared help pronunciations. Final feedback speech is extra until requested; replaying saved audio makes no AI call. Costs use returned usage and configured prices; speech generation uses a duration estimate. Unknown usage is not counted as zero." %}</p>
+<p class="help">{% translate "Includes recorded recognition, AI review and any generated speech for this attempt. Replaying saved audio makes no AI call. Costs use returned usage and configured prices; speech generation uses a duration estimate. Unknown usage is not counted as zero." %}</p>
+{% if info.quote.feedback_audio %}<p class="help">{% translate "The session estimate includes automatically prepared help pronunciations and the spoken version of ready feedback." %}</p>{% endif %}
 </details><p dir="auto">{{ info.heard|default:info.original_text }}</p>
 {% if study.status == 'feedback' or study.status == 'failed' %}<details><summary>{% translate "Correct the transcript or edit my words" %}</summary>{% include 'community_dictionary/practice_edit.html' %}</details>{% endif %}
 <form method="post" action="{% url 'community_dictionary:picture-practice-report' dictionary.pk study.pk %}" class="stack">{% csrf_token %}

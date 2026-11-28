@@ -13,7 +13,7 @@ from .services import Conflict
 from .storage import path_for
 
 log = logging.getLogger(__name__)
-VERSION = 'picture-practice-5'
+VERSION = 'picture-practice-6'
 from . import practice_review
 SCHEMA = practice_review.SCHEMA
 INSTRUCTIONS = practice_review.INSTRUCTIONS
@@ -50,6 +50,7 @@ def quote(user, dictionary):
     model, _key, personal, prices = photo_ai.configuration(user)
     return {'version': VERSION, 'model': model, 'personal': personal,
         'help_audio': dictionary.tts_enabled and tts.language_code(dictionary.language) in tts.LANGUAGES.values(),
+        'feedback_audio': dictionary.tts_enabled and tts.language_code(dictionary.language) in tts.LANGUAGES.values(),
         'input': str(prices['input']), 'output': str(prices['output']),
         'language': dictionary.language, 'explanation': dictionary.explanation_language or 'English',
         'revision': dictionary.capture_revision, 'membership': dictionary.membership_revision}
@@ -60,6 +61,8 @@ def estimate(values):
     # This is an estimate, not a reservation or a fixed charge.
     audio = (3 * (tts.estimate_cost('x'*100, 5) + tts.estimate_cost('x'*160, 10))
         if values.get('help_audio') else Decimal('0'))
+    if values.get('feedback_audio'):
+        audio += tts.estimate_cost('x'*255, 30)
     return (Decimal(3000)*Decimal(values['input']) + Decimal(2600)*Decimal(values['output'])) / 1000000 + audio
 
 
@@ -83,7 +86,14 @@ def permitted(study, *, payment=False):
     if not study.source_image_id or not images(dictionary).filter(pk=study.source_image_id).exists():
         raise Conflict('The original picture is no longer available. Choose another picture.')
     if payment:
-        if study.result['practice']['quote'] != quote(study.user, dictionary):
+        approved = study.result['practice']['quote']
+        expected = quote(study.user, dictionary)
+        # An already-consented v5 attempt can finish under its original scope.
+        # Only fresh v6 consent includes automatic final-feedback speech.
+        if approved.get('version') == 'picture-practice-5' and 'feedback_audio' not in approved:
+            expected = {k:v for k,v in expected.items() if k != 'feedback_audio'}
+            expected['version'] = 'picture-practice-5'
+        if approved != expected:
             raise Conflict('The AI settings or prices changed. Start a new practice attempt.')
         if not has_minimum_balance_for_compile(study.user):
             raise Conflict('Your balance is too low. Add credit before continuing practice.')
@@ -189,6 +199,13 @@ def run(pk):
                 diagnostic(current, stage, 'finished', elapsed_ms=round((time.monotonic()-began)*1000),
                     decision=status)
                 current.status = status
+                if (status == 'feedback' and current.result['practice'].get('feedback', {}).get('outcome') == 'ready'
+                        and current.result['practice']['quote'].get('feedback_audio')):
+                    from .models import CaptureSpeech
+                    _clip, created = CaptureSpeech.objects.get_or_create(capture=current, kind='feedback',
+                        defaults={'text': current.result['practice']['feedback']['text'], 'language': current.language})
+                    if created:
+                        diagnostic(current, 'feedback_playback', 'requested', automatic=True)
                 if (status == 'transcript' and info['mode'] == 'voice' and not info.get('confirmed')
                         and info['quote'].get('help_audio')):
                     from .practice_recognition import KINDS, clip_spec
