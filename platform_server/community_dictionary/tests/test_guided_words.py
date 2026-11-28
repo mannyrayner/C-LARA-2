@@ -83,6 +83,18 @@ class GuidedWordsTests(TestCase):
         self.assertEqual(ImageStudy.objects.count(), 1)
         self.assertTrue(ImageStudy.objects.get().accounted)
 
+    def test_occupied_picture_slots_explain_unpaid_stop_and_keep_words(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        for _ in range(2):
+            ImageStudy.objects.create(dictionary=self.d,user=self.user,kind='entry',
+                expires_at=timezone.now()+timedelta(days=1))
+        study=self.start(); guided.run(study.pk); study.refresh_from_db()
+        self.assertEqual(study.status,'failed')
+        self.images.assert_not_called()
+        self.assertContains(self.client.get(self.url('guided-detail',study.pk)),'Your picture slots are in use')
+        self.assertEqual(study.result['guided']['words']['text'],RESULT['sentence'])
+
     def test_commenting_language_words_are_preserved_in_translation(self):
         study = self.preview(words=RESULT['translation'], words_language='English')
         self.finish(study)

@@ -59,8 +59,12 @@ def reserve(user, amount, *, personal=False, group='', credit_error=None):
             raise InvalidOperation
     except (InvalidOperation, TypeError, ValueError):
         raise Conflict(_('The cost reservation for a running picture is unavailable. Wait for it to finish.'))
-    if not personal and credits_enabled() and get_user_balance_usd(user) < amount+held:
-        raise Conflict(credit_error or _('Available credit is already reserved for running pictures.'))
+    if not personal and credits_enabled():
+        balance = get_user_balance_usd(user)
+        if balance < amount:
+            raise Conflict(credit_error or _('Your balance is too low to generate this picture.'))
+        if balance < amount+held:
+            raise Busy(_('Available credit is reserved for running pictures. Wait for them to finish.'))
     return {'version': 1, 'reserved_usd': str(Decimal('0') if personal else amount), 'group': group}
 
 
