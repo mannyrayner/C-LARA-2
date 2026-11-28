@@ -2,6 +2,7 @@
 import uuid
 import time
 import json
+from contextlib import closing
 import shutil
 import subprocess
 from pathlib import Path
@@ -72,7 +73,8 @@ class GuidedWordsTests(TestCase):
         self.assertEqual(self.images.call_args.args[0].subject, RESULT['sentence'])
         page = self.client.get(self.url('guided-detail', study.pk))
         self.assertContains(page, 'Use these words and finish')
-        self.assertEqual(self.client.get(self.url('capture-media', study.pk, 'picture')).status_code, 200)
+        with closing(self.client.get(self.url('capture-media', study.pk, 'picture'))) as response:
+            self.assertEqual(response.status_code, 200)
         self.finish(study)
         self.assertEqual(study.status, 'saved')
         self.assertEqual(study.saved_entry.word, RESULT['sentence'])
@@ -110,7 +112,8 @@ class GuidedWordsTests(TestCase):
         self.assertEqual(self.asr.call_args.args[1], 'sv')
         self.assertEqual(study.result['guided']['words']['stage'], 'confirm')
         self.assertContains(self.client.get(self.url('guided-detail', study.pk)), 'Correct the transcription')
-        self.assertEqual(self.client.get(self.url('capture-media', study.pk, 'recording')).status_code, 200)
+        with closing(self.client.get(self.url('capture-media', study.pk, 'recording'))) as response:
+            self.assertEqual(response.status_code, 200)
         corrected = 'En katt på en soffa.'
         for _ in range(2): self.assertEqual(self.action(study, 'generate', description=corrected).status_code, 302)
         for _ in range(2): guided.run(study.pk)
