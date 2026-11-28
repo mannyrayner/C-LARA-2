@@ -1,11 +1,12 @@
-# Picture creation and practice allowance
+# Daily AI allowances
 
-Updated 21 November 2026 (Adelaide): allowance recovery and owner notifications.
-Human acceptance of this follow-up remains pending.
+Updated 28 November 2026 (Adelaide): distinguish entry/practice attempts from newly
+generated pictures in one Settings panel. Human acceptance of this clarification
+remains pending.
 
 ## For dictionary owners
 
-Open **Settings → Picture creation and practice allowance**. Enter the number of requests
+Open **Settings → Daily AI allowances → Entry creation and practice**. Enter the number of attempts
 allowed in 24 hours, choose **Preview daily cost**, then approve the estimate and
 choose **Confirm**. Going back without confirming changes nothing. Owners and co-owners
 can change this shared setting; members can see usage when starting a description.
@@ -53,12 +54,19 @@ retry automatically. There is no new schema or email configuration setting.
 
 ## New AI pictures have a separate allowance
 
-Settings also shows **AI image generation allowance**, with account and dictionary
-usage for the preceding 24 hours. This covers new scene illustrations, style samples
+The same Settings panel shows **New AI pictures** first, with the remaining normal
+picture allowance and an explanation of how owners approve extra pictures. Account
+and dictionary usage for the preceding 24 hours is available under **How the picture
+allowance is counted**. This covers new scene illustrations, style samples
 and word pictures. The server's ordinary image limit defaults to 20; changing the
 creation/practice setting above does not change it. Both limits are shown when
 starting with words, so the available language-work allowance is not mistaken for
-available image capacity.
+available image capacity. Creating an entry with a new AI picture uses both
+allowances. Describing an uploaded picture or practising with an existing one uses
+the entry/practice allowance; any automatic word pictures also count towards the
+picture allowance. For example, 100 entry/practice attempts and 20 new
+AI pictures do not permit 100 new illustrations without explicit extra-picture
+approval. The editable field is labelled **Entry or practice attempts per 24 hours**.
 
 Owners and co-owners can explicitly approve **this picture above the normal daily
 image limit, for this request only**, at the displayed cost. This is available for
@@ -83,7 +91,8 @@ spoken input. This plans for a short sentence and up to twelve vocabulary items
 with lemma/form audio. Practice normally needs less processing; each activity
 provides its own estimate. The daily preview is labelled as the cost if every
 request creates a new entry.
-The UI exposes these assumptions; no API call is needed to calculate the preview.
+The UI exposes these assumptions and explicitly states that new AI pictures cost
+extra and use their own allowance; no API call is needed to calculate the preview.
 
 This is **not a hard spending cap or provider quotation**. Actual input size,
 vocabulary count, audio duration, reuse, retries and provider prices vary. The app

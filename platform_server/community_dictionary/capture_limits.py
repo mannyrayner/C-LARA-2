@@ -26,7 +26,7 @@ NEW_DICTIONARY_LIMIT = 50
 class AllowanceExhausted(Conflict):
     def __init__(self, dictionary, scope='dictionary'):
         self.dictionary, self.scope = dictionary, scope
-        super().__init__(_('Your daily allowance for picture creation and practice is used up.'))
+        super().__init__(_('Your daily allowance for entry creation and practice is used up.'))
 
 
 def offer(request, dictionary, *, scope=None):
@@ -50,7 +50,7 @@ def offer(request, dictionary, *, scope=None):
     request.capture_allowance_offer = {
         'scope': scope, 'used': counts['used'], 'limit': counts['limit'],
         'message': (_('Your daily allowance across dictionaries has been used up.') if scope == 'account'
-            else _('This dictionary’s daily allowance for picture creation and practice has been used up.')),
+            else _('This dictionary’s daily allowance for entry creation and practice has been used up.')),
         'proposed': proposed if can_increase else None,
         'extra': proposed - counts['limit'] if can_increase else None,
         'url': reverse('community_dictionary:capture-limit', args=[dictionary.pk]) if can_increase else '',
