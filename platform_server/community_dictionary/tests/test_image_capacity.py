@@ -82,7 +82,7 @@ class AdmissionTests(Fixtures, TestCase):
     def test_credit_reserved_until_receipt_finishes_and_personal_key_not_charged(self):
         with override_settings(CREDITS_ENABLED=True), patch.object(capacity, 'get_user_balance_usd', return_value=Decimal('0.75')):
             first = self.admit()
-            with self.assertRaises(Conflict): self.admit(self.b)
+            with self.assertRaises(capacity.Busy): self.admit(self.b)
             first.status='saved'; first.save(update_fields=['status'])
             self.admit(self.b)
             personal = self.admit(personal=True)
@@ -148,6 +148,17 @@ class FairDispatchTests(Fixtures, TestCase):
         row.refresh_from_db(); self.assertEqual(row.status,'waiting')
         paid.assert_not_called()
         self.assertFalse(row.study.usage[costs.KEY]['started'])
+
+    def test_reserved_credit_defers_word_until_running_picture_finishes(self):
+        row=self.word(self.a,'batch')
+        first=self.admit()
+        with override_settings(CREDITS_ENABLED=True), patch.object(capacity,'get_user_balance_usd',return_value=Decimal('0.75')):
+            with patch.object(pictures,'analyse') as paid:
+                self.assertFalse(pictures.run(row.pk,row.revision))
+            paid.assert_not_called()
+        row.refresh_from_db(); self.assertEqual(row.status,'waiting')
+        first.status='saved'; first.save(update_fields=['status'])
+        self.assertEqual(capacity.next_word(self.owner.pk).pk,row.pk)
 
 
 @override_settings(OPENAI_API_KEY='fixture-not-real', CREDITS_ENABLED=False,

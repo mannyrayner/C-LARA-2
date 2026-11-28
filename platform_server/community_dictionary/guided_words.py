@@ -186,7 +186,7 @@ def run(pk):
         for path in paths: delete_file(path)
         guided.log.warning('Words-first preview %s stopped (%s)', pk, type(exc).__name__)
         PictureCapture.objects.filter(pk=pk, status__in=['waiting', 'processing']).update(status='failed')
-        if isinstance(exc, images.ImageAllowanceConflict):
+        if isinstance(exc, (images.ImageAllowanceConflict, image_capacity.Busy)):
             with transaction.atomic():
                 current = capture.fetch(pk, True)
                 current.result['guided']['words']['allowance_error'] = str(exc)
