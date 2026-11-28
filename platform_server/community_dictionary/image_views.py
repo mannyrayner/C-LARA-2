@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 
 from projects.billing import credits_enabled, get_user_balance_usd
 from . import image_generation as images
+from . import image_capacity
 from .image_forms import ImageGenerateForm, ImageSaveForm
 from .models import Contribution, Dictionary, Entry, ImageStudy, Participation
 from .permissions import get_dictionary, is_editor, is_owner, require_editor
@@ -86,6 +87,8 @@ def finish(study, key):
         for path in paths:
             delete_file(path)
         raise
+    finally:
+        image_capacity.wake(study.user_id)
 
 
 @login_required
@@ -127,12 +130,10 @@ def start(request, pk, entry_id=None):
                 raise Conflict('The dictionary style is unavailable. Approve a shared style first.')
             if not personal and credits_enabled() and get_user_balance_usd(request.user) < allowance:
                 raise Conflict(f'Allow at least US${allowance} in C-LARA credit for an image preview, or use your own OpenAI key.')
-            recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
             extra = form.cleaned_data['extra_allowance']
             images.approve_capacity(current, request.user, extra)
-            if recent.filter(user=request.user, status='processing',
-                    created_at__gte=timezone.now()-timedelta(seconds=images.TIMEOUT+60)).exists():
-                raise Conflict('Your previous image is still being generated. Open its recent attempt before starting another.')
+            slot = image_capacity.reserve(request.user, allowance, personal=personal,
+                group='dictionary:'+str(pk))
             description = source.body if source else form.cleaned_data['style_description']
             study = ImageStudy.objects.create(dictionary=current, entry=target, user=request.user,
                 kind='entry' if target else 'style', expires_at=timezone.now()+timedelta(days=1),
@@ -142,8 +143,8 @@ def start(request, pk, entry_id=None):
                 membership_revision=current.membership_revision, policy_revision=current.image_generation_revision,
                 model=model, quality=images.QUALITY, personal_key=personal,
                 prompt=images.prompt_for(form.cleaned_data['subject'], description),
-                usage={'owner_allowance': {'approved_by': request.user.pk,
-                    'approved_at': timezone.now().isoformat()}} if extra else {})
+                usage={image_capacity.KEY: slot, **({'owner_allowance': {'approved_by': request.user.pk,
+                    'approved_at': timezone.now().isoformat()}} if extra else {})})
             event(current, request.user, 'image_generation', target, f'OpenAI consent; attempt {study.pk}')
             created.append(study)
             return study_url(study)

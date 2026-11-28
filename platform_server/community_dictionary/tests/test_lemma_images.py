@@ -542,8 +542,8 @@ class LemmaImageTests(TestCase):
     def test_temporary_allowance_still_requires_sufficient_credit(self):
         with transaction.atomic():
             row = pictures.request(self.word(), self.owner, extra_allowance=True)
-        with patch.object(pictures, 'credits_enabled', return_value=True), \
-             patch.object(pictures, 'get_user_balance_usd', return_value=0):
+        with patch.object(pictures.image_capacity, 'credits_enabled', return_value=True), \
+             patch.object(pictures.image_capacity, 'get_user_balance_usd', return_value=0):
             analysis, image = self.run_job(row)
         analysis.assert_not_called(); image.assert_not_called()
         self.assertEqual(row.status, 'failed')

@@ -286,10 +286,19 @@ class ImageGenerationTests(TestCase):
             self.assertEqual(self.generate().status_code,200)
         self.assertEqual(self.sdk.images.generate.call_count,1)
 
-    def test_in_progress_attempt_blocks_new_paid_request(self):
+    @override_settings(COMMUNITY_DICTIONARY_IMAGE_CONCURRENCY=1)
+    def test_single_slot_configuration_blocks_new_paid_request(self):
         self.generate();study=self.latest();study.status='processing';study.save()
         self.assertEqual(self.generate().status_code,200)
         self.assertEqual(self.sdk.images.generate.call_count,1)
+
+    def test_default_two_slots_allow_second_preview_and_block_third(self):
+        self.generate(); first=self.latest()
+        first.status='processing'; first.save(update_fields=['status'])
+        self.assertEqual(self.generate().status_code,302)
+        second=self.latest(); second.status='processing'; second.save(update_fields=['status'])
+        self.assertContains(self.generate(),'Your picture slots are in use')
+        self.assertEqual(self.sdk.images.generate.call_count,2)
 
     @override_settings(COMMUNITY_DICTIONARY_IMAGE_DAILY_LIMIT=1)
     def test_owner_can_explicitly_approve_one_extra_preview_and_keep_receipt(self):

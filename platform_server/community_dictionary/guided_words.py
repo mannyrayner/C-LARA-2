@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from projects.billing import credits_enabled, get_user_balance_usd
 from . import capture, capture_ai, guided, image_generation as images, learning, photo_ai, tts, writing
+from . import image_capacity
 from .models import ImageStudy, Participation, PictureCapture, VoicePreference
 from .services import Conflict
 from .storage import delete_file, path_for, write_upload
@@ -121,21 +122,20 @@ def admit_image(study):
     model, _key, personal, allowance = images.configuration(study.user)
     if not personal and credits_enabled() and get_user_balance_usd(study.user) < allowance:
         raise Conflict(_('Your balance is too low to generate this picture.'))
-    recent = images.started_studies().filter(created_at__gte=timezone.now()-timedelta(days=1))
     info = study.result['guided']['words']
     token = info.get('image_allowance')
     extra = images.approved_allowance(token, study.dictionary, study.user, study.pk) if token else False
     images.approve_capacity(study.dictionary, study.user, extra)
-    if recent.filter(user=study.user, status='processing',
-            created_at__gte=timezone.now()-timedelta(seconds=images.TIMEOUT+60)).exists():
-        raise Conflict(_('Your previous image is still being generated. Open its recent attempt before starting another.'))
+    slot = image_capacity.reserve(study.user, allowance, personal=personal,
+        group='dictionary:'+str(study.dictionary_id))
     info = study.result['guided']['words']
     return ImageStudy.objects.create(dictionary=study.dictionary, user=study.user, kind='entry',
         expires_at=study.expires_at, subject=info['text'], style_description=info['style_description'],
         membership_revision=study.membership_revision, participation_revision=study.participation_revision,
         policy_revision=study.dictionary.image_generation_revision, model=model, quality=images.QUALITY,
         personal_key=personal, prompt=images.prompt_for(info['text'], info['style_description']),
-        usage={'owner_allowance': {'approved_by': study.user_id, 'source_attempt': str(study.pk)}} if extra else {})
+        usage={image_capacity.KEY: slot, **({'owner_allowance': {'approved_by': study.user_id,
+            'source_attempt': str(study.pk)}} if extra else {})})
 
 
 def run(pk):
@@ -191,6 +191,10 @@ def run(pk):
                 current = capture.fetch(pk, True)
                 current.result['guided']['words']['allowance_error'] = str(exc)
                 current.save(update_fields=['result'])
+
+    finally:
+        if attempt is not None:
+            image_capacity.wake(attempt.user_id)
 
 
 def image_provenance(study):

@@ -140,7 +140,7 @@ def account(study, usage):
     """One accounting record per attempt, including failed image validation."""
     if study.accounted:
         return
-    retained = {k:v for k,v in study.usage.items() if k in {'lemma_picture', 'owner_allowance'}}
+    retained = {k:v for k,v in study.usage.items() if k in {'lemma_picture', 'owner_allowance', 'picture_capacity'}}
     study.usage = {**usage, **retained}
     study.cost_usd = usage_cost(usage)
     ledger = None
