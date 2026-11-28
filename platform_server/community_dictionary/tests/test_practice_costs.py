@@ -58,15 +58,16 @@ class PracticeCostPageTests(TestCase):
     feedback=base.PicturePracticeTests.feedback
     def setUp(self): base.PicturePracticeTests.setUp(self)
 
-    def test_generation_is_explicit_extra_and_page_and_export_include_existing_feedback_cost(self):
+    def test_final_speech_is_automatic_and_page_and_export_include_its_cost(self):
         study=self.feedback()
         page=self.client.get(self.url('picture-practice-detail',study.pk))
-        self.assertContains(page,'Generate spoken version')
-        self.assertContains(page,'+~US$')
+        self.assertNotContains(page,'Generate spoken version')
+        self.assertContains(page,'Play the AI-generated spoken version')
         self.assertContains(page,'Estimated cost so far:')
         self.assertContains(page,'AI image review and language feedback')
         self.assertContains(page,'Unknown usage is not counted as zero.')
-        self.tts.assert_not_called()
+        self.tts.assert_called_once()
         rows=self.client.get(self.url('picture-practice-log')).json()['attempts']
-        self.assertEqual(rows[0]['cost_summary']['known_total'],str(study.usage['practice_feedback']['cost_usd']))
+        self.assertEqual(Decimal(rows[0]['cost_summary']['known_total']),
+            Decimal(study.usage['practice_feedback']['cost_usd'])+Decimal('.001'))
         self.assertEqual(self.review.call_count,1)

@@ -103,7 +103,8 @@ class PracticeRevisionTests(TestCase):
         self.assertEqual(context['proficiency'], 'advanced')
         events = study.result['practice']['diagnostics']['events']
         self.assertEqual([(e['stage'], e['state']) for e in events],
-            [('transcribe','started'),('transcribe','finished'),('review','started'),('review','finished')])
+            [('transcribe','started'),('transcribe','finished'),('review','started'),('review','finished'),
+             ('feedback_playback','requested')])
         self.assertTrue(all(e['elapsed_ms'] >= 0 for e in events if e['state']=='finished'))
         page = self.client.get(self.url('picture-practice-detail', study.pk))
         self.assertNotContains(page, 'Let me check what I heard')

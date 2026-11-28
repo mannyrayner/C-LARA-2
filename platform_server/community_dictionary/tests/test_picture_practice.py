@@ -124,7 +124,7 @@ class PicturePracticeTests(TestCase):
         study.refresh_from_db()
         self.assertEqual(study.status, 'feedback')
         self.assertIn('practice_feedback_confirmed', study.usage)
-        self.assertEqual(AIUsageCharge.objects.count(), 3)
+        self.assertEqual(AIUsageCharge.objects.count(), 4)  # ASR, both reviews, automatic final speech
         self.assertEqual(self.asr.call_count, 1)
         self.assertEqual(self.review.call_count, 2)
 
@@ -142,13 +142,16 @@ class PicturePracticeTests(TestCase):
         self.assertIn('image=', page.request['QUERY_STRING'])
         self.assertIn('no-store', page['Cache-Control'])
 
-    def test_feedback_uses_image_and_intention_without_enrichment_or_automatic_audio(self):
+    def test_ready_feedback_automatically_speaks_corrected_words_without_enrichment(self):
         study = self.feedback()
         self.assertEqual((Entry.objects.count(), Contribution.objects.count()), self.before)
         self.ai.assert_not_called()
-        self.tts.assert_not_called()
+        self.tts.assert_called_once()
+        self.assertEqual(self.tts.call_args.args[0], CORRECTED)
         self.asr.assert_not_called()
-        self.assertEqual(CaptureSpeech.objects.count(), 0)
+        clip = CaptureSpeech.objects.get(kind='feedback')
+        self.assertEqual(clip.status, 'ready')
+        self.assertIsNone(clip.entry_id)
         self.assertEqual(capture_limits.usage(self.d)['used'], 1)
         self.assertEqual(self.review.call_args.kwargs['text'], ORIGINAL)
         self.assertEqual(self.review.call_args.kwargs['schema'], practice.SCHEMA)
@@ -156,10 +159,57 @@ class PicturePracticeTests(TestCase):
         page = self.client.get(self.url('picture-practice-detail', study.pk))
         self.assertContains(page, FEEDBACK['understood'])
         self.assertContains(page, 'Try again')
-        self.assertContains(page, 'Generate spoken version')
+        self.assertNotContains(page, 'Generate spoken version')
+        self.assertContains(page, 'Play the AI-generated spoken version')
         self.assertContains(page, 'not pronunciation')
         for _ in range(2): practice.run(study.pk)
         self.assertEqual(self.review.call_count, 1)
+        self.assertEqual(self.tts.call_count, 1)
+
+    def test_failed_automatic_speech_keeps_feedback_and_is_not_replayed(self):
+        self.tts.side_effect = TimeoutError()
+        study = self.feedback()
+        self.assertEqual(CaptureSpeech.objects.get().status, 'failed')
+        for _ in range(2):
+            practice.run(study.pk)
+            self.client.get(self.url('picture-practice-detail', study.pk))
+        self.tts.assert_called_once()
+        page = self.client.get(self.url('picture-practice-detail', study.pk))
+        self.assertContains(page, CORRECTED)
+        self.assertContains(page, 'Audio could not finish')
+        self.assertNotContains(page, 'Generate spoken version')
+
+    def test_uncorrected_ready_feedback_gets_the_same_automatic_player(self):
+        self.review.return_value = fixtures.response({**FEEDBACK, 'text': ORIGINAL, 'corrections': []})
+        study = self.feedback()
+        self.assertEqual(CaptureSpeech.objects.get().text, ORIGINAL)
+        self.assertEqual(self.tts.call_args.args[0], ORIGINAL)
+        page = self.client.get(self.url('picture-practice-detail', study.pk))
+        self.assertContains(page, 'No correction was needed.')
+        self.assertContains(page, 'Play the AI-generated spoken version')
+
+    def test_existing_v5_scope_is_not_backfilled_and_retains_explicit_audio(self):
+        study = self.attempt()
+        values = study.result['practice']['quote']
+        values['version'] = 'picture-practice-5'; values.pop('feedback_audio')
+        study.save(update_fields=['result'])
+        practice.run(study.pk); practice.run(study.pk)
+        self.tts.assert_not_called()
+        self.assertFalse(study.speech.exists())
+        page = self.client.get(self.url('picture-practice-detail', study.pk))
+        self.assertContains(page, 'Generate spoken version')
+        self.assertEqual(self.act(study, 'listen', permission='yes').status_code, 302)
+        practice.run(study.pk); practice.run(study.pk)
+        self.tts.assert_called_once()
+
+    def test_initial_estimate_and_session_consent_cover_final_speech(self):
+        values = practice.quote(self.user, self.d)
+        legacy = {**values, 'feedback_audio': False}
+        from community_dictionary import tts
+        self.assertEqual(practice.estimate(values)-practice.estimate(legacy),tts.estimate_cost('x'*255,30))
+        page = self.client.get(self.url('picture-practice')+f'?image={self.photo.pk}')
+        self.assertContains(page, 'automatically prepared spoken version')
+        self.assertNotContains(page, 'optional and charged separately')
 
     def test_speech_pauses_at_confirmable_transcript_and_allows_editing(self):
         study = self.attempt('voice')
