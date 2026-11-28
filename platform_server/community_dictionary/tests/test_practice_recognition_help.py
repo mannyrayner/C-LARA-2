@@ -239,12 +239,13 @@ class RecognitionHelpWorkflowTests(TestCase):
         self.review.return_value = response(FEEDBACK)
         study = self.attempt('voice')
         practice.run(study.pk)
-        self.assertFalse(CaptureSpeech.objects.exists())
-        self.tts.assert_not_called()
+        self.assertFalse(CaptureSpeech.objects.filter(kind__in=['help_word', 'help_phrase']).exists())
+        self.assertEqual(CaptureSpeech.objects.get(kind='feedback').status, 'ready')
+        self.tts.assert_called_once()
         self.d.tts_enabled = False; self.d.save()
         self.unclear()
-        self.assertFalse(CaptureSpeech.objects.exists())
-        self.tts.assert_not_called()
+        self.assertFalse(CaptureSpeech.objects.filter(kind__in=['help_word', 'help_phrase']).exists())
+        self.assertEqual(self.tts.call_count, 1)
 
     def test_all_clips_are_queued_atomically_and_background_resume_does_not_repeat_review(self):
         from unittest.mock import patch
